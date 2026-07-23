@@ -2,10 +2,7 @@ import { Command } from "commander";
 
 export const program = new Command();
 
-program
-  .name("uwbench")
-  .description("UWBench CLI")
-  .version("0.0.0");
+program.name("uwbench").description("UWBench CLI").version("0.0.0");
 
 program
   .command("init-agent")

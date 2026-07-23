@@ -21,7 +21,7 @@ export const CaseListDocumentsSchema = z.object({
         title: z.string(),
         mimeType: z.string(),
         pageCount: z.number().optional(),
-      })
+      }),
     ),
   }),
 });
@@ -50,7 +50,7 @@ export const CaseReadDocumentSchema = z.object({
       z.object({
         pageNumber: z.number(),
         text: z.string(),
-      })
+      }),
     ),
   }),
 });
@@ -66,7 +66,7 @@ export const CaseSearchDocumentsSchema = z.object({
         documentId: z.string(),
         snippet: z.string(),
         score: z.number(),
-      })
+      }),
     ),
   }),
 });
@@ -104,7 +104,7 @@ export const PolicySearchSchema = z.object({
         ruleId: z.string(),
         title: z.string(),
         snippet: z.string(),
-      })
+      }),
     ),
   }),
 });

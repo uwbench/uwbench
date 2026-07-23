@@ -29,8 +29,12 @@ export const NormalizedFactSchema = z.object({
   unit: z.string().optional(),
   currency: z.string().length(3).optional(),
   scale: z.number().optional(),
-  period: z.object({ start: z.string().date(), end: z.string().date() }).optional(),
-  origin: z.object({ documentId: z.string(), page: z.number().optional() }).optional(),
+  period: z
+    .object({ start: z.string().date(), end: z.string().date() })
+    .optional(),
+  origin: z
+    .object({ documentId: z.string(), page: z.number().optional() })
+    .optional(),
   citations: z.array(z.string()).optional(),
   confidence: z.number().min(0).max(1).optional(),
   conflictGroup: z.string().optional(),
@@ -84,7 +88,7 @@ export const PolicyAssessmentSchema = z.object({
       threshold: z.unknown(),
       operator: z.string(),
       exceptionDisclosed: z.boolean().optional(),
-    })
+    }),
   ),
 });
 
@@ -167,4 +171,6 @@ export type Recommendation = z.infer<typeof RecommendationSchema>;
 export type Memo = z.infer<typeof MemoSchema>;
 export type Confidence = z.infer<typeof ConfidenceSchema>;
 export type Usage = z.infer<typeof UsageSchema>;
-export type UnderwritingSubmission = z.infer<typeof UnderwritingSubmissionSchema>;
+export type UnderwritingSubmission = z.infer<
+  typeof UnderwritingSubmissionSchema
+>;

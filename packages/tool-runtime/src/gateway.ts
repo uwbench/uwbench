@@ -3,8 +3,15 @@ export interface ToolGatewayOptions {
 }
 
 export class ToolGateway {
-  constructor(_options: ToolGatewayOptions) {}
-  
-  async start(): Promise<void> {}
-  async stop(): Promise<void> {}
+  constructor(_options: ToolGatewayOptions) {
+    // TODO: implement initialization
+  }
+
+  async start(): Promise<void> {
+    // TODO: implement server startup
+  }
+
+  async stop(): Promise<void> {
+    // TODO: implement server shutdown
+  }
 }

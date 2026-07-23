@@ -18,7 +18,12 @@ export const EventTypeSchema = z.enum([
   "SCORING_COMPLETED",
 ]);
 
-export const EventSourceSchema = z.enum(["RUNNER", "AGENT", "TOOL_GATEWAY", "SCORER"]);
+export const EventSourceSchema = z.enum([
+  "RUNNER",
+  "AGENT",
+  "TOOL_GATEWAY",
+  "SCORER",
+]);
 
 export const BaseEventSchema = z.object({
   schemaVersion: z.literal("1.0"),
@@ -37,7 +42,7 @@ export const BaseEventSchema = z.object({
 export const EventSchema = BaseEventSchema;
 
 export function computeHash(event: z.infer<typeof BaseEventSchema>): string {
-  const { hash, ...eventWithoutHash } = event;
+  const { hash: _hash, ...eventWithoutHash } = event;
   const canonical = JSON.stringify(eventWithoutHash);
   return `sha256:${canonical}`;
 }
