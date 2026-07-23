@@ -160,8 +160,12 @@
       "T4"
     ],
     "estimated_minutes": 60,
-    "status": "pending",
-    "priority": 5
+    "status": "gated_pass",
+    "priority": 5,
+    "assignee": "orchestrator",
+    "started_at": "2026-07-23T18:15:38.318Z",
+    "attempts": 1,
+    "completed_at": "2026-07-23T18:55:58.138Z"
   },
   {
     "id": "T6",
