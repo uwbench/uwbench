@@ -68,8 +68,12 @@
       "T1"
     ],
     "estimated_minutes": 120,
-    "status": "pending",
-    "priority": 2
+    "status": "gated_pass",
+    "priority": 2,
+    "assignee": "orchestrator",
+    "started_at": "2026-07-23T16:55:47.487Z",
+    "attempts": 1,
+    "completed_at": "2026-07-23T17:10:02.693Z"
   },
   {
     "id": "T3",
