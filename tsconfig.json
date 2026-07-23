@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": true,
+    "tsBuildInfoFile": ".tsbuildinfo"
+  },
+  "files": [],
+  "references": [
+    { "path": "./packages/protocol" },
+    { "path": "./packages/case-schema" },
+    { "path": "./packages/testkit" },
+    { "path": "./packages/runner" },
+    { "path": "./packages/tool-runtime" },
+    { "path": "./packages/scorer-core" },
+    { "path": "./apps/cli" },
+    { "path": "./examples/deterministic-baseline" }
+  ]
+}

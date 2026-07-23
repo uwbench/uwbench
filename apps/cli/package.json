@@ -1,0 +1,27 @@
+{
+  "name": "@uwbench/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "uwbench": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src --ext .ts",
+    "clean": "rm -rf dist .tsbuildinfo"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5",
+    "commander": "^12.1.0",
+    "@types/node": "^20.14.10"
+  },
+  "dependencies": {
+    "commander": "^12.1.0"
+  }
+}

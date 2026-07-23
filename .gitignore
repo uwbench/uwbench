@@ -1,0 +1,51 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+dist
+build
+*.tsbuildinfo
+
+# Turbo
+.turbo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage
+.nyc_output
+
+# Vitest
+vitest.config.ts.timestamp-*
+
+# Changesets
+.changeset/*.md
+!.changeset/README.md
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+tmp
+temp
+*.tmp
+*.temp

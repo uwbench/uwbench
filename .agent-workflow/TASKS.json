@@ -27,8 +27,12 @@
     ],
     "depends_on": [],
     "estimated_minutes": 45,
-    "status": "pending",
-    "priority": 1
+    "status": "gated_pass",
+    "priority": 1,
+    "assignee": "orchestrator",
+    "started_at": "2026-07-23T16:28:58.542Z",
+    "attempts": 1,
+    "completed_at": "2026-07-23T16:55:47.393Z"
   },
   {
     "id": "T2",
@@ -60,7 +64,9 @@
       "CODE_OF_CONDUCT.md",
       "SECURITY.md"
     ],
-    "depends_on": ["T1"],
+    "depends_on": [
+      "T1"
+    ],
     "estimated_minutes": 120,
     "status": "pending",
     "priority": 2
@@ -84,7 +90,9 @@
       "vitest.config.ts",
       "package.json"
     ],
-    "depends_on": ["T1"],
+    "depends_on": [
+      "T1"
+    ],
     "estimated_minutes": 60,
     "status": "pending",
     "priority": 3
@@ -110,7 +118,9 @@
       "packages/protocol/package.json",
       "packages/protocol/__tests__/agent.test.ts"
     ],
-    "depends_on": ["T1"],
+    "depends_on": [
+      "T1"
+    ],
     "estimated_minutes": 90,
     "status": "pending",
     "priority": 4
@@ -134,7 +144,9 @@
       "packages/protocol/src/tools.ts",
       "packages/protocol/src/index.ts"
     ],
-    "depends_on": ["T4"],
+    "depends_on": [
+      "T4"
+    ],
     "estimated_minutes": 60,
     "status": "pending",
     "priority": 5
@@ -158,7 +170,9 @@
       "packages/protocol/src/index.ts",
       "packages/protocol/__tests__/events.test.ts"
     ],
-    "depends_on": ["T4"],
+    "depends_on": [
+      "T4"
+    ],
     "estimated_minutes": 60,
     "status": "pending",
     "priority": 6
@@ -187,7 +201,9 @@
       "packages/protocol/src/submission.ts",
       "packages/protocol/src/index.ts"
     ],
-    "depends_on": ["T4"],
+    "depends_on": [
+      "T4"
+    ],
     "estimated_minutes": 90,
     "status": "pending",
     "priority": 7
@@ -212,7 +228,12 @@
       ".github/workflows/ci.yml",
       "docs/specification/generated/*"
     ],
-    "depends_on": ["T4", "T5", "T6", "T7"],
+    "depends_on": [
+      "T4",
+      "T5",
+      "T6",
+      "T7"
+    ],
     "estimated_minutes": 90,
     "status": "pending",
     "priority": 8
@@ -236,7 +257,12 @@
       "packages/testkit/package.json",
       "examples/deterministic-baseline/*"
     ],
-    "depends_on": ["T4", "T5", "T6", "T7"],
+    "depends_on": [
+      "T4",
+      "T5",
+      "T6",
+      "T7"
+    ],
     "estimated_minutes": 120,
     "status": "pending",
     "priority": 9
@@ -260,7 +286,10 @@
       "packages/case-schema/__tests__/case.test.ts",
       "packages/case-schema/package.json"
     ],
-    "depends_on": ["T5", "T7"],
+    "depends_on": [
+      "T5",
+      "T7"
+    ],
     "estimated_minutes": 120,
     "status": "pending",
     "priority": 10
@@ -285,7 +314,13 @@
       "packages/runner/__tests__/runner.test.ts",
       "apps/cli/src/commands/run.ts"
     ],
-    "depends_on": ["T6", "T9", "T10", "T12", "T13"],
+    "depends_on": [
+      "T6",
+      "T9",
+      "T10",
+      "T12",
+      "T13"
+    ],
     "estimated_minutes": 120,
     "status": "pending",
     "priority": 11
@@ -310,7 +345,10 @@
       "packages/tool-runtime/src/tools/*.ts",
       "packages/tool-runtime/__tests__/gateway.test.ts"
     ],
-    "depends_on": ["T5", "T10"],
+    "depends_on": [
+      "T5",
+      "T10"
+    ],
     "estimated_minutes": 90,
     "status": "pending",
     "priority": 12
@@ -333,7 +371,9 @@
       "packages/tool-runtime/src/scenario.ts",
       "packages/tool-runtime/__tests__/scenario.test.ts"
     ],
-    "depends_on": ["T12"],
+    "depends_on": [
+      "T12"
+    ],
     "estimated_minutes": 60,
     "status": "pending",
     "priority": 13
@@ -358,7 +398,11 @@
       "apps/cli/src/commands/*.ts",
       "apps/cli/package.json"
     ],
-    "depends_on": ["T11", "T12", "T13"],
+    "depends_on": [
+      "T11",
+      "T12",
+      "T13"
+    ],
     "estimated_minutes": 90,
     "status": "pending",
     "priority": 14
@@ -386,7 +430,11 @@
       "packages/scorer-core/*",
       "scripts/smoke-reasoning-only.sh"
     ],
-    "depends_on": ["T9", "T10", "T14"],
+    "depends_on": [
+      "T9",
+      "T10",
+      "T14"
+    ],
     "estimated_minutes": 180,
     "status": "pending",
     "priority": 15
