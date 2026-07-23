@@ -1,0 +1,8 @@
+.orchestrator.lock
+STATE.ndjson
+TASK_T*.md
+RUN.json
+artifacts/
+implementation-worktrees/
+gate-worktrees/
+checkpoint-worktrees/

@@ -1,0 +1,394 @@
+[
+  {
+    "id": "T1",
+    "phase": 0,
+    "title": "Create public repository and pnpm workspace",
+    "description": "Initialize uwbench monorepo with pnpm workspaces, TypeScript config, and basic tooling",
+    "acceptance": [
+      "Directory uwbench/ exists with pnpm-workspace.yaml pointing to packages/* and apps/*",
+      "Root package.json with workspaces, scripts (lint, typecheck, test, build, generate), engines >=20",
+      "tsconfig.base.json with strict mode, ES2022, NodeNext modules, composite: true",
+      "Root tsconfig.json has files: [] and project references so pnpm typecheck works before packages exist",
+      ".gitignore excludes node_modules, dist, .turbo, *.log, .DS_Store",
+      "LICENSE file with Apache-2.0 text",
+      "README.md with project description, license, and quickstart",
+      "packageManager is pinned to pnpm@10.28.0 and TypeScript is a root devDependency",
+      "pnpm install succeeds",
+      "pnpm typecheck passes in the initial workspace"
+    ],
+    "files_touched": [
+      "package.json",
+      "pnpm-workspace.yaml",
+      "tsconfig.base.json",
+      "tsconfig.json",
+      ".gitignore",
+      "LICENSE",
+      "README.md"
+    ],
+    "depends_on": [],
+    "estimated_minutes": 45,
+    "status": "pending",
+    "priority": 1
+  },
+  {
+    "id": "T2",
+    "phase": 0,
+    "title": "Governance, security policy, threat model docs + ADRs",
+    "description": "Create governance structure and architecture decision records for repo boundary, protocol, case privacy, Fargate isolation, score versioning, judge use",
+    "acceptance": [
+      "docs/governance/GOVERNANCE.md with contribution, maintainer, release process",
+      "docs/security/SECURITY.md with vulnerability disclosure, threat model summary",
+      "docs/specification/ADR-001-repository-boundary.md",
+      "docs/specification/ADR-002-agent-protocol.md",
+      "docs/specification/ADR-003-case-privacy.md",
+      "docs/specification/ADR-004-fargate-isolation.md",
+      "docs/specification/ADR-005-score-versioning.md",
+      "docs/specification/ADR-006-judge-use.md",
+      "CODE_OF_CONDUCT.md",
+      "SECURITY.md (separate from docs/security/)",
+      "Each ADR: status, context, decision, consequences, alternatives considered"
+    ],
+    "files_touched": [
+      "docs/governance/GOVERNANCE.md",
+      "docs/security/SECURITY.md",
+      "docs/specification/ADR-001-repository-boundary.md",
+      "docs/specification/ADR-002-agent-protocol.md",
+      "docs/specification/ADR-003-case-privacy.md",
+      "docs/specification/ADR-004-fargate-isolation.md",
+      "docs/specification/ADR-005-score-versioning.md",
+      "docs/specification/ADR-006-judge-use.md",
+      "CODE_OF_CONDUCT.md",
+      "SECURITY.md"
+    ],
+    "depends_on": ["T1"],
+    "estimated_minutes": 120,
+    "status": "pending",
+    "priority": 2
+  },
+  {
+    "id": "T3",
+    "phase": 0,
+    "title": "CI/CD, linting, testing scaffolding",
+    "description": "Set up GitHub Actions CI, ESLint, Prettier, Vitest, pnpm changesets",
+    "acceptance": [
+      ".github/workflows/ci.yml runs lint + typecheck + test on PR/push",
+      "eslint.config.js with TypeScript, Prettier, no-unused-vars",
+      "vitest.config.ts with coverage, workspace support",
+      "package.json scripts: lint, typecheck, test, test:coverage, build, generate, changeset, version, release",
+      "pnpm changeset works for version management",
+      "CI fails on type errors, lint errors, test failures"
+    ],
+    "files_touched": [
+      ".github/workflows/ci.yml",
+      "eslint.config.js",
+      "vitest.config.ts",
+      "package.json"
+    ],
+    "depends_on": ["T1"],
+    "estimated_minutes": 60,
+    "status": "pending",
+    "priority": 3
+  },
+  {
+    "id": "T4",
+    "phase": 1,
+    "title": "Agent Protocol v1 schemas (packages/protocol)",
+    "description": "Define agent lifecycle and transport schemas; submission-domain schemas are implemented separately in T7",
+    "acceptance": [
+      "packages/protocol/src/agent.ts exports all schemas with schemaVersion",
+      "RunRequest: benchmark, benchmarkVersion, lane, caseId, objective, requiredOutputs, toolGateway, limits",
+      "RunResponse: agentRunId, status (accepted|running|awaiting_tool|completed|failed|cancelled)",
+      "RunStatus enum matches spec",
+      "Run lifecycle response supports an optional schema-validated completion payload wired in T7 without duplicating submission types",
+      "Protocol errors have stable machine-readable codes",
+      "Unit tests cover valid requests and rejected unknown versions/statuses",
+      "No circular dependencies"
+    ],
+    "files_touched": [
+      "packages/protocol/src/agent.ts",
+      "packages/protocol/src/index.ts",
+      "packages/protocol/package.json",
+      "packages/protocol/__tests__/agent.test.ts"
+    ],
+    "depends_on": ["T1"],
+    "estimated_minutes": 90,
+    "status": "pending",
+    "priority": 4
+  },
+  {
+    "id": "T5",
+    "phase": 1,
+    "title": "Tool Protocol v1 schemas (packages/protocol)",
+    "description": "Define Zod schemas for all 12 v0.1 tools with input/output validation",
+    "acceptance": [
+      "packages/protocol/src/tools.ts exports all tool schemas",
+      "case.*: list_documents, get_document_metadata, read_document, search_documents, get_structured_record, request_information",
+      "policy.*: search, get_rule",
+      "finance.*: calculate, calculate_ratios, validate_spread",
+      "submission.*: save_artifact",
+      "Each tool: input schema, output schema, error schema, callId for idempotency",
+      "Tool names exactly match spec: case.list_documents, case.read_document, etc.",
+      "Generated OpenAPI includes all tool endpoints"
+    ],
+    "files_touched": [
+      "packages/protocol/src/tools.ts",
+      "packages/protocol/src/index.ts"
+    ],
+    "depends_on": ["T4"],
+    "estimated_minutes": 60,
+    "status": "pending",
+    "priority": 5
+  },
+  {
+    "id": "T6",
+    "phase": 1,
+    "title": "Event Log v1 + JCS hash chain (packages/protocol)",
+    "description": "Define 15 event types with RFC 8785 canonicalization and hash chain",
+    "acceptance": [
+      "packages/protocol/src/events.ts exports EventSchema with schemaVersion",
+      "15 event types: RUN_STARTED, AGENT_READY, AGENT_RUN_STARTED, TOOL_CALL, TOOL_RESULT, TOOL_ERROR, ARTIFACT_SAVED, LIMIT_WARNING, AGENT_COMPLETED, AGENT_FAILED, RUN_CANCELLED, RUN_COMPLETED, SCORING_STARTED, SCORE_COMPONENT_CREATED, SCORING_COMPLETED",
+      "Fields: eventId, runId, caseId, sequence, timestamp, source, type, payload, previousHash, hash",
+      "hash = SHA256(JCS canonical JSON excluding hash field, including previousHash)",
+      "Helper functions: computeHash(event), verifyChain(events[])",
+      "NDJSON writer/reader utilities",
+      "Unit tests for hash chain verification"
+    ],
+    "files_touched": [
+      "packages/protocol/src/events.ts",
+      "packages/protocol/src/index.ts",
+      "packages/protocol/__tests__/events.test.ts"
+    ],
+    "depends_on": ["T4"],
+    "estimated_minutes": 60,
+    "status": "pending",
+    "priority": 6
+  },
+  {
+    "id": "T7",
+    "phase": 1,
+    "title": "UnderwritingSubmission + supporting schemas (packages/protocol)",
+    "description": "Complete submission schemas: FinancialSpread, NormalizedFact, RiskFinding, Discrepancy, ComplianceFinding, FollowUpRequest, PolicyAssessment, Recommendation, CitedClaim, Decision, Money",
+    "acceptance": [
+      "packages/protocol/src/submission.ts exports all schemas",
+      "FinancialSpread: canonical fields with currency, scale, period, sign convention",
+      "NormalizedFact: canonicalKey, value, normalizedValue, type, unit, currency, scale, period, origin, citations, confidence, conflictGroup",
+      "RiskFinding: riskId, category, severity, weight, requiredEvidence, acceptableConcepts, evidenceSupport",
+      "Discrepancy: type, description, sourceA, sourceB, variance, materiality, status",
+      "ComplianceFinding: subject, provider, matchScore, lists, categories, matchState, disposition",
+      "FollowUpRequest: requestId, concept, status, response, revealedDocuments",
+      "PolicyAssessment: applicableRules[], evaluations[]",
+      "Recommendation: decision, confidence, proposedAmount, proposedTermMonths, conditions[], policyExceptions[], rationale[]",
+      "CitedClaim: claim, evidenceIds[], confidence",
+      "Money: amount (integer minor units), currency (ISO 4217)",
+      "Decision enum includes INSUFFICIENT_INFORMATION",
+      "Completed agent-run responses reference UnderwritingSubmissionSchema from this module without redefining it"
+    ],
+    "files_touched": [
+      "packages/protocol/src/submission.ts",
+      "packages/protocol/src/index.ts"
+    ],
+    "depends_on": ["T4"],
+    "estimated_minutes": 90,
+    "status": "pending",
+    "priority": 7
+  },
+  {
+    "id": "T8",
+    "phase": 1,
+    "title": "Schema generation pipeline (JSON Schema, OpenAPI, Markdown)",
+    "description": "Generate language-neutral artifacts from Zod 4 schemas and make CI validate drift",
+    "acceptance": [
+      "packages/protocol/scripts/generate.ts uses Zod 4 JSON Schema output as the canonical generated representation",
+      "OpenAPI 3.1 components wrap generated JSON Schemas without duplicate hand-authored schemas",
+      "Output directories: generated/json-schema/, generated/openapi/, generated/markdown/",
+      "pnpm generate runs without errors",
+      "CI step: generate → git diff --exit-code (fails if committed artifacts drift)",
+      "Markdown reference pages are written to docs/specification/generated/",
+      "Python Pydantic SDK generation is explicitly deferred until protocol v1 is frozen"
+    ],
+    "files_touched": [
+      "packages/protocol/scripts/generate.ts",
+      "packages/protocol/package.json",
+      ".github/workflows/ci.yml",
+      "docs/specification/generated/*"
+    ],
+    "depends_on": ["T4", "T5", "T6", "T7"],
+    "estimated_minutes": 90,
+    "status": "pending",
+    "priority": 8
+  },
+  {
+    "id": "T9",
+    "phase": 1,
+    "title": "Protocol conformance testkit + fake async agent",
+    "description": "Build test suite that validates agent implements protocol correctly",
+    "acceptance": [
+      "packages/testkit/src/conformance.ts tests: health/version, start/poll/complete/fail/cancel, unknown version, duplicate start idempotency, timeout, malformed JSON, oversized output, invalid final schema, tool call after completion, agent restart during run",
+      "packages/testkit/src/fake-agent.ts implements all 4 endpoints with configurable behavior",
+      "examples/deterministic-baseline exposes the fake agent as a runnable HTTP process for local vertical-slice tests",
+      "Fake agent passes all conformance tests",
+      "Test output shows which checks pass/fail with clear messages"
+    ],
+    "files_touched": [
+      "packages/testkit/src/conformance.ts",
+      "packages/testkit/src/fake-agent.ts",
+      "packages/testkit/__tests__/conformance.test.ts",
+      "packages/testkit/package.json",
+      "examples/deterministic-baseline/*"
+    ],
+    "depends_on": ["T4", "T5", "T6", "T7"],
+    "estimated_minutes": 120,
+    "status": "pending",
+    "priority": 9
+  },
+  {
+    "id": "T10",
+    "phase": 1,
+    "title": "Case Schema v1 + validator + packer (packages/case-schema)",
+    "description": "Define case.yaml schema, case directory validator, .uwb packer with input/reference split",
+    "acceptance": [
+      "packages/case-schema/src/case.ts: CaseSchema with schema_version, case_id, track, benchmark_version, jurisdiction, as_of_date, currency, requested_product, requested_amount, supported_lanes, features, budgets",
+      "packages/case-schema/src/validator.ts: validates directory structure, required files, no traversal paths, no symlinks, all logical IDs unique, citations within document bounds, policy rules have deterministic test form, PII has legal-use classification",
+      "packages/case-schema/src/packer.ts: creates input.uwb with normalized/ only for normalized_data and reasoning_only lanes, never raw_documents; reference.uwb contains private/ expected outputs and scorer config",
+      "The package exports a validateCase API for the CLI task to consume",
+      "Packaging round-trip: pack → unpack → validate passes"
+    ],
+    "files_touched": [
+      "packages/case-schema/src/case.ts",
+      "packages/case-schema/src/validator.ts",
+      "packages/case-schema/src/packer.ts",
+      "packages/case-schema/__tests__/case.test.ts",
+      "packages/case-schema/package.json"
+    ],
+    "depends_on": ["T5", "T7"],
+    "estimated_minutes": 120,
+    "status": "pending",
+    "priority": 10
+  },
+  {
+    "id": "T11",
+    "phase": 1,
+    "title": "Filesystem local runner (packages/runner)",
+    "description": "Trusted runner with budget enforcement, cancellation, event hash chain, result directories",
+    "acceptance": [
+      "packages/runner/src/local-runner.ts: LocalRunner class with run(casePath, agentUrl, options)",
+      "Enforces: wallClockSeconds, maxToolCalls, maxOutputBytes, maxConcurrentToolCalls",
+      "Cancellation: SIGTERM handling, agent DELETE /v1/runs/:id, cleanup",
+      "Event log: writes events.ndjson with hash chain, sequence numbers from trusted runner",
+      "Result directory: run-manifest.json, events.ndjson, submission.json, score.json (later), report.html (later), checksums.json",
+      "Duplicate run start (same case + agent + config) returns existing result (idempotent)",
+      "Timeout and cancellation terminate case cleanly, mark run as cancelled/failed"
+    ],
+    "files_touched": [
+      "packages/runner/src/local-runner.ts",
+      "packages/runner/src/budget.ts",
+      "packages/runner/__tests__/runner.test.ts",
+      "apps/cli/src/commands/run.ts"
+    ],
+    "depends_on": ["T6", "T9", "T10", "T12", "T13"],
+    "estimated_minutes": 120,
+    "status": "pending",
+    "priority": 11
+  },
+  {
+    "id": "T12",
+    "phase": 1,
+    "title": "Tool gateway + budget enforcement (packages/tool-runtime)",
+    "description": "HTTP gateway that validates calls, enforces budgets, returns fixture data",
+    "acceptance": [
+      "packages/tool-runtime/src/gateway.ts: Express server on configurable port",
+      "Validates Authorization: Bearer <run-scoped-token> per run",
+      "Implements all 12 tools returning test fixtures from case inputs",
+      "Validates callId idempotency (same callId returns cached result)",
+      "Enforces per-run tool call budget from run request",
+      "Returns source IDs and citation anchors, not raw storage paths",
+      "finance.* tools use deterministic pure functions owned by tool-runtime; scorer-financial remains an independent Phase 2 implementation",
+      "Integration test: fake agent calls all tools successfully"
+    ],
+    "files_touched": [
+      "packages/tool-runtime/src/gateway.ts",
+      "packages/tool-runtime/src/tools/*.ts",
+      "packages/tool-runtime/__tests__/gateway.test.ts"
+    ],
+    "depends_on": ["T5", "T10"],
+    "estimated_minutes": 90,
+    "status": "pending",
+    "priority": 12
+  },
+  {
+    "id": "T13",
+    "phase": 1,
+    "title": "Scenario state machine (packages/tool-runtime)",
+    "description": "case.request_information advances deterministic YAML-defined state machine with concept-based matching",
+    "acceptance": [
+      "packages/tool-runtime/src/scenario.ts: ScenarioEngine loads scenario.yaml",
+      "YAML structure: initial_state, transitions[] with from, when (tool + requested_concepts), response (status + reveal_documents), to",
+      "Concept matching: case.request_information requested_concepts[] matched against transition.when.requested_concepts",
+      "Response statuses: AVAILABLE (reveal docs), ALREADY_PROVIDED, NEEDS_CLARIFICATION",
+      "Ambiguous concept matches return NEEDS_CLARIFICATION",
+      "Hidden transitions for certification cases (not in public case)",
+      "Unit tests: multi-step scenario, duplicate request, ambiguous concept"
+    ],
+    "files_touched": [
+      "packages/tool-runtime/src/scenario.ts",
+      "packages/tool-runtime/__tests__/scenario.test.ts"
+    ],
+    "depends_on": ["T12"],
+    "estimated_minutes": 60,
+    "status": "pending",
+    "priority": 13
+  },
+  {
+    "id": "T14",
+    "phase": 1,
+    "title": "CLI commands (apps/cli)",
+    "description": "uwbench init-agent, validate-agent, validate-case, run, and suite commands for the unscored Phase 1 vertical slice",
+    "acceptance": [
+      "apps/cli/src/index.ts: commander.js CLI entry point",
+      "uwbench init-agent: creates example agent server stub",
+      "uwbench validate-agent <url>: runs conformance testkit against URL, exits 0 on pass",
+      "uwbench validate-case <path>: runs case-schema validator, exits 0 on pass",
+      "uwbench run --case <id> --agent <url>: starts local runner, tool gateway, executes, saves result dir",
+      "uwbench run --suite <track> --agent <url>: runs all public cases in suite",
+      "Phase 1 run output is explicitly marked not_scored; the HTML report command is deferred until Phase 2 scoring exists",
+      "All commands have --help, structured output, proper exit codes"
+    ],
+    "files_touched": [
+      "apps/cli/src/index.ts",
+      "apps/cli/src/commands/*.ts",
+      "apps/cli/package.json"
+    ],
+    "depends_on": ["T11", "T12", "T13"],
+    "estimated_minutes": 90,
+    "status": "pending",
+    "priority": 14
+  },
+  {
+    "id": "T15",
+    "phase": 1,
+    "title": "First executable reasoning-only vertical slice",
+    "description": "Create case-00001 and minimal scorer-core result contracts, then prove the CLI can run the deterministic baseline end to end",
+    "acceptance": [
+      "benchmark/commercial-credit-v0.1/public-cases/case-00001/ directory structure",
+      "case.yaml with schema_version, supported_lanes including reasoning_only",
+      "task.md with underwriting objective",
+      "inputs/records/ with canonical financial data",
+      "inputs/policy/ with 5 machine-testable rules",
+      "normalized/canonical-input.json with ground-truth spread + facts",
+      "private/ with expected-spread.json, expected-facts.json, expected-risks.json, expected-policy.json, expected-followups.json, decision-utility.json, citation-index.json, reviewer-annotations.json, adjudication-notes.md",
+      "uwbench validate-case passes",
+      "packages/scorer-core exports versioned ScoreReport and not_scored result contracts without pretending Phase 2 scoring exists",
+      "uwbench run --case case-00001 --agent http://localhost:9090 (with deterministic baseline) produces run-manifest.json, hash-valid events.ndjson, checksums.json, and valid submission.json",
+      "A documented smoke script starts the baseline, runs case-00001, verifies outputs, and stops the baseline"
+    ],
+    "files_touched": [
+      "benchmark/commercial-credit-v0.1/public-cases/case-00001/*",
+      "packages/scorer-core/*",
+      "scripts/smoke-reasoning-only.sh"
+    ],
+    "depends_on": ["T9", "T10", "T14"],
+    "estimated_minutes": 180,
+    "status": "pending",
+    "priority": 15
+  }
+]
