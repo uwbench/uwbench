@@ -1,0 +1,24 @@
+{
+  "title": "SubmissionSaveArtifactInput",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "artifactId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "content": {
+      "type": "string"
+    },
+    "contentType": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "artifactId",
+    "content",
+    "contentType"
+  ],
+  "additionalProperties": false
+}

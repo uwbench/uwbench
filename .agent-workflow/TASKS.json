@@ -260,12 +260,14 @@
     ],
     "files_touched": [
       "packages/protocol/scripts/generate.ts",
+      "packages/protocol/generated/**",
       "packages/protocol/package.json",
       ".github/workflows/ci.yml",
       "docs/specification/generated/*"
     ],
     "scope_exceptions": [
       "packages/protocol/src/**",
+      "eslint.config.js",
       "package.json",
       "tsconfig.base.json",
       "tsconfig.json"
@@ -277,8 +279,13 @@
       "T7"
     ],
     "estimated_minutes": 90,
-    "status": "pending",
-    "priority": 8
+    "status": "gated_pass",
+    "priority": 8,
+    "assignee": "orchestrator",
+    "started_at": "2026-07-24T03:27:07.197Z",
+    "attempts": 3,
+    "failures": 2,
+    "completed_at": "2026-07-24T06:23:19.286Z"
   },
   {
     "id": "T9",

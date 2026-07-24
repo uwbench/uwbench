@@ -1,0 +1,28 @@
+{
+  "title": "CaseRequestInformationOutput",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "AVAILABLE",
+        "ALREADY_PROVIDED",
+        "NEEDS_CLARIFICATION"
+      ]
+    },
+    "revealedDocumentIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "clarification": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "status"
+  ],
+  "additionalProperties": false
+}

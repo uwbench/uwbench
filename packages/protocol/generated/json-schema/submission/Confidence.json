@@ -1,0 +1,28 @@
+{
+  "title": "Confidence",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "overall": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "byComponent": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      }
+    }
+  },
+  "required": [
+    "overall",
+    "byComponent"
+  ],
+  "additionalProperties": false
+}

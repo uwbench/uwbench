@@ -1,0 +1,54 @@
+{
+  "title": "ComplianceFinding",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "subject": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "matchScore": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "lists": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "matchState": {
+      "type": "string",
+      "enum": [
+        "CLEAR",
+        "POSSIBLE_MATCH",
+        "CONFIRMED_MATCH"
+      ]
+    },
+    "disposition": {
+      "type": "string",
+      "enum": [
+        "CLEARED",
+        "ESCALATED",
+        "PENDING_REVIEW"
+      ]
+    }
+  },
+  "required": [
+    "subject",
+    "provider",
+    "matchScore",
+    "matchState",
+    "disposition"
+  ],
+  "additionalProperties": false
+}

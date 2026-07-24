@@ -93,12 +93,17 @@ working_tree_is_clean() {
     [[ -z "$(git -C "$REPO_ROOT" ls-files --others --exclude-standard)" ]]
 }
 
-assert_product_tree_clean() {
+product_tree_is_clean() {
   [[ -z "$(
     git -C "$REPO_ROOT" status --porcelain -- . \
       ':(exclude).agent-workflow' \
       ':(exclude)node_modules'
-  )" ]] || die "Product files contain uncommitted changes; refusing to mix them into an agent task."
+  )" ]]
+}
+
+assert_product_tree_clean() {
+  product_tree_is_clean ||
+    die "Product files contain uncommitted changes; refusing to mix them into an agent task."
 }
 
 assert_run_branch() {
@@ -262,6 +267,13 @@ cmd_deploy() {
   if [[ "$implement_exit" -ne 0 ]]; then
     warn "pi exited with status $implement_exit."
     return "$implement_exit"
+  fi
+  if ! product_tree_is_clean; then
+    git -C "$REPO_ROOT" status --short -- . \
+      ':(exclude).agent-workflow' \
+      ':(exclude)node_modules' > "$artifacts/primary-checkout-leak.status"
+    warn "pi modified the primary checkout; preserved its work in place and stopped automatic retries."
+    return 76
   fi
   if [[ ! -s "$artifacts/implementation.patch" ]]; then
     warn "pi produced no implementation patch."
@@ -446,7 +458,7 @@ cmd_gate() {
 
   mkdir -p "$GATE_WORKTREES"
   prepare_worktree "$worktree" HEAD
-  if ! git -C "$worktree" apply --check "$patch"; then
+  if ! git -C "$worktree" apply --check --whitespace=error-all "$patch"; then
     remove_worktree "$worktree"
     record_gate_failure "$task_id" "Patch does not apply cleanly to the current branch." "$artifacts/implement.log"
     return 1
@@ -683,6 +695,14 @@ run_active_task() {
     deploy_exit=$?
   fi
   if [[ "$deploy_exit" -ne 0 ]]; then
+    if [[ "$deploy_exit" -eq 76 ]]; then
+      record_gate_failure \
+        "$task_id" \
+        "pi modified the primary checkout instead of its isolated worktree. Preserve or clean the files listed in primary-checkout-leak.status before resuming." \
+        "$artifacts/primary-checkout-leak.status"
+      warn "Stopped $task_id because pi escaped its isolated worktree."
+      return 76
+    fi
     if is_transient_provider_failure "$artifacts/implement.log"; then
       record_provider_deferral "$task_id" "$artifacts/implement.log"
       warn "Deferred $task_id because the model provider is temporarily saturated."
@@ -734,6 +754,9 @@ run_to_checkpoint() {
       fi
       if [[ "$task_exit" -eq 75 ]]; then
         die "$task_id was deferred because NVIDIA capacity is unavailable. Resume with run-all later."
+      fi
+      if [[ "$task_exit" -eq 76 ]]; then
+        die "$task_id modified the primary checkout. Inspect $(artifact_dir "$task_id")/primary-checkout-leak.status before resuming."
       fi
       if [[ "$task_exit" -ne 0 ]]; then
         if (( $(task_failures "$task_id") >= MAX_TASK_ATTEMPTS )); then

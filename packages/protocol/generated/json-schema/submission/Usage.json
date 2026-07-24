@@ -1,0 +1,17 @@
+{
+  "title": "Usage",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "inputTokens": {
+      "type": "number"
+    },
+    "outputTokens": {
+      "type": "number"
+    },
+    "providerReportedCostUsd": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}

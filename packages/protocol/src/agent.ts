@@ -69,7 +69,7 @@ export const ProtocolErrorSchema = z.object({
     "INTERNAL_ERROR",
   ]),
   message: z.string(),
-  details: z.record(z.unknown()).optional(),
+  details: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;

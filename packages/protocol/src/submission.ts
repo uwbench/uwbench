@@ -138,7 +138,7 @@ export const MemoSchema = z.object({
 
 export const ConfidenceSchema = z.object({
   overall: z.number().min(0).max(1),
-  byComponent: z.record(z.number().min(0).max(1)),
+  byComponent: z.record(z.string(), z.number().min(0).max(1)),
 });
 
 export const UsageSchema = z.object({

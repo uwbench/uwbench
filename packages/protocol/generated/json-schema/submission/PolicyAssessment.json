@@ -1,0 +1,48 @@
+{
+  "title": "PolicyAssessment",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "applicableRules": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evaluations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ruleId": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "input": {},
+          "threshold": {},
+          "operator": {
+            "type": "string"
+          },
+          "exceptionDisclosed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ruleId",
+          "passed",
+          "input",
+          "threshold",
+          "operator"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "applicableRules",
+    "evaluations"
+  ],
+  "additionalProperties": false
+}

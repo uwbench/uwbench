@@ -41,7 +41,7 @@ export const BaseEventSchema = z.object({
   timestamp: z.string().datetime(),
   source: EventSourceSchema,
   type: EventTypeSchema,
-  payload: z.record(z.unknown()),
+  payload: z.record(z.string(), z.unknown()),
   previousHash: z.string(),
   hash: z.string(),
 });

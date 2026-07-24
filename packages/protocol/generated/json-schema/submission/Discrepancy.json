@@ -1,0 +1,47 @@
+{
+  "title": "Discrepancy",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "sourceA": {
+      "type": "string"
+    },
+    "sourceB": {
+      "type": "string"
+    },
+    "variance": {
+      "type": "number"
+    },
+    "materiality": {
+      "type": "string",
+      "enum": [
+        "IMMATERIAL",
+        "MATERIAL",
+        "CRITICAL"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "OPEN",
+        "RESOLVED",
+        "ACKNOWLEDGED"
+      ]
+    }
+  },
+  "required": [
+    "type",
+    "description",
+    "sourceA",
+    "sourceB",
+    "materiality",
+    "status"
+  ],
+  "additionalProperties": false
+}

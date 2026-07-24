@@ -1,0 +1,25 @@
+{
+  "title": "FinanceCalculateInput",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "expression": {
+      "type": "string",
+      "minLength": 1
+    },
+    "variables": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "number"
+      }
+    }
+  },
+  "required": [
+    "expression",
+    "variables"
+  ],
+  "additionalProperties": false
+}

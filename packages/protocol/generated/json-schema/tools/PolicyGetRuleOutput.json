@@ -1,0 +1,40 @@
+{
+  "title": "PolicyGetRuleOutput",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "ruleId": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "appliesWhen": {
+      "type": "string"
+    },
+    "input": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {}
+    },
+    "operator": {
+      "type": "string"
+    },
+    "threshold": {},
+    "onFailure": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "ruleId",
+    "title",
+    "appliesWhen",
+    "input",
+    "operator",
+    "threshold",
+    "onFailure"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,34 @@
+{
+  "title": "PolicySearchOutput",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ruleId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "snippet": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ruleId",
+          "title",
+          "snippet"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "rules"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,20 @@
+{
+  "title": "Condition",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "description": {
+      "type": "string"
+    },
+    "evidenceIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "description"
+  ],
+  "additionalProperties": false
+}

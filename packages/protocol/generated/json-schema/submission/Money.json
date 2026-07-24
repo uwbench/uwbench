@@ -1,0 +1,22 @@
+{
+  "title": "Money",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "amount": {
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    },
+    "currency": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 3
+    }
+  },
+  "required": [
+    "amount",
+    "currency"
+  ],
+  "additionalProperties": false
+}

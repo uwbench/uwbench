@@ -1,0 +1,23 @@
+{
+  "title": "CaseRequestInformationInput",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "concept": {
+      "type": "string",
+      "minLength": 1
+    },
+    "question": {
+      "type": "string",
+      "minLength": 1
+    },
+    "context": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "concept",
+    "question"
+  ],
+  "additionalProperties": false
+}

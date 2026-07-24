@@ -1,0 +1,105 @@
+{
+  "title": "FinancialSpread",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "revenue": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "cogs": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "grossProfit": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "operatingExpenses": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "ebitda": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "interestExpense": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "taxes": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "netIncome": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "period": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+        },
+        "end": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "additionalProperties": false
+    },
+    "currency": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 3
+    },
+    "scale": {
+      "default": "units",
+      "type": "string",
+      "enum": [
+        "units",
+        "thousands",
+        "millions",
+        "billions"
+      ]
+    },
+    "signConvention": {
+      "default": "positive_revenue_negative_expense",
+      "type": "string",
+      "enum": [
+        "positive_revenue_negative_expense",
+        "all_positive",
+        "all_negative"
+      ]
+    }
+  },
+  "required": [
+    "revenue",
+    "period",
+    "currency",
+    "scale",
+    "signConvention"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 3
+        }
+      },
+      "required": [
+        "amount",
+        "currency"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

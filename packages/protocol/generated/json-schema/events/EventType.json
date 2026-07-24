@@ -1,0 +1,22 @@
+{
+  "title": "EventType",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "string",
+  "enum": [
+    "RUN_STARTED",
+    "AGENT_READY",
+    "AGENT_RUN_STARTED",
+    "TOOL_CALL",
+    "TOOL_RESULT",
+    "TOOL_ERROR",
+    "ARTIFACT_SAVED",
+    "LIMIT_WARNING",
+    "AGENT_COMPLETED",
+    "AGENT_FAILED",
+    "RUN_CANCELLED",
+    "RUN_COMPLETED",
+    "SCORING_STARTED",
+    "SCORE_COMPONENT_CREATED",
+    "SCORING_COMPLETED"
+  ]
+}

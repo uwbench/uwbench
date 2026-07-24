@@ -1,0 +1,88 @@
+{
+  "title": "NormalizedFact",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "canonicalKey": {
+      "type": "string"
+    },
+    "value": {},
+    "normalizedValue": {},
+    "type": {
+      "type": "string"
+    },
+    "unit": {
+      "type": "string"
+    },
+    "currency": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 3
+    },
+    "scale": {
+      "type": "number"
+    },
+    "period": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+        },
+        "end": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "additionalProperties": false
+    },
+    "origin": {
+      "type": "object",
+      "properties": {
+        "documentId": {
+          "type": "string"
+        },
+        "page": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "documentId"
+      ],
+      "additionalProperties": false
+    },
+    "citations": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema0"
+      }
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "conflictGroup": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "canonicalKey",
+    "value",
+    "type",
+    "citations"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "type": "string"
+    }
+  }
+}

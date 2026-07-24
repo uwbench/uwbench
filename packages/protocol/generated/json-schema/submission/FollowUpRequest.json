@@ -1,0 +1,37 @@
+{
+  "title": "FollowUpRequest",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "requestId": {
+      "type": "string"
+    },
+    "concept": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "PENDING",
+        "FULFILLED",
+        "NEEDS_CLARIFICATION",
+        "CANCELLED"
+      ]
+    },
+    "response": {
+      "type": "string"
+    },
+    "revealedDocuments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "requestId",
+    "concept",
+    "status"
+  ],
+  "additionalProperties": false
+}

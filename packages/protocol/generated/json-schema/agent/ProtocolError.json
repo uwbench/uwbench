@@ -1,0 +1,39 @@
+{
+  "title": "ProtocolError",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "enum": [
+        "INVALID_SCHEMA_VERSION",
+        "INVALID_RUN_REQUEST",
+        "RUN_NOT_FOUND",
+        "RUN_ALREADY_STARTED",
+        "RUN_NOT_RUNNABLE",
+        "INVALID_STATUS_TRANSITION",
+        "TOOL_CALL_FAILED",
+        "TOOL_TIMEOUT",
+        "BUDGET_EXCEEDED",
+        "INVALID_TOOL_CALL",
+        "UNAUTHORIZED",
+        "INTERNAL_ERROR"
+      ]
+    },
+    "message": {
+      "type": "string"
+    },
+    "details": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {}
+    }
+  },
+  "required": [
+    "code",
+    "message"
+  ],
+  "additionalProperties": false
+}

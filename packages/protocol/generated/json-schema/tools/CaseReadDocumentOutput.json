@@ -1,0 +1,40 @@
+{
+  "title": "CaseReadDocumentOutput",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "documentId": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pageNumber",
+          "text"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "documentId",
+    "content",
+    "pages"
+  ],
+  "additionalProperties": false
+}

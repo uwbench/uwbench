@@ -10,13 +10,13 @@ import { z } from "zod";
 export const ToolCallSchema = z.object({
   callId: z.string().min(1),
   name: z.string().min(1),
-  arguments: z.record(z.unknown()),
+  arguments: z.record(z.string(), z.unknown()),
 });
 
 export const ToolErrorSchema = z.object({
   code: z.string().min(1),
   message: z.string(),
-  details: z.record(z.unknown()).optional(),
+  details: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const ToolResultSchema = z.object({
@@ -128,7 +128,7 @@ export const CaseGetStructuredRecordInputSchema = z.object({
 });
 
 export const CaseGetStructuredRecordOutputSchema = z.object({
-  record: z.record(z.unknown()),
+  record: z.record(z.string(), z.unknown()),
 });
 
 export const CaseGetStructuredRecordErrorSchema = ToolErrorSchema;
@@ -197,7 +197,7 @@ export const PolicyGetRuleOutputSchema = z.object({
   ruleId: z.string(),
   title: z.string(),
   appliesWhen: z.string(),
-  input: z.record(z.unknown()),
+  input: z.record(z.string(), z.unknown()),
   operator: z.string(),
   threshold: z.unknown(),
   onFailure: z.string(),
@@ -218,7 +218,7 @@ export const PolicyGetRuleSchema = z.object({
 // finance.calculate
 export const FinanceCalculateInputSchema = z.object({
   expression: z.string().min(1),
-  variables: z.record(z.number()),
+  variables: z.record(z.string(), z.number()),
 });
 
 export const FinanceCalculateOutputSchema = z.object({
@@ -235,11 +235,11 @@ export const FinanceCalculateSchema = z.object({
 
 // finance.calculate_ratios
 export const FinanceCalculateRatiosInputSchema = z.object({
-  spread: z.record(z.unknown()),
+  spread: z.record(z.string(), z.unknown()),
 });
 
 export const FinanceCalculateRatiosOutputSchema = z.object({
-  ratios: z.record(z.number()),
+  ratios: z.record(z.string(), z.number()),
 });
 
 export const FinanceCalculateRatiosErrorSchema = ToolErrorSchema;
@@ -252,7 +252,7 @@ export const FinanceCalculateRatiosSchema = z.object({
 
 // finance.validate_spread
 export const FinanceValidateSpreadInputSchema = z.object({
-  spread: z.record(z.unknown()),
+  spread: z.record(z.string(), z.unknown()),
 });
 
 export const FinanceValidateSpreadOutputSchema = z.object({
@@ -456,7 +456,7 @@ export function getToolErrorSchema(name: string): z.ZodTypeAny | undefined {
 export function validateToolInput(
   name: string,
   args: unknown,
-): z.SafeParseReturnType<unknown, unknown> {
+): z.ZodSafeParseResult<unknown> {
   const schema = getToolInputSchema(name);
   if (!schema) {
     return {
@@ -468,7 +468,7 @@ export function validateToolInput(
           path: ["name"],
         },
       ]),
-    } as z.SafeParseError<unknown>;
+    } as z.ZodSafeParseError<unknown>;
   }
   return schema.safeParse(args);
 }
@@ -479,7 +479,7 @@ export function validateToolInput(
 export function validateToolOutput(
   name: string,
   result: unknown,
-): z.SafeParseReturnType<unknown, unknown> {
+): z.ZodSafeParseResult<unknown> {
   const schema = getToolOutputSchema(name);
   if (!schema) {
     return {
@@ -491,7 +491,7 @@ export function validateToolOutput(
           path: ["name"],
         },
       ]),
-    } as z.SafeParseError<unknown>;
+    } as z.ZodSafeParseError<unknown>;
   }
   return schema.safeParse(result);
 }
@@ -502,7 +502,7 @@ export function validateToolOutput(
 export function validateToolError(
   name: string,
   error: unknown,
-): z.SafeParseReturnType<unknown, unknown> {
+): z.ZodSafeParseResult<unknown> {
   const schema = getToolErrorSchema(name);
   if (!schema) {
     return {
@@ -514,7 +514,7 @@ export function validateToolError(
           path: ["name"],
         },
       ]),
-    } as z.SafeParseError<unknown>;
+    } as z.ZodSafeParseError<unknown>;
   }
   return schema.safeParse(error);
 }

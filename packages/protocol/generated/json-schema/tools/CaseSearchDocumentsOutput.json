@@ -1,0 +1,34 @@
+{
+  "title": "CaseSearchDocumentsOutput",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string"
+          },
+          "snippet": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "documentId",
+          "snippet",
+          "score"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "results"
+  ],
+  "additionalProperties": false
+}
