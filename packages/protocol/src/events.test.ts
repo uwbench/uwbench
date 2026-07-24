@@ -148,9 +148,11 @@ describe("computeHash", () => {
   it("canonicalizes object keys in deterministic order (RFC 8785)", () => {
     // RFC 8785 requires lexicographic key ordering
     const eventA = createBaseEvent({
+      timestamp: "2026-01-01T00:00:00.000Z",
       payload: { z: 1, a: 2, m: 3 },
     });
     const eventB = createBaseEvent({
+      timestamp: "2026-01-01T00:00:00.000Z",
       payload: { a: 2, m: 3, z: 1 },
     });
     // Same content, different key order should produce same hash

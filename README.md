@@ -183,7 +183,7 @@ pnpm --filter @uwbench/cli uwbench --help
 
 ## Contributing
 
-See [CONTRIBUTING.md](docs/governance/CONTRIBUTING.md) (to be created in T2) and [GOVERNANCE.md](docs/governance/GOVERNANCE.md).
+See [CONTRIBUTING.md](docs/governance/CONTRIBUTING.md) and [GOVERNANCE.md](docs/governance/GOVERNANCE.md).
 
 ### Architecture Decision Records
 

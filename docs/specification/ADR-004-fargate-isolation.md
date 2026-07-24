@@ -12,11 +12,13 @@
 UWBench runs untrusted participant agent code in AWS Fargate. The **critical security invariant** is that the agent container must have **zero access to AWS credentials** that could reach reference data, control plane APIs, other cases, or any resource beyond its scoped case inputs.
 
 **The ECS Task Role Problem:**
+
 > **The ECS task role is shared across ALL containers in a task.**
 
 If the task has an IAM role, both the runner container AND the agent container inherit it. We cannot give the runner S3 write permissions without also giving them to the agent.
 
 **Threats:**
+
 - Agent uses task role to `s3:ListBucket` / `s3:GetObject` on reference archives bucket
 - Agent calls `lambda:InvokeFunction` on scorer / control plane
 - Agent accesses `dynamodb:GetItem` on submissions table
@@ -24,6 +26,7 @@ If the task has an IAM role, both the runner container AND the agent container i
 - Agent exfiltrates data via outbound internet (if NAT gateway attached)
 
 **Requirements from SPEC:**
+
 - Untrusted evaluation task: **No task role** (only execution role for image pull, logs, injected secrets)
 - Runner gets short-lived, case-scoped presigned S3 URLs via environment variable overrides
 - No shared volume between runner and agent
@@ -34,6 +37,7 @@ If the task has an IAM role, both the runner container AND the agent container i
 ## Decision
 
 **Untrusted evaluation tasks run with NO TASK ROLE.** The agent container receives only:
+
 1. **Execution role** (platform-managed): `ecr:GetDownloadUrlForLayer`, `ecr:BatchGetImage`, `logs:PutLogEvents`, `secretsmanager:GetSecretValue` (for provider API keys only)
 2. **Presigned S3 URLs** injected at task start via container environment overrides (one for input archive GET, one for result archive PUT)
 3. **Network track enforcement** via VPC configuration (no NAT for `sealed`, egress proxy for `provider-network`)
@@ -161,13 +165,14 @@ def launch_evaluation_task(run_id, case_id, agent_image_digest, network_track):
 
 ### Network Track Implementation
 
-| Track | VPC Config | Egress | Certification Eligible |
-|-------|------------|--------|------------------------|
-| `sealed` | Private subnets, **no NAT, no IGW, no VPC endpoints** | **None** | ✅ Yes |
-| `provider-network` | Private subnets, NAT → **Egress Proxy (Squid/Envoy)** | Proxy allowlist: declared model providers only, TLS required, byte limits, dest logging | ✅ Yes |
-| `remote-development` | Private subnets, NAT → Internet | Participant's declared endpoint | ❌ No (dev only) |
+| Track                | VPC Config                                            | Egress                                                                                  | Certification Eligible |
+| -------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------- |
+| `sealed`             | Private subnets, **no NAT, no IGW, no VPC endpoints** | **None**                                                                                | ✅ Yes                 |
+| `provider-network`   | Private subnets, NAT → **Egress Proxy (Squid/Envoy)** | Proxy allowlist: declared model providers only, TLS required, byte limits, dest logging | ✅ Yes                 |
+| `remote-development` | Private subnets, NAT → Internet                       | Participant's declared endpoint                                                         | ❌ No (dev only)       |
 
 **Egress Proxy (provider-network):**
+
 - Runs in separate managed VPC
 - Allowlist: `api.openai.com`, `api.anthropic.com`, etc. (declared at registration)
 - Enforces: TLS 1.2+, max 50MB/request, max 500MB/run, logs all destinations
@@ -215,6 +220,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
 ```
 
 **Image Ingestion Pipeline (ADR-001 / SPEC):**
+
 1. Participant submits public OCI reference (e.g., `ghcr.io/vendor/agent:v1.2.3@sha256:abc...`)
 2. CodeBuild (quarantine) → `skopeo copy` → evaluator-controlled ECR
 3. Scan copied image (Trivy, Syft SBOM)
@@ -224,6 +230,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
 ## Consequences
 
 ### Positive
+
 - **Strong isolation**: Agent has no AWS credentials → cannot access reference data, control plane, other cases
 - **Defense in depth**: Even if runner compromised, agent still has no credentials
 - **Presigned URLs are self-limiting**: Scoped to single object, expire automatically
@@ -231,48 +238,56 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
 - **Scorer separation**: Reference data only in trusted scorer task with its own role
 
 ### Negative
+
 - **Complexity**: Two tasks per run (eval + scorer), presigned URL management, network track config
 - **Latency**: Task startup (~30-60s cold) + presigned URL generation
 - **Debugging**: Agent logs only via CloudWatch; no SSH/exec access
 
 ### Risks & Mitigations
-| Risk | Mitigation |
-|------|------------|
-| Presigned URL leaked in logs | URLs in env vars (not logs); runner redacts URLs in logs; short TTL |
-| Agent escapes container → host | Fargate = microVM boundary; gVisor (future); read-only rootfs; dropped caps |
-| Runner compromised → agent inherits | Runner has no task role either; only presigned URLs (same as agent) |
-| Egress proxy bypass | Proxy in separate VPC; agent task has no direct route to IGW/NAT |
-| Participant image malicious | Ingestion quarantine + scan + pin by digest; no task role limits blast radius |
+
+| Risk                                | Mitigation                                                                    |
+| ----------------------------------- | ----------------------------------------------------------------------------- |
+| Presigned URL leaked in logs        | URLs in env vars (not logs); runner redacts URLs in logs; short TTL           |
+| Agent escapes container → host      | Fargate = microVM boundary; gVisor (future); read-only rootfs; dropped caps   |
+| Runner compromised → agent inherits | Runner has no task role either; only presigned URLs (same as agent)           |
+| Egress proxy bypass                 | Proxy in separate VPC; agent task has no direct route to IGW/NAT              |
+| Participant image malicious         | Ingestion quarantine + scan + pin by digest; no task role limits blast radius |
 
 ## Alternatives Considered
 
 ### 1. Task Role with Scoped Permissions (Runner + Agent Share)
+
 - **Pros**: Simpler (one role), runner can use AWS SDK directly
 - **Cons**: **Agent gets same permissions** → fundamental violation of isolation
 - **Verdict**: Rejected — violates core threat model
 
 ### 2. Separate Tasks for Runner and Agent (Two Task Definitions)
+
 - **Pros**: Each gets own task role
 - **Cons**: Cannot share `localhost` (tool gateway); need VPC endpoints / service mesh for runner↔agent comms; adds latency/complexity; Fargate doesn't support task-to-task localhost
 - **Verdict**: Rejected — shared network namespace required for low-latency tool gateway
 
 ### 3. Sidecar Pattern with Separate Pod (EKS/Fargate Pod)
+
 - **Pros**: Kubernetes-style isolation
 - **Cons**: Not native Fargate; adds orchestration complexity; same localhost sharing issue
 - **Verdict**: Rejected — stay with ECS task model
 
 ### 4. Agent Gets Read-Only Role to Input Bucket Only
+
 - **Pros**: Agent can fetch own inputs directly
 - **Cons**: Still has AWS creds; can enumerate bucket; presigned URLs are more precise (single object, time-limited)
 - **Verdict**: Presigned URLs superior — principle of least privilege
 
 ### 5. Lambda for Agent Execution
+
 - **Pros**: True isolation, no container escape risk
 - **Cons**: 15-min timeout (runs up to 15 min), 10GB memory limit, no GPU, cold starts, custom runtime complexity
 - **Verdict**: Fargate more flexible for participant images; Lambda for scorer (short, deterministic)
 
 ## References
-- [SPEC.md](../../../SPEC.md) — Hosted Architecture, Critical Fargate Correction, Network Tracks, Participant Image Ingestion
+
+- [SPEC.md](../../.agent-workflow/SPEC.md) — Hosted Architecture, Critical Fargate Correction, Network Tracks, Participant Image Ingestion
 - [SECURITY.md](../security/SECURITY.md) — Threat model, STRIDE, critical invariants
 - [ADR-001: Repository Boundary](../specification/ADR-001-repository-boundary.md) — Separate repo, no shared infra
 - [ADR-003: Case Privacy](../specification/ADR-003-case-privacy.md) — Input/reference archive separation

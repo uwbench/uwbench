@@ -23,6 +23,7 @@
     "build": "tsc --build",
     "generate": "pnpm --filter @uwbench/protocol generate",
     "changeset": "changeset",
+    "changeset:check": "changeset status",
     "version": "changeset version",
     "release": "changeset publish",
     "prepare": "husky install || true"

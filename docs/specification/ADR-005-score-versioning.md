@@ -10,12 +10,14 @@
 ## Context
 
 UWBench scores are the primary output of the benchmark. They must be:
+
 - **Reproducible**: Same agent + same case + same scorer version = identical score
 - **Auditable**: Every score component identifies its exact scorer version and rubric version
 - **Comparable**: Scores across runs can be compared only when scorer versions match
 - **Certificate-bound**: Signed certificates reference exact scorer versions used
 
 **Requirements from SPEC:**
+
 - Each component score names the exact scorer version
 - ≥70% of published score is deterministic
 - Scorer versions: protocol/runner/scorer/rubric/judge versions all recorded in certificate
@@ -46,6 +48,7 @@ UWBench scores are the primary output of the benchmark. They must be:
 ### Scorer Version Contract
 
 Each scorer package exports:
+
 ```typescript
 // scorer-financial/package.json
 { "name": "@uwbench/scorer-financial", "version": "1.3.0" }
@@ -60,6 +63,7 @@ export const WEIGHT = 0.18;              // Scorecard weight (governed by ADR)
 ### Score Output Includes Version Metadata
 
 Every component score **must** include:
+
 ```json
 {
   "component": "financial_spread_accuracy",
@@ -77,6 +81,7 @@ Every component score **must** include:
 ### Suite Version in Certificate
 
 Signed certificate includes:
+
 ```json
 {
   "certificateVersion": "1.0",
@@ -124,6 +129,7 @@ Signed certificate includes:
 ## Consequences
 
 ### Positive
+
 - **Full reproducibility**: Every score component traceable to exact code + rubric
 - **Certificate integrity**: Certificates bind to immutable versions; no silent rewrites
 - **Independent evolution**: Financial scorer can patch without bumping policy scorer
@@ -131,42 +137,49 @@ Signed certificate includes:
 - **`not_scored` tracked**: Phase 1 transparency about what's not yet scored
 
 ### Negative
+
 - **Version explosion**: Many small packages, each with own version
 - **Suite coordination**: `scorer-core` must aggregate compatible versions
 - **Certificate size**: Full version manifest in every certificate
 
 ### Risks & Mitigations
-| Risk | Mitigation |
-|------|------------|
-| Scorer version drift across packages | `scorer-core` declares `peerDependencies` with exact versions; CI validates lockfile |
-| Participant claims "scored with v1.2" but used v1.1 | Certificate includes full version manifest; verification checks match |
-| Rubric change without version bump | Rubric version separate from code; CI checks rubric hash vs declared version |
-| Old scores invalidated by new rubric | Never — old certificates remain valid; new runs get new certificates |
+
+| Risk                                                | Mitigation                                                                           |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Scorer version drift across packages                | `scorer-core` declares `peerDependencies` with exact versions; CI validates lockfile |
+| Participant claims "scored with v1.2" but used v1.1 | Certificate includes full version manifest; verification checks match                |
+| Rubric change without version bump                  | Rubric version separate from code; CI checks rubric hash vs declared version         |
+| Old scores invalidated by new rubric                | Never — old certificates remain valid; new runs get new certificates                 |
 
 ## Alternatives Considered
 
 ### 1. Single Monolithic Scorer Package with One Version
+
 - **Pros**: Simpler versioning
 - **Cons**: Any change bumps everything; no independent evolution; heavier deps for participants who only want one scorer
 - **Verdict**: Rejected — scorers have different maturity timelines
 
 ### 2. Git Commit Hash Instead of SemVer
+
 - **Pros**: Absolute precision
 - **Cons**: Not human-readable; no semver semantics (patch vs minor vs major); npm ecosystem expects semver
 - **Verdict**: SemVer + git tag (`scorer-financial-v1.3.0`) for traceability
 
 ### 3. Score Version Embedded in Case (Not Scorer)
+
 - **Pros**: Case defines how it's scored
 - **Cons**: Scorers evolve independently of cases; new scorer should score old cases; case shouldn't dictate scorer version
 - **Verdict**: Scorer versions independent; case references benchmark version which implies compatible scorer suite
 
 ### 4. No `not_scored` — Just Omit Unscored Components
+
 - **Pros**: Cleaner output
-- **Cons**: Loses transparency about what *wasn't* scored; can't distinguish "scored 0" from "not evaluated"
+- **Cons**: Loses transparency about what _wasn't_ scored; can't distinguish "scored 0" from "not evaluated"
 - **Verdict**: Explicit `not_scored` with version tracking (Phase 1 requirement)
 
 ## References
-- [SPEC.md](../../../SPEC.md) — Scoring v0.1 Scorecard, Certificates, LLM Judges
+
+- [SPEC.md](../../.agent-workflow/SPEC.md) — Scoring v0.1 Scorecard, Certificates, LLM Judges
 - [GOVERNANCE.md](../governance/GOVERNANCE.md) — Release process, rubric versioning
 - [ADR-002: Agent Protocol](../specification/ADR-002-agent-protocol.md) — Protocol version in certificate
 - [ADR-006: Judge Use](../specification/ADR-006-judge-use.md) — Judge versions in certificate

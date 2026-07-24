@@ -17,23 +17,23 @@ diverse, inclusive, and healthy community.
 Examples of behavior that contributes to a positive environment for our
 community include:
 
-* Demonstrating empathy and kindness toward other people
-* Being respectful of differing opinions, viewpoints, and experiences
-* Giving and gracefully accepting constructive feedback
-* Accepting responsibility and apologizing to those affected by our mistakes,
+- Demonstrating empathy and kindness toward other people
+- Being respectful of differing opinions, viewpoints, and experiences
+- Giving and gracefully accepting constructive feedback
+- Accepting responsibility and apologizing to those affected by our mistakes,
   and learning from the experience
-* Focusing on what is best not just for us as individuals, but for the
+- Focusing on what is best not just for us as individuals, but for the
   overall community
 
 Examples of unacceptable behavior include:
 
-* The use of sexualized language or imagery, and sexual attention or
+- The use of sexualized language or imagery, and sexual attention or
   advances of any kind
-* Trolling, insulting or derogatory comments, and personal or political attacks
-* Public or private harassment
-* Publishing others' private information, such as a physical or email
+- Trolling, insulting or derogatory comments, and personal or political attacks
+- Public or private harassment
+- Publishing others' private information, such as a physical or email
   address, without their explicit permission
-* Other conduct which could reasonably be considered inappropriate in a
+- Other conduct which could reasonably be considered inappropriate in a
   professional setting
 
 ## Enforcement Responsibilities
@@ -128,17 +128,20 @@ version 2.1, available at
 
 ### Benchmark-Specific Expectations
 
-* **No benchmark gaming**: Do not submit agents trained on private reference cases, certification cases, or non-public case data
-* **Honest reporting**: Publish scores with the correct lane, benchmark version, and scorer version; do not cherry-pick or combine lanes
-* **Respect case privacy**: Do not attempt to extract, reverse-engineer, or share private reference data from certification runs
-* **Fair competition**: Do not use the benchmark infrastructure for denial-of-service, resource exhaustion, or interference with other participants' runs
+- **No benchmark gaming**: Do not submit agents trained on private reference cases, certification cases, or non-public case data
+- **Honest reporting**: Publish scores with the correct lane, benchmark version, and scorer version; do not cherry-pick or combine lanes
+- **Respect case privacy**: Do not attempt to extract, reverse-engineer, or share private reference data from certification runs
+- **Fair competition**: Do not use the benchmark infrastructure for denial-of-service, resource exhaustion, or interference with other participants' runs
 
 ### Enforcement for Benchmark Violations
 
 Violations of benchmark-specific expectations may result in:
-* Certificate revocation (for certified runs)
-* Removal from leaderboards
-* Temporary or permanent ban from hosted evaluation infrastructure
-* Public disclosure of the violation (after due process)
 
-Reports of benchmark-specific violations should be sent to **security@uwbench.org**.
+- Certificate revocation (for certified runs)
+- Removal from leaderboards
+- Temporary or permanent ban from hosted evaluation infrastructure
+- Public disclosure of the violation (after due process)
+
+For private reports, contact the repository maintainers through GitHub's
+private reporting flow. Do not use the public issue tracker for sensitive
+reports.

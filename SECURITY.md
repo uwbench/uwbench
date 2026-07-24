@@ -1,8 +1,9 @@
 # UWBench Security Policy
 
 **Version:** 0.1.0
-**Last Updated:** 2025-07-24
-**Security Contact:** security@uwbench.org
+**Last Updated:** 2026-07-24
+**Status:** Draft — pre-release
+**Security Contact:** Repository maintainers through GitHub Security Advisories
 
 ---
 
@@ -10,12 +11,13 @@
 
 **Do not open public issues for security vulnerabilities.**
 
-Please report security vulnerabilities privately via:
-
-1. **Email (preferred):** security@uwbench.org (GPG key: `0xABCDEF1234567890` — to be published)
-2. **GitHub Security Advisory:** Use the "Report a vulnerability" tab on this repository (private draft advisory)
+During the pre-release phase, report vulnerabilities through the repository's
+private GitHub Security Advisory "Report a vulnerability" flow. This draft
+does not advertise an email address or encryption key until maintainers have
+verified and published an operational channel.
 
 Include:
+
 - Description of the vulnerability
 - Steps to reproduce or proof-of-concept
 - Affected components (protocol, runner, tool gateway, scorer, CLI, case packer)
@@ -24,19 +26,19 @@ Include:
 
 ## Response Timeline
 
-| Severity | Acknowledgment | Triage | Fix Target | Coordinated Disclosure |
-|----------|----------------|--------|------------|------------------------|
-| Critical (CVSS ≥ 9.0) | ≤ 24h | ≤ 48h | ≤ 7 days | ≤ 30 days |
-| High (CVSS 7.0–8.9) | ≤ 48h | ≤ 5 days | ≤ 14 days | ≤ 45 days |
-| Medium (CVSS 4.0–6.9) | ≤ 5 days | ≤ 10 days | ≤ 30 days | ≤ 60 days |
-| Low (CVSS < 4.0) | ≤ 10 days | ≤ 15 days | Next minor release | Next release notes |
+| Severity              | Acknowledgment | Triage    | Fix Target         | Coordinated Disclosure |
+| --------------------- | -------------- | --------- | ------------------ | ---------------------- |
+| Critical (CVSS ≥ 9.0) | ≤ 24h          | ≤ 48h     | ≤ 7 days           | ≤ 30 days              |
+| High (CVSS 7.0–8.9)   | ≤ 48h          | ≤ 5 days  | ≤ 14 days          | ≤ 45 days              |
+| Medium (CVSS 4.0–6.9) | ≤ 5 days       | ≤ 10 days | ≤ 30 days          | ≤ 60 days              |
+| Low (CVSS < 4.0)      | ≤ 10 days      | ≤ 15 days | Next minor release | Next release notes     |
 
 ## Supported Versions
 
-| Protocol Version | Supported | End of Support |
-|------------------|-----------|----------------|
-| 1.x (current) | ✅ | TBD |
-| 0.x (pre-release) | ❌ | N/A |
+| Protocol Version  | Supported    | End of Support       |
+| ----------------- | ------------ | -------------------- |
+| 1.x               | Not released | N/A                  |
+| 0.x (pre-release) | Best effort  | First stable release |
 
 Only the latest minor of the current major receives security patches.
 
@@ -54,16 +56,16 @@ See [docs/security/SECURITY.md](docs/security/SECURITY.md) for the full threat m
 
 ## Security Controls
 
-| Component | Controls |
-|-----------|----------|
-| **Protocol Schemas** | Zod validation on all inputs/outputs; generated JSON Schema + OpenAPI; CI drift detection |
-| **Tool Gateway** | Bearer token per run; callId idempotency; schema validation; budget enforcement; no filesystem access |
-| **Local Runner** | In-process budgets; SIGTERM handling; hash-chained event log; result directory checksums |
-| **Fargate Runner** | No task role; presigned URL injection; network tracks (sealed/provider-network/remote-dev); resource limits |
-| **Trusted Scorer** | Separate task/Lambda; receives both archives; no egress (or judge proxy); deterministic-first scoring |
-| **Case Packer** | Validates: no traversal, no symlinks, unique IDs, citation bounds, deterministic policy rules, PII classification |
-| **Certificates** | RFC 8785/JCS canonicalization + KMS asymmetric signing; includes all version digests; revocable |
-| **Dependencies** | `pnpm audit` in CI; Dependabot alerts; pinned lockfile; minimal dependencies; SLSA L2 provenance for publishes |
+| Component            | Controls                                                                                                          |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| **Protocol Schemas** | Zod validation on all inputs/outputs; generated JSON Schema + OpenAPI; CI drift detection                         |
+| **Tool Gateway**     | Bearer token per run; callId idempotency; schema validation; budget enforcement; no filesystem access             |
+| **Local Runner**     | In-process budgets; SIGTERM handling; hash-chained event log; result directory checksums                          |
+| **Fargate Runner**   | No task role; presigned URL injection; network tracks (sealed/provider-network/remote-dev); resource limits       |
+| **Trusted Scorer**   | Separate task/Lambda; receives both archives; no egress (or judge proxy); deterministic-first scoring             |
+| **Case Packer**      | Validates: no traversal, no symlinks, unique IDs, citation bounds, deterministic policy rules, PII classification |
+| **Certificates**     | RFC 8785/JCS canonicalization + KMS asymmetric signing; includes all version digests; revocable                   |
+| **Dependencies**     | `pnpm audit` in CI; Dependabot alerts; pinned lockfile; minimal dependencies; SLSA L2 provenance for publishes    |
 
 ## Secure Development Practices
 
@@ -80,6 +82,7 @@ We recognize and thank security researchers who responsibly disclose vulnerabili
 ---
 
 **Related Documents:**
+
 - [GOVERNANCE.md](docs/governance/GOVERNANCE.md) — Governance, maintainer roles, release process
 - [ADR-003: Case Privacy](docs/specification/ADR-003-case-privacy.md) — Input/reference archive separation
 - [ADR-004: Fargate Isolation](docs/specification/ADR-004-fargate-isolation.md) — No task role, presigned URLs, network tracks
