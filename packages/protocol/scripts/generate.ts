@@ -3,12 +3,14 @@
  * Schema Generation Pipeline
  *
  * Generates language-neutral artifacts from Zod schemas:
- * - JSON Schema (canonical representation)
- * - OpenAPI 3.1 components (wrapping JSON Schemas via $ref)
- * - Markdown reference documentation
+ * - JSON Schema (canonical representation) — uses Zod 4 native JSON Schema output
+ * - OpenAPI 3.1 components (wrapping JSON Schemas via $ref, no hand-authored duplicates)
+ * - Markdown reference documentation (written to docs/specification/generated/)
  *
  * Usage: pnpm generate
  * CI: Runs generate then validates git diff --exit-code
+ *
+ * Note: Python Pydantic SDK generation is explicitly deferred until protocol v1 is frozen.
  */
 
 import { writeFileSync, mkdirSync, existsSync, rmSync } from "node:fs";
