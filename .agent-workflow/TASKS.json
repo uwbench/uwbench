@@ -289,11 +289,11 @@
     "status": "gated_pass",
     "priority": 8,
     "assignee": "orchestrator",
-    "started_at": "2026-07-24T07:41:15.898Z",
-    "attempts": 5,
+    "started_at": "2026-07-24T07:53:23.339Z",
+    "attempts": 6,
     "failures": 3,
-    "review_failures": 1,
-    "completed_at": "2026-07-24T07:47:12.902Z"
+    "review_failures": 2,
+    "completed_at": "2026-07-24T08:25:58.538Z"
   },
   {
     "id": "T9",

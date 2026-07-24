@@ -11,11 +11,11 @@
   },
   "servers": [
     {
-      "url": "https://api.uwbench.example/v1",
+      "url": "https://api.uwbench.example",
       "description": "Production server (example)"
     },
     {
-      "url": "http://localhost:8080/v1",
+      "url": "http://localhost:8080",
       "description": "Local development server"
     }
   ],

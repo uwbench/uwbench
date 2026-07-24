@@ -1,8 +1,12 @@
 import { z } from "zod";
 
+const Iso4217CurrencySchema = z.string().regex(/^[A-Z]{3}$/);
+
+const NonnegativeIntSchema = z.number().int().nonnegative();
+
 export const MoneySchema = z.object({
-  amount: z.number().int(),
-  currency: z.string().length(3),
+  amount: NonnegativeIntSchema,
+  currency: Iso4217CurrencySchema,
 });
 
 export const FinancialSpreadSchema = z.object({
@@ -18,7 +22,7 @@ export const FinancialSpreadSchema = z.object({
     start: z.string().date(),
     end: z.string().date(),
   }),
-  currency: z.string().length(3),
+  currency: Iso4217CurrencySchema,
   scale: z
     .enum(["units", "thousands", "millions", "billions"])
     .default("units"),
@@ -33,8 +37,8 @@ export const NormalizedFactSchema = z.object({
   normalizedValue: z.unknown().optional(),
   type: z.string(),
   unit: z.string().optional(),
-  currency: z.string().length(3).optional(),
-  scale: z.number().optional(),
+  currency: Iso4217CurrencySchema.optional(),
+  scale: z.number().int().optional(),
   period: z
     .object({ start: z.string().date(), end: z.string().date() })
     .optional(),
@@ -142,9 +146,9 @@ export const ConfidenceSchema = z.object({
 });
 
 export const UsageSchema = z.object({
-  inputTokens: z.number().optional(),
-  outputTokens: z.number().optional(),
-  providerReportedCostUsd: z.number().optional(),
+  inputTokens: z.number().int().nonnegative().optional(),
+  outputTokens: z.number().int().nonnegative().optional(),
+  providerReportedCostUsd: z.number().nonnegative().optional(),
 });
 
 export const UnderwritingSubmissionSchema = z.object({

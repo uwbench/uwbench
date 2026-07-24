@@ -48,9 +48,7 @@
       "additionalProperties": false
     },
     "currency": {
-      "type": "string",
-      "minLength": 3,
-      "maxLength": 3
+      "$ref": "#/$defs/__schema1"
     },
     "scale": {
       "default": "units",
@@ -86,13 +84,11 @@
       "properties": {
         "amount": {
           "type": "integer",
-          "minimum": -9007199254740991,
+          "minimum": 0,
           "maximum": 9007199254740991
         },
         "currency": {
-          "type": "string",
-          "minLength": 3,
-          "maxLength": 3
+          "$ref": "#/$defs/__schema1"
         }
       },
       "required": [
@@ -100,6 +96,10 @@
         "currency"
       ],
       "additionalProperties": false
+    },
+    "__schema1": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
     }
   }
 }

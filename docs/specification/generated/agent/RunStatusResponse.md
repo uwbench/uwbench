@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [RunStatusResponse.json](../json-schema/agent/RunStatusResponse.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [RunStatusResponse.json](../../../../../packages/protocol/generated/json-schema/agent/RunStatusResponse.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -18,6 +18,27 @@ See [RunStatusResponse.json](../json-schema/agent/RunStatusResponse.json) for th
 | `status` | string | ✓ |  | enum: [accepted, running, awaiting_tool, completed, failed, cancelled] |
 | `result` | object |  |  |  |
 | `error` | string |  |  |  |
+
+## Definitions
+
+### __schema0
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `amount` | integer | ✓ |  |
+| `currency` | [`__schema1`](../../../../../packages/protocol/generated/json-schema/#/$defs/__schema1) | ✓ |  |
+
+### __schema1
+
+### __schema2
+
+### __schema3
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `claim` | string | ✓ |  |
+| `evidenceIds` | array | ✓ |  |
+| `confidence` | number | ✓ |  |
 
 ---
 *Generated from Zod schema. Do not edit directly.*

@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [UnderwritingSubmission.json](../json-schema/submission/UnderwritingSubmission.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [UnderwritingSubmission.json](../../../../../packages/protocol/generated/json-schema/submission/UnderwritingSubmission.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -26,6 +26,27 @@ See [UnderwritingSubmission.json](../json-schema/submission/UnderwritingSubmissi
 | `memo` | object | ✓ |  |  |
 | `confidence` | object | ✓ |  |  |
 | `usage` | object |  |  |  |
+
+## Definitions
+
+### __schema0
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `amount` | integer | ✓ |  |
+| `currency` | [`__schema1`](../../../../../packages/protocol/generated/json-schema/#/$defs/__schema1) | ✓ |  |
+
+### __schema1
+
+### __schema2
+
+### __schema3
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `claim` | string | ✓ |  |
+| `evidenceIds` | array | ✓ |  |
+| `confidence` | number | ✓ |  |
 
 ---
 *Generated from Zod schema. Do not edit directly.*

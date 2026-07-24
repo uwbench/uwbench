@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [CaseRequestInformationError.json](../json-schema/tools/CaseRequestInformationError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [CaseRequestInformationError.json](../../../../../packages/protocol/generated/json-schema/tools/CaseRequestInformationError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

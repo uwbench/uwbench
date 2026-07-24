@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [CaseGetDocumentMetadataInput.json](../json-schema/tools/CaseGetDocumentMetadataInput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [CaseGetDocumentMetadataInput.json](../../../../../packages/protocol/generated/json-schema/tools/CaseGetDocumentMetadataInput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

@@ -54,20 +54,24 @@
       "type": "object",
       "properties": {
         "wallClockSeconds": {
-          "type": "number",
-          "exclusiveMinimum": 0
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
         },
         "maxToolCalls": {
-          "type": "number",
-          "exclusiveMinimum": 0
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
         },
         "maxOutputBytes": {
-          "type": "number",
-          "exclusiveMinimum": 0
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
         },
         "maxConcurrentToolCalls": {
-          "type": "number",
-          "exclusiveMinimum": 0
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
         }
       },
       "required": [

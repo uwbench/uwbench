@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [CaseReadDocumentError.json](../json-schema/tools/CaseReadDocumentError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [CaseReadDocumentError.json](../../../../../packages/protocol/generated/json-schema/tools/CaseReadDocumentError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

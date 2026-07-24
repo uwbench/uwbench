@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [ToolCall.json](../json-schema/tools/ToolCall.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [ToolCall.json](../../../../../packages/protocol/generated/json-schema/tools/ToolCall.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

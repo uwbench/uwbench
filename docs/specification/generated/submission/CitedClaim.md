@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [CitedClaim.json](../json-schema/submission/CitedClaim.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [CitedClaim.json](../../../../../packages/protocol/generated/json-schema/submission/CitedClaim.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

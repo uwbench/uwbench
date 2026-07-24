@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [Event.json](../json-schema/events/Event.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [Event.json](../../../packages/protocol/generated/json-schema/events/Event.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

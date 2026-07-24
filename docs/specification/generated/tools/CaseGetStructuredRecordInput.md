@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [CaseGetStructuredRecordInput.json](../json-schema/tools/CaseGetStructuredRecordInput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [CaseGetStructuredRecordInput.json](../../../../../packages/protocol/generated/json-schema/tools/CaseGetStructuredRecordInput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

@@ -20,10 +20,10 @@ export const RunRequestSchema = z.object({
     bearerToken: z.string(),
   }),
   limits: z.object({
-    wallClockSeconds: z.number().positive(),
-    maxToolCalls: z.number().positive(),
-    maxOutputBytes: z.number().positive(),
-    maxConcurrentToolCalls: z.number().positive(),
+    wallClockSeconds: z.number().int().positive(),
+    maxToolCalls: z.number().int().positive(),
+    maxOutputBytes: z.number().int().positive(),
+    maxConcurrentToolCalls: z.number().int().positive(),
   }),
 });
 

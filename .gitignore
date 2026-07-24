@@ -36,8 +36,7 @@ coverage
 vitest.config.ts.timestamp-*
 
 # Changesets
-.changeset/*.md
-!.changeset/README.md
+!.changeset/*.md
 
 # Environment
 .env

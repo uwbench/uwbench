@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [Condition.json](../json-schema/submission/Condition.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [Condition.json](../../../packages/protocol/generated/json-schema/submission/Condition.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

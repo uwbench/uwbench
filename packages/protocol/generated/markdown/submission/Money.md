@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [Money.json](../json-schema/submission/Money.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [Money.json](../../../packages/protocol/generated/json-schema/submission/Money.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -14,8 +14,8 @@ See [Money.json](../json-schema/submission/Money.json) for the canonical JSON Sc
 
 | Name | Type | Required | Description | Constraints |
 |------|------|----------|-------------|-------------|
-| `amount` | integer | ✓ |  | minimum: -9007199254740991<br>maximum: 9007199254740991 |
-| `currency` | string | ✓ |  | minLength: 3<br>maxLength: 3 |
+| `amount` | integer | ✓ |  | minimum: 0<br>maximum: 9007199254740991 |
+| `currency` | string | ✓ |  | pattern: `^[A-Z]{3}$` |
 
 ---
 *Generated from Zod schema. Do not edit directly.*

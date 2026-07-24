@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [RunStatus.json](../json-schema/agent/RunStatus.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [RunStatus.json](../../../../../packages/protocol/generated/json-schema/agent/RunStatus.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `string`
 

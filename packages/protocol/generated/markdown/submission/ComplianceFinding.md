@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [ComplianceFinding.json](../json-schema/submission/ComplianceFinding.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [ComplianceFinding.json](../../../packages/protocol/generated/json-schema/submission/ComplianceFinding.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

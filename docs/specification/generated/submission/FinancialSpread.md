@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [FinancialSpread.json](../json-schema/submission/FinancialSpread.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [FinancialSpread.json](../../../../../packages/protocol/generated/json-schema/submission/FinancialSpread.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -14,18 +14,29 @@ See [FinancialSpread.json](../json-schema/submission/FinancialSpread.json) for t
 
 | Name | Type | Required | Description | Constraints |
 |------|------|----------|-------------|-------------|
-| `revenue` | [`__schema0`](#/$defs/__schema0) | ✓ |  |  |
-| `cogs` | [`__schema0`](#/$defs/__schema0) |  |  |  |
-| `grossProfit` | [`__schema0`](#/$defs/__schema0) |  |  |  |
-| `operatingExpenses` | [`__schema0`](#/$defs/__schema0) |  |  |  |
-| `ebitda` | [`__schema0`](#/$defs/__schema0) |  |  |  |
-| `interestExpense` | [`__schema0`](#/$defs/__schema0) |  |  |  |
-| `taxes` | [`__schema0`](#/$defs/__schema0) |  |  |  |
-| `netIncome` | [`__schema0`](#/$defs/__schema0) |  |  |  |
+| `revenue` | [`__schema0`](../../../../../packages/protocol/generated/json-schema/#/$defs/__schema0) | ✓ |  |  |
+| `cogs` | [`__schema0`](../../../../../packages/protocol/generated/json-schema/#/$defs/__schema0) |  |  |  |
+| `grossProfit` | [`__schema0`](../../../../../packages/protocol/generated/json-schema/#/$defs/__schema0) |  |  |  |
+| `operatingExpenses` | [`__schema0`](../../../../../packages/protocol/generated/json-schema/#/$defs/__schema0) |  |  |  |
+| `ebitda` | [`__schema0`](../../../../../packages/protocol/generated/json-schema/#/$defs/__schema0) |  |  |  |
+| `interestExpense` | [`__schema0`](../../../../../packages/protocol/generated/json-schema/#/$defs/__schema0) |  |  |  |
+| `taxes` | [`__schema0`](../../../../../packages/protocol/generated/json-schema/#/$defs/__schema0) |  |  |  |
+| `netIncome` | [`__schema0`](../../../../../packages/protocol/generated/json-schema/#/$defs/__schema0) |  |  |  |
 | `period` | object | ✓ |  |  |
-| `currency` | string | ✓ |  | minLength: 3<br>maxLength: 3 |
+| `currency` | [`__schema1`](../../../../../packages/protocol/generated/json-schema/#/$defs/__schema1) | ✓ |  |  |
 | `scale` | string | ✓ |  Default: `"units"` | enum: [units, thousands, millions, billions] |
 | `signConvention` | string | ✓ |  Default: `"positive_revenue_negative_expense"` | enum: [positive_revenue_negative_expense, all_positive, all_negative] |
+
+## Definitions
+
+### __schema0
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `amount` | integer | ✓ |  |
+| `currency` | [`__schema1`](../../../../../packages/protocol/generated/json-schema/#/$defs/__schema1) | ✓ |  |
+
+### __schema1
 
 ---
 *Generated from Zod schema. Do not edit directly.*

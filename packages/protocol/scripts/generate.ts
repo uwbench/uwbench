@@ -516,11 +516,11 @@ function generateOpenApiDoc(): object {
     },
     servers: [
       {
-        url: "https://api.uwbench.example/v1",
+        url: "https://api.uwbench.example",
         description: "Production server (example)",
       },
       {
-        url: "http://localhost:8080/v1",
+        url: "http://localhost:8080",
         description: "Local development server",
       },
     ],
@@ -707,7 +707,7 @@ function generateOpenApiDoc(): object {
 }
 
 /**
- * Write OpenAPI document to files (JSON and YAML).
+ * Write OpenAPI document to files (JSON and components-only).
  */
 function writeOpenApiDoc(doc: object): void {
   if (!existsSync(OPENAPI_DIR)) {
@@ -729,12 +729,14 @@ function writeOpenApiDoc(doc: object): void {
 
 /**
  * Generate Markdown documentation for a schema.
+ * @param basePath - Relative path from the markdown file to the repo root
  */
 function generateMarkdown(
   name: string,
   schema: object,
   category: string,
   description: string,
+  basePath: string,
 ): string {
   const lines: string[] = [];
 
@@ -749,7 +751,7 @@ function generateMarkdown(
   lines.push(`## JSON Schema`);
   lines.push("");
   lines.push(
-    `See [${name}.json](../json-schema/${category}/${name}.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).`,
+    `See [${name}.json](${basePath}/packages/protocol/generated/json-schema/${category}/${name}.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).`,
   );
   lines.push("");
 
@@ -787,7 +789,9 @@ function generateMarkdown(
       let typeStr = prop.type || "object";
       if (prop.$ref) {
         const refName = prop.$ref.split("/").pop()?.replace(".json", "") || "";
-        typeStr = `[\`${refName}\`](${prop.$ref.replace(".json", ".md")})`;
+        // $ref is like "../json-schema/category/Name.json"
+        const refPath = prop.$ref.replace("../json-schema/", "");
+        typeStr = `[\`${refName}\`](${basePath}/packages/protocol/generated/json-schema/${refPath.replace(".json", ".md")})`;
       } else if (prop.allOf || prop.anyOf || prop.oneOf) {
         typeStr = "composite";
       } else if (prop.type === "array" && prop.items) {
@@ -833,11 +837,12 @@ function generateMarkdown(
     lines.push("");
   }
 
-  // Add example if we can infer one
-  if (s.definitions) {
+  // Add definitions if present (for $defs)
+  if (s.definitions || s.$defs) {
+    const defs = s.definitions || s.$defs;
     lines.push(`## Definitions`);
     lines.push("");
-    for (const [defName, defSchema] of Object.entries(s.definitions)) {
+    for (const [defName, defSchema] of Object.entries(defs)) {
       const def = defSchema as any;
       lines.push(`### ${defName}`);
       lines.push("");
@@ -851,7 +856,8 @@ function generateMarkdown(
           let pType = p.type || "object";
           if (p.$ref) {
             const refName = p.$ref.split("/").pop()?.replace(".json", "") || "";
-            pType = `[\`${refName}\`](${p.$ref.replace(".json", ".md")})`;
+            const refPath = p.$ref.replace("../json-schema/", "");
+            pType = `[\`${refName}\`](${basePath}/packages/protocol/generated/json-schema/${refPath.replace(".json", ".md")})`;
           }
           let pDesc = p.description || "";
           if (p.default !== undefined) {
@@ -873,23 +879,42 @@ function generateMarkdown(
 /**
  * Write Markdown documentation to both protocol/generated/markdown and docs/specification/generated.
  */
-function writeMarkdown(name: string, markdown: string, category: string): void {
-  // Protocol generated markdown
+function writeMarkdown(
+  name: string,
+  schema: object,
+  category: string,
+  description: string,
+): void {
+  // Protocol generated markdown (basePath: ../../..)
   const categoryDir = join(MARKDOWN_DIR, category);
   if (!existsSync(categoryDir)) {
     mkdirSync(categoryDir, { recursive: true });
   }
   const protoPath = join(categoryDir, `${name}.md`);
-  writeFileSync(protoPath, markdown + "\n");
+  const markdownForProto = generateMarkdown(
+    name,
+    schema,
+    category,
+    description,
+    "../../..",
+  );
+  writeFileSync(protoPath, markdownForProto + "\n");
   console.log(`  ✓ Generated ${relative(PROTOCOL_DIR, protoPath)}`);
 
-  // Docs specification generated markdown
+  // Docs specification generated markdown (basePath: ../../../../..)
   const docsCategoryDir = join(DOCS_SPEC_GENERATED_DIR, category);
   if (!existsSync(docsCategoryDir)) {
     mkdirSync(docsCategoryDir, { recursive: true });
   }
   const docsPath = join(docsCategoryDir, `${name}.md`);
-  writeFileSync(docsPath, markdown + "\n");
+  const markdownForDocs = generateMarkdown(
+    name,
+    schema,
+    category,
+    description,
+    "../../../../..",
+  );
+  writeFileSync(docsPath, markdownForDocs + "\n");
   console.log(`  ✓ Generated ${relative(ROOT_DIR, docsPath)}`);
 }
 
@@ -928,8 +953,7 @@ async function main(): Promise<void> {
   console.log("\n📚 Generating Markdown Documentation...");
   for (const { name, schema, category, description } of SCHEMAS) {
     const jsonSchema = generateJsonSchema(schema, name);
-    const markdown = generateMarkdown(name, jsonSchema, category, description);
-    writeMarkdown(name, markdown, category);
+    writeMarkdown(name, jsonSchema, category, description);
   }
 
   console.log("\n✅ Generation complete!");

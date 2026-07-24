@@ -417,15 +417,15 @@ describe("Submission Tool Schemas", () => {
     it("accepts valid output", () => {
       const output = {
         artifactId: "artifact_1",
-        url: "https://s3.example.com/artifact_1.json",
+        sourceId: "src_artifact_1",
       };
       const result =
         SubmissionSaveArtifactSchema.shape.output.safeParse(output);
       expect(result.success).toBe(true);
     });
 
-    it("rejects invalid URL", () => {
-      const output = { artifactId: "artifact_1", url: "not-a-url" };
+    it("rejects missing sourceId", () => {
+      const output = { artifactId: "artifact_1" };
       const result =
         SubmissionSaveArtifactSchema.shape.output.safeParse(output);
       expect(result.success).toBe(false);

@@ -233,6 +233,84 @@ describe("verifyChain", () => {
     // Hash still matches original, but payload is different
     expect(verifyChain([tampered])).toBe(false);
   });
+
+  it("returns false for sequence gap (missing sequence number)", () => {
+    const e1 = createEvent({ sequence: 1, eventId: "evt_1" });
+    const e3 = createEvent({
+      sequence: 3,
+      eventId: "evt_3",
+      previousHash: e1.hash,
+    });
+    expect(verifyChain([e1, e3])).toBe(false);
+  });
+
+  it("returns false for duplicate sequence numbers", () => {
+    const e1 = createEvent({ sequence: 1, eventId: "evt_1" });
+    const e2a = createEvent({
+      sequence: 2,
+      eventId: "evt_2a",
+      previousHash: e1.hash,
+    });
+    const e2b = createEvent({
+      sequence: 2,
+      eventId: "evt_2b",
+      previousHash: e2a.hash,
+    });
+    expect(verifyChain([e1, e2a, e2b])).toBe(false);
+  });
+
+  it("returns false for duplicate eventIds", () => {
+    const e1 = createEvent({ sequence: 1, eventId: "evt_1" });
+    const e2 = createEvent({
+      sequence: 2,
+      eventId: "evt_1",
+      previousHash: e1.hash,
+    });
+    expect(verifyChain([e1, e2])).toBe(false);
+  });
+
+  it("returns false if runId changes mid-chain", () => {
+    const e1 = createEvent({ sequence: 1, eventId: "evt_1", runId: "run_1" });
+    const e2 = createEvent({
+      sequence: 2,
+      eventId: "evt_2",
+      previousHash: e1.hash,
+      runId: "run_2",
+    });
+    expect(verifyChain([e1, e2])).toBe(false);
+  });
+
+  it("returns false if caseId changes mid-chain", () => {
+    const e1 = createEvent({ sequence: 1, eventId: "evt_1", caseId: "case_1" });
+    const e2 = createEvent({
+      sequence: 2,
+      eventId: "evt_2",
+      previousHash: e1.hash,
+      caseId: "case_2",
+    });
+    expect(verifyChain([e1, e2])).toBe(false);
+  });
+
+  it("returns false for spliced chain (events from different runs combined)", () => {
+    const e1RunA = createEvent({
+      sequence: 1,
+      eventId: "evt_a1",
+      runId: "run_A",
+    });
+    const e1RunB = createEvent({
+      sequence: 1,
+      eventId: "evt_b1",
+      runId: "run_B",
+    });
+    const e2RunB = createEvent({
+      sequence: 2,
+      eventId: "evt_b2",
+      previousHash: e1RunB.hash,
+      runId: "run_B",
+    });
+    // Splice: take e1RunA, then e2RunB
+    expect(verifyChain([e1RunA, e2RunB])).toBe(false);
+  });
 });
 
 describe("NDJSON writer/reader", () => {
@@ -269,11 +347,18 @@ describe("NDJSON writer/reader", () => {
     expect(readEventsNDJSON("")).toEqual([]);
   });
 
-  it("skips invalid lines with warning", () => {
+  it("throws on invalid JSON lines", () => {
     const e1 = createEvent({ sequence: 1, eventId: "evt_1" });
     const ndjson = `${writeEventsNDJSON([e1])}invalid json line\n`;
-    const events = readEventsNDJSON(ndjson);
-    expect(events).toHaveLength(1);
+    expect(() => readEventsNDJSON(ndjson)).toThrow("NDJSON parse error");
+  });
+
+  it("throws on schema validation failure", () => {
+    const e1 = createEvent({ sequence: 1, eventId: "evt_1" });
+    const ndjson = `${writeEventsNDJSON([e1])}{"schemaVersion": "1.0"}\n`;
+    expect(() => readEventsNDJSON(ndjson)).toThrow(
+      "NDJSON schema validation failed",
+    );
   });
 
   it("verifyEventsNDJSON returns valid=true for valid chain", () => {
@@ -300,13 +385,88 @@ describe("NDJSON writer/reader", () => {
     const ndjson = writeEventsNDJSON([e1, e2]);
     const result = verifyEventsNDJSON(ndjson);
     expect(result.valid).toBe(false);
-    expect(result.error).toBe("Hash chain verification failed");
+    expect(result.error).toContain("hash chain verification failed");
+  });
+
+  it("verifyEventsNDJSON returns valid=false for sequence gap", () => {
+    const e1 = createEvent({ sequence: 1, eventId: "evt_1" });
+    const e2 = createEvent({
+      sequence: 3,
+      eventId: "evt_2",
+      previousHash: e1.hash,
+    });
+    const ndjson = writeEventsNDJSON([e1, e2]);
+    const result = verifyEventsNDJSON(ndjson);
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain("sequence gap");
+  });
+
+  it("verifyEventsNDJSON returns valid=false for duplicate sequence", () => {
+    const e1 = createEvent({ sequence: 1, eventId: "evt_1" });
+    const e2 = createEvent({
+      sequence: 1,
+      eventId: "evt_2",
+      previousHash: e1.hash,
+    });
+    const ndjson = writeEventsNDJSON([e1, e2]);
+    const result = verifyEventsNDJSON(ndjson);
+    expect(result.valid).toBe(false);
+  });
+
+  it("verifyEventsNDJSON returns valid=false for duplicate eventId", () => {
+    const e1 = createEvent({ sequence: 1, eventId: "evt_1" });
+    const e2 = createEvent({
+      sequence: 2,
+      eventId: "evt_1",
+      previousHash: e1.hash,
+    });
+    const ndjson = writeEventsNDJSON([e1, e2]);
+    const result = verifyEventsNDJSON(ndjson);
+    expect(result.valid).toBe(false);
+  });
+
+  it("verifyEventsNDJSON returns valid=false for runId change", () => {
+    const e1 = createEvent({ sequence: 1, eventId: "evt_1", runId: "run_1" });
+    const e2 = createEvent({
+      sequence: 2,
+      eventId: "evt_2",
+      previousHash: e1.hash,
+      runId: "run_2",
+    });
+    const ndjson = writeEventsNDJSON([e1, e2]);
+    const result = verifyEventsNDJSON(ndjson);
+    expect(result.valid).toBe(false);
+  });
+
+  it("verifyEventsNDJSON returns valid=false for caseId change", () => {
+    const e1 = createEvent({ sequence: 1, eventId: "evt_1", caseId: "case_1" });
+    const e2 = createEvent({
+      sequence: 2,
+      eventId: "evt_2",
+      previousHash: e1.hash,
+      caseId: "case_2",
+    });
+    const ndjson = writeEventsNDJSON([e1, e2]);
+    const result = verifyEventsNDJSON(ndjson);
+    expect(result.valid).toBe(false);
   });
 
   it("verifyEventsNDJSON returns valid=true for empty", () => {
     const result = verifyEventsNDJSON("");
     expect(result.valid).toBe(true);
     expect(result.events).toEqual([]);
+  });
+
+  it("verifyEventsNDJSON returns valid=false for tampered payload", () => {
+    const e1 = createEvent({
+      sequence: 1,
+      eventId: "evt_1",
+      payload: { foo: "bar" },
+    });
+    const tampered = { ...e1, payload: { foo: "baz" } };
+    const ndjson = writeEventsNDJSON([tampered]);
+    const result = verifyEventsNDJSON(ndjson);
+    expect(result.valid).toBe(false);
   });
 });
 

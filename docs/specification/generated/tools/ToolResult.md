@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [ToolResult.json](../json-schema/tools/ToolResult.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [ToolResult.json](../../../../../packages/protocol/generated/json-schema/tools/ToolResult.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

@@ -75,13 +75,44 @@ export function computeHash(event: EventWithoutHash): string {
  * - First event must have previousHash === "sha256:genesis"
  * - Each event's previousHash must match previous event's hash
  * - Each event's hash must match computeHash(event)
+ * - Sequence numbers must be contiguous starting from 1
+ * - runId and caseId must be consistent across all events
+ * - No duplicate eventIds or sequence numbers
  */
 export function verifyChain(events: Event[]): boolean {
   if (events.length === 0) return true;
 
+  const seenEventIds = new Set<string>();
+  const seenSequences = new Set<number>();
+  const firstRunId = events[0]!.runId;
+  const firstCaseId = events[0]!.caseId;
+
   for (let i = 0; i < events.length; i++) {
     const event = events[i];
     if (!event) return false;
+
+    // Check runId consistency
+    if (event.runId !== firstRunId) {
+      return false;
+    }
+    // Check caseId consistency
+    if (event.caseId !== firstCaseId) {
+      return false;
+    }
+    // Check for duplicate eventId
+    if (seenEventIds.has(event.eventId)) {
+      return false;
+    }
+    seenEventIds.add(event.eventId);
+    // Check for duplicate sequence
+    if (seenSequences.has(event.sequence)) {
+      return false;
+    }
+    seenSequences.add(event.sequence);
+    // Check sequence is contiguous (1, 2, 3, ...)
+    if (event.sequence !== i + 1) {
+      return false;
+    }
 
     const expectedPrevHash = i === 0 ? "sha256:genesis" : events[i - 1]!.hash;
     if (!expectedPrevHash || event.previousHash !== expectedPrevHash) {
@@ -108,7 +139,8 @@ export function writeEventsNDJSON(events: Event[]): string {
 
 /**
  * Parse events from an NDJSON string.
- * Invalid lines are skipped with a warning logged to stderr.
+ * Throws on any malformed or invalid record (fail-closed).
+ * Validates schema, sequence contiguity, unique eventIds, and runId/caseId consistency.
  */
 export function readEventsNDJSON(ndjson: string): Event[] {
   const events: Event[] = [];
@@ -116,20 +148,25 @@ export function readEventsNDJSON(ndjson: string): Event[] {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]?.trim();
     if (!line) continue;
+    let parsed: unknown;
     try {
-      const parsed = JSON.parse(line);
-      const result = EventSchema.safeParse(parsed);
-      if (result.success) {
-        events.push(result.data);
-      } else {
-        console.error(
-          `[NDJSON] Invalid event at line ${i + 1}:`,
-          result.error.format(),
-        );
-      }
+      parsed = JSON.parse(line);
     } catch (e) {
-      console.error(`[NDJSON] Parse error at line ${i + 1}:`, e);
+      throw new Error(`NDJSON parse error at line ${i + 1}: ${e}`);
     }
+    const result = EventSchema.safeParse(parsed);
+    if (!result.success) {
+      throw new Error(
+        `NDJSON schema validation failed at line ${i + 1}: ${result.error.message}`,
+      );
+    }
+    events.push(result.data);
+  }
+  // Verify chain integrity after parsing all events
+  if (!verifyChain(events)) {
+    throw new Error(
+      "NDJSON hash chain verification failed: sequence gap, duplicate, runId/caseId mismatch, or hash corruption",
+    );
   }
   return events;
 }
@@ -137,20 +174,21 @@ export function readEventsNDJSON(ndjson: string): Event[] {
 /**
  * Verify events from an NDJSON string.
  * Returns { valid: boolean, events: Event[], error?: string }
+ * Fail-closed: any parse or validation error returns valid=false with error.
  */
 export function verifyEventsNDJSON(ndjson: string): {
   valid: boolean;
   events: Event[];
   error?: string | undefined;
 } {
-  const events = readEventsNDJSON(ndjson);
-  if (events.length === 0) {
-    return { valid: true, events: [] };
+  try {
+    const events = readEventsNDJSON(ndjson);
+    return { valid: true, events, error: undefined };
+  } catch (e) {
+    return {
+      valid: false,
+      events: [],
+      error: e instanceof Error ? e.message : String(e),
+    };
   }
-  const valid = verifyChain(events);
-  return {
-    valid,
-    events,
-    error: valid ? undefined : "Hash chain verification failed",
-  };
 }

@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [SubmissionSaveArtifactOutput.json](../json-schema/tools/SubmissionSaveArtifactOutput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [SubmissionSaveArtifactOutput.json](../../../packages/protocol/generated/json-schema/tools/SubmissionSaveArtifactOutput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -15,7 +15,7 @@ See [SubmissionSaveArtifactOutput.json](../json-schema/tools/SubmissionSaveArtif
 | Name | Type | Required | Description | Constraints |
 |------|------|----------|-------------|-------------|
 | `artifactId` | string | ✓ |  |  |
-| `url` | string | ✓ |  | format: uri |
+| `sourceId` | string | ✓ |  |  |
 
 ---
 *Generated from Zod schema. Do not edit directly.*

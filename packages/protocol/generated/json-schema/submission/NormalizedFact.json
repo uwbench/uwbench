@@ -16,11 +16,12 @@
     },
     "currency": {
       "type": "string",
-      "minLength": 3,
-      "maxLength": 3
+      "pattern": "^[A-Z]{3}$"
     },
     "scale": {
-      "type": "number"
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
     },
     "period": {
       "type": "object",

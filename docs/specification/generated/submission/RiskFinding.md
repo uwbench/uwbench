@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [RiskFinding.json](../json-schema/submission/RiskFinding.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [RiskFinding.json](../../../../../packages/protocol/generated/json-schema/submission/RiskFinding.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

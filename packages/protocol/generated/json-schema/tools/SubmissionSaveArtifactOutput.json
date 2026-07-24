@@ -6,14 +6,13 @@
     "artifactId": {
       "type": "string"
     },
-    "url": {
-      "type": "string",
-      "format": "uri"
+    "sourceId": {
+      "type": "string"
     }
   },
   "required": [
     "artifactId",
-    "url"
+    "sourceId"
   ],
   "additionalProperties": false
 }

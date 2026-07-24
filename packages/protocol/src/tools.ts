@@ -281,7 +281,7 @@ export const SubmissionSaveArtifactInputSchema = z.object({
 
 export const SubmissionSaveArtifactOutputSchema = z.object({
   artifactId: z.string(),
-  url: z.string().url(),
+  sourceId: z.string(),
 });
 
 export const SubmissionSaveArtifactErrorSchema = ToolErrorSchema;

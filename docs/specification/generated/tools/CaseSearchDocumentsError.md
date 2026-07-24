@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [CaseSearchDocumentsError.json](../json-schema/tools/CaseSearchDocumentsError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [CaseSearchDocumentsError.json](../../../../../packages/protocol/generated/json-schema/tools/CaseSearchDocumentsError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

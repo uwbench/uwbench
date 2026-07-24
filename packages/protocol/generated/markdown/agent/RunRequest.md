@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [RunRequest.json](../json-schema/agent/RunRequest.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [RunRequest.json](../../../packages/protocol/generated/json-schema/agent/RunRequest.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

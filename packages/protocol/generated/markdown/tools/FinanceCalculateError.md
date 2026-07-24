@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [FinanceCalculateError.json](../json-schema/tools/FinanceCalculateError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [FinanceCalculateError.json](../../../packages/protocol/generated/json-schema/tools/FinanceCalculateError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [CancelResponse.json](../json-schema/agent/CancelResponse.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [CancelResponse.json](../../../../../packages/protocol/generated/json-schema/agent/CancelResponse.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

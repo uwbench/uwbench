@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [CaseSearchDocumentsOutput.json](../json-schema/tools/CaseSearchDocumentsOutput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [CaseSearchDocumentsOutput.json](../../../packages/protocol/generated/json-schema/tools/CaseSearchDocumentsOutput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

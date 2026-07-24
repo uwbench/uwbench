@@ -72,9 +72,7 @@
               "additionalProperties": false
             },
             "currency": {
-              "type": "string",
-              "minLength": 3,
-              "maxLength": 3
+              "$ref": "#/$defs/__schema1"
             },
             "scale": {
               "default": "units",
@@ -122,12 +120,12 @@
                 "type": "string"
               },
               "currency": {
-                "type": "string",
-                "minLength": 3,
-                "maxLength": 3
+                "$ref": "#/$defs/__schema1"
               },
               "scale": {
-                "type": "number"
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
               },
               "period": {
                 "type": "object",
@@ -168,7 +166,7 @@
                 "minItems": 1,
                 "type": "array",
                 "items": {
-                  "$ref": "#/$defs/__schema1"
+                  "$ref": "#/$defs/__schema2"
                 }
               },
               "confidence": {
@@ -502,7 +500,7 @@
             "rationale": {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/__schema2"
+                "$ref": "#/$defs/__schema3"
               }
             }
           },
@@ -524,7 +522,7 @@
             "claims": {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/__schema2"
+                "$ref": "#/$defs/__schema3"
               }
             }
           },
@@ -564,13 +562,18 @@
           "type": "object",
           "properties": {
             "inputTokens": {
-              "type": "number"
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
             },
             "outputTokens": {
-              "type": "number"
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
             },
             "providerReportedCostUsd": {
-              "type": "number"
+              "type": "number",
+              "minimum": 0
             }
           },
           "additionalProperties": false
@@ -606,13 +609,11 @@
       "properties": {
         "amount": {
           "type": "integer",
-          "minimum": -9007199254740991,
+          "minimum": 0,
           "maximum": 9007199254740991
         },
         "currency": {
-          "type": "string",
-          "minLength": 3,
-          "maxLength": 3
+          "$ref": "#/$defs/__schema1"
         }
       },
       "required": [
@@ -622,9 +623,13 @@
       "additionalProperties": false
     },
     "__schema1": {
-      "type": "string"
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
     },
     "__schema2": {
+      "type": "string"
+    },
+    "__schema3": {
       "type": "object",
       "properties": {
         "claim": {
