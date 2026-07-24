@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [CaseGetDocumentMetadataOutput.json](../../../../../packages/protocol/generated/json-schema/tools/CaseGetDocumentMetadataOutput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [CaseGetDocumentMetadataOutput.json](../../../../packages/protocol/generated/json-schema/tools/CaseGetDocumentMetadataOutput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -15,6 +15,7 @@ See [CaseGetDocumentMetadataOutput.json](../../../../../packages/protocol/genera
 | Name | Type | Required | Description | Constraints |
 |------|------|----------|-------------|-------------|
 | `documentId` | string | ✓ |  |  |
+| `sourceId` | string | ✓ |  |  |
 | `title` | string | ✓ |  |  |
 | `mimeType` | string | ✓ |  |  |
 | `pageCount` | integer | ✓ |  | minimum: 0<br>maximum: 9007199254740991 |

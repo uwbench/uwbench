@@ -140,6 +140,7 @@ describe("Agent Protocol Schemas", () => {
   describe("RunResponseSchema", () => {
     it("accepts valid run response", () => {
       const response: RunResponse = {
+        schemaVersion: "1.0",
         agentRunId: "run_123",
         status: "accepted",
       };
@@ -149,6 +150,7 @@ describe("Agent Protocol Schemas", () => {
 
     it("rejects invalid status", () => {
       const result = RunResponseSchema.safeParse({
+        schemaVersion: "1.0",
         agentRunId: "run_123",
         status: "invalid" as RunStatus,
       });
@@ -183,6 +185,7 @@ describe("Agent Protocol Schemas", () => {
 
     it("accepts completed response with result", () => {
       const response: RunStatusResponse = {
+        schemaVersion: "1.0",
         agentRunId: "run_123",
         status: "completed",
         result: validSubmission,
@@ -193,29 +196,57 @@ describe("Agent Protocol Schemas", () => {
 
     it("accepts failed response with error", () => {
       const response: RunStatusResponse = {
+        schemaVersion: "1.0",
         agentRunId: "run_123",
         status: "failed",
-        error: "Agent crashed",
+        error: {
+          schemaVersion: "1.0",
+          code: "AGENT_CRASHED",
+          message: "Agent crashed",
+          requestId: "request_123",
+        },
       };
       const result = RunStatusResponseSchema.safeParse(response);
       expect(result.success).toBe(true);
     });
 
-    it("accepts minimal response", () => {
+    it("accepts active response without terminal payload", () => {
       const response: RunStatusResponse = {
+        schemaVersion: "1.0",
         agentRunId: "run_123",
         status: "running",
       };
       const result = RunStatusResponseSchema.safeParse(response);
       expect(result.success).toBe(true);
     });
+
+    it("rejects completed response without result", () => {
+      expect(
+        RunStatusResponseSchema.safeParse({
+          schemaVersion: "1.0",
+          agentRunId: "run_123",
+          status: "completed",
+        }).success,
+      ).toBe(false);
+    });
+
+    it("rejects failed response without a protocol error", () => {
+      expect(
+        RunStatusResponseSchema.safeParse({
+          schemaVersion: "1.0",
+          agentRunId: "run_123",
+          status: "failed",
+        }).success,
+      ).toBe(false);
+    });
   });
 
   describe("CancelResponseSchema", () => {
     it("accepts valid cancel response", () => {
       const response: CancelResponse = {
+        schemaVersion: "1.0",
         agentRunId: "run_123",
-        status: "cancelled",
+        cancelled: true,
       };
       const result = CancelResponseSchema.safeParse(response);
       expect(result.success).toBe(true);
@@ -225,6 +256,7 @@ describe("Agent Protocol Schemas", () => {
   describe("HealthResponseSchema", () => {
     it("accepts valid health response", () => {
       const response = {
+        schemaVersion: "1.0",
         status: "ok" as const,
         version: "1.0.0",
         protocolVersion: "1.0",
@@ -235,6 +267,7 @@ describe("Agent Protocol Schemas", () => {
 
     it("rejects non-ok status", () => {
       const result = HealthResponseSchema.safeParse({
+        schemaVersion: "1.0",
         status: "error",
         version: "1.0.0",
         protocolVersion: "1.0",
@@ -247,8 +280,10 @@ describe("Agent Protocol Schemas", () => {
     it("accepts all valid error codes", () => {
       for (const code of PROTOCOL_ERROR_CODES) {
         const error: ProtocolError = {
+          schemaVersion: "1.0",
           code,
           message: "Test error",
+          requestId: "request_123",
         };
         const result = ProtocolErrorSchema.safeParse(error);
         expect(result.success).toBe(true);
@@ -257,17 +292,21 @@ describe("Agent Protocol Schemas", () => {
 
     it("rejects unknown error code", () => {
       const result = ProtocolErrorSchema.safeParse({
+        schemaVersion: "1.0",
         code: "UNKNOWN_ERROR",
         message: "Test error",
+        requestId: "request_123",
       });
       expect(result.success).toBe(false);
     });
 
     it("accepts optional details", () => {
       const error: ProtocolError = {
-        code: "INVALID_RUN_REQUEST",
+        schemaVersion: "1.0",
+        code: "INVALID_SUBMISSION",
         message: "Invalid request",
         details: { field: "lane", issue: "invalid value" },
+        requestId: "request_123",
       };
       const result = ProtocolErrorSchema.safeParse(error);
       expect(result.success).toBe(true);
@@ -278,17 +317,14 @@ describe("Agent Protocol Schemas", () => {
     it("includes all required stable codes", () => {
       const requiredCodes = [
         "INVALID_SCHEMA_VERSION",
-        "INVALID_RUN_REQUEST",
-        "RUN_NOT_FOUND",
-        "RUN_ALREADY_STARTED",
-        "RUN_NOT_RUNNABLE",
-        "INVALID_STATUS_TRANSITION",
-        "TOOL_CALL_FAILED",
-        "TOOL_TIMEOUT",
+        "UNKNOWN_BENCHMARK",
+        "LANE_NOT_SUPPORTED",
+        "CASE_NOT_FOUND",
         "BUDGET_EXCEEDED",
-        "INVALID_TOOL_CALL",
-        "UNAUTHORIZED",
-        "INTERNAL_ERROR",
+        "TOOL_ERROR",
+        "AGENT_TIMEOUT",
+        "AGENT_CRASHED",
+        "INVALID_SUBMISSION",
       ];
       for (const code of requiredCodes) {
         expect(PROTOCOL_ERROR_CODES).toContain(code);

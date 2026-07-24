@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [CaseReadDocumentOutput.json](../../../../../packages/protocol/generated/json-schema/tools/CaseReadDocumentOutput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [CaseReadDocumentOutput.json](../../../../packages/protocol/generated/json-schema/tools/CaseReadDocumentOutput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -15,6 +15,7 @@ See [CaseReadDocumentOutput.json](../../../../../packages/protocol/generated/jso
 | Name | Type | Required | Description | Constraints |
 |------|------|----------|-------------|-------------|
 | `documentId` | string | ✓ |  |  |
+| `sourceId` | string | ✓ |  |  |
 | `content` | string | ✓ |  |  |
 | `pages` | array<`object`> | ✓ |  |  |
 

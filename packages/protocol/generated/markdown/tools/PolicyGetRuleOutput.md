@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [PolicyGetRuleOutput.json](../../../packages/protocol/generated/json-schema/tools/PolicyGetRuleOutput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [PolicyGetRuleOutput.json](../../json-schema/tools/PolicyGetRuleOutput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -15,12 +15,14 @@ See [PolicyGetRuleOutput.json](../../../packages/protocol/generated/json-schema/
 | Name | Type | Required | Description | Constraints |
 |------|------|----------|-------------|-------------|
 | `ruleId` | string | ✓ |  |  |
+| `sourceId` | string | ✓ |  |  |
 | `title` | string | ✓ |  |  |
 | `appliesWhen` | string | ✓ |  |  |
 | `input` | object | ✓ |  |  |
 | `operator` | string | ✓ |  |  |
 | `threshold` | object | ✓ |  |  |
 | `onFailure` | string | ✓ |  |  |
+| `citationAnchors` | array<`object`> | ✓ |  |  |
 
 ---
 *Generated from Zod schema. Do not edit directly.*

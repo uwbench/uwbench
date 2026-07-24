@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [FinanceValidateSpreadInput.json](../../../packages/protocol/generated/json-schema/tools/FinanceValidateSpreadInput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [FinanceValidateSpreadInput.json](../../json-schema/tools/FinanceValidateSpreadInput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

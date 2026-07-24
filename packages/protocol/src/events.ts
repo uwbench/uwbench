@@ -1,6 +1,6 @@
 import { z } from "zod";
-import canonicalize from "canonical-json";
 import { createHash } from "node:crypto";
+import { canonicalizeJcs } from "./jcs.js";
 
 /**
  * RFC 8785 (JCS) canonicalization and SHA-256 hash chain for event log.
@@ -32,19 +32,21 @@ export const EventSourceSchema = z.enum([
   "SCORER",
 ]);
 
-export const BaseEventSchema = z.object({
-  schemaVersion: z.literal("1.0"),
-  eventId: z.string(),
-  runId: z.string(),
-  caseId: z.string(),
-  sequence: z.number().int().positive(),
-  timestamp: z.string().datetime(),
-  source: EventSourceSchema,
-  type: EventTypeSchema,
-  payload: z.record(z.string(), z.unknown()),
-  previousHash: z.string(),
-  hash: z.string(),
-});
+export const BaseEventSchema = z
+  .object({
+    schemaVersion: z.literal("1.0"),
+    eventId: z.string(),
+    runId: z.string(),
+    caseId: z.string(),
+    sequence: z.number().int().positive(),
+    timestamp: z.string().datetime(),
+    source: EventSourceSchema,
+    type: EventTypeSchema,
+    payload: z.record(z.string(), z.json()),
+    previousHash: z.string(),
+    hash: z.string(),
+  })
+  .strict();
 
 export const EventSchema = BaseEventSchema;
 
@@ -62,10 +64,7 @@ export type EventWithoutHash = Omit<Event, "hash">;
  * Excludes the hash field, includes previousHash.
  */
 export function computeHash(event: EventWithoutHash): string {
-  const canonical = canonicalize(event);
-  if (canonical === undefined) {
-    throw new Error("Canonicalization returned undefined");
-  }
+  const canonical = canonicalizeJcs(event);
   const hash = createHash("sha256").update(canonical).digest("hex");
   return `sha256:${hash}`;
 }

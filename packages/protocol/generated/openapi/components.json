@@ -8,6 +8,14 @@
       }
     },
     "schemas": {
+      "SchemaVersion": {
+        "$ref": "../json-schema/agent/SchemaVersion.json",
+        "description": "Agent protocol schema version"
+      },
+      "ProtocolErrorCode": {
+        "$ref": "../json-schema/agent/ProtocolErrorCode.json",
+        "description": "Stable agent protocol error code"
+      },
       "HealthResponse": {
         "$ref": "../json-schema/agent/HealthResponse.json",
         "description": "Health check response"
@@ -36,6 +44,10 @@
         "$ref": "../json-schema/agent/ProtocolError.json",
         "description": "Protocol error response"
       },
+      "CitationAnchor": {
+        "$ref": "../json-schema/tools/CitationAnchor.json",
+        "description": "Stable source and document location for tool evidence"
+      },
       "ToolCall": {
         "$ref": "../json-schema/tools/ToolCall.json",
         "description": "Base tool call structure"
@@ -43,6 +55,14 @@
       "ToolResult": {
         "$ref": "../json-schema/tools/ToolResult.json",
         "description": "Base tool result structure"
+      },
+      "ToolSuccessResult": {
+        "$ref": "../json-schema/tools/ToolSuccessResult.json",
+        "description": "Name-specific successful tool result"
+      },
+      "ToolFailureResult": {
+        "$ref": "../json-schema/tools/ToolFailureResult.json",
+        "description": "Failed tool result"
       },
       "ToolError": {
         "$ref": "../json-schema/tools/ToolError.json",
@@ -204,9 +224,17 @@
         "$ref": "../json-schema/events/Event.json",
         "description": "Event log entry with hash chain"
       },
+      "Iso4217Currency": {
+        "$ref": "../json-schema/submission/Iso4217Currency.json",
+        "description": "Supported ISO 4217 currency code"
+      },
       "Money": {
         "$ref": "../json-schema/submission/Money.json",
         "description": "Monetary amount in minor units with ISO 4217 currency"
+      },
+      "NonnegativeMoney": {
+        "$ref": "../json-schema/submission/NonnegativeMoney.json",
+        "description": "Naturally nonnegative monetary amount in minor units"
       },
       "FinancialSpread": {
         "$ref": "../json-schema/submission/FinancialSpread.json",

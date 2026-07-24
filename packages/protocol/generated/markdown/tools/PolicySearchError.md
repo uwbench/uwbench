@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [PolicySearchError.json](../../../packages/protocol/generated/json-schema/tools/PolicySearchError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [PolicySearchError.json](../../json-schema/tools/PolicySearchError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -17,6 +17,10 @@ See [PolicySearchError.json](../../../packages/protocol/generated/json-schema/to
 | `code` | string | ✓ |  | minLength: 1 |
 | `message` | string | ✓ |  |  |
 | `details` | object |  |  |  |
+
+## Definitions
+
+### __schema0
 
 ---
 *Generated from Zod schema. Do not edit directly.*

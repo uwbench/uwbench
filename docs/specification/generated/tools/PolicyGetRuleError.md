@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [PolicyGetRuleError.json](../../../../../packages/protocol/generated/json-schema/tools/PolicyGetRuleError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [PolicyGetRuleError.json](../../../../packages/protocol/generated/json-schema/tools/PolicyGetRuleError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -17,6 +17,10 @@ See [PolicyGetRuleError.json](../../../../../packages/protocol/generated/json-sc
 | `code` | string | ✓ |  | minLength: 1 |
 | `message` | string | ✓ |  |  |
 | `details` | object |  |  |  |
+
+## Definitions
+
+### __schema0
 
 ---
 *Generated from Zod schema. Do not edit directly.*

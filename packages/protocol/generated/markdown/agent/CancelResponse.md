@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [CancelResponse.json](../../../packages/protocol/generated/json-schema/agent/CancelResponse.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [CancelResponse.json](../../json-schema/agent/CancelResponse.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -14,8 +14,9 @@ See [CancelResponse.json](../../../packages/protocol/generated/json-schema/agent
 
 | Name | Type | Required | Description | Constraints |
 |------|------|----------|-------------|-------------|
+| `schemaVersion` | string | ✓ |  |  |
 | `agentRunId` | string | ✓ |  |  |
-| `status` | string | ✓ |  | enum: [accepted, running, awaiting_tool, completed, failed, cancelled] |
+| `cancelled` | boolean | ✓ |  |  |
 
 ---
 *Generated from Zod schema. Do not edit directly.*

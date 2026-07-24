@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [RunResponse.json](../../../packages/protocol/generated/json-schema/agent/RunResponse.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [RunResponse.json](../../json-schema/agent/RunResponse.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -14,8 +14,9 @@ See [RunResponse.json](../../../packages/protocol/generated/json-schema/agent/Ru
 
 | Name | Type | Required | Description | Constraints |
 |------|------|----------|-------------|-------------|
+| `schemaVersion` | string | ✓ |  |  |
 | `agentRunId` | string | ✓ |  |  |
-| `status` | string | ✓ |  | enum: [accepted, running, awaiting_tool, completed, failed, cancelled] |
+| `status` | string | ✓ |  |  |
 
 ---
 *Generated from Zod schema. Do not edit directly.*

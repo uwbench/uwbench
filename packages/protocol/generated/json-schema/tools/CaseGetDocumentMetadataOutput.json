@@ -6,6 +6,9 @@
     "documentId": {
       "type": "string"
     },
+    "sourceId": {
+      "type": "string"
+    },
     "title": {
       "type": "string"
     },
@@ -30,6 +33,7 @@
   },
   "required": [
     "documentId",
+    "sourceId",
     "title",
     "mimeType",
     "pageCount",

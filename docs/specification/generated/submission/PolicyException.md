@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [PolicyException.json](../../../../../packages/protocol/generated/json-schema/submission/PolicyException.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [PolicyException.json](../../../../packages/protocol/generated/json-schema/submission/PolicyException.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

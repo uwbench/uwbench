@@ -3,6 +3,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
+    "schemaVersion": {
+      "$ref": "#/$defs/__schema0"
+    },
     "status": {
       "type": "string",
       "const": "ok"
@@ -11,13 +14,20 @@
       "type": "string"
     },
     "protocolVersion": {
-      "type": "string"
+      "$ref": "#/$defs/__schema0"
     }
   },
   "required": [
+    "schemaVersion",
     "status",
     "version",
     "protocolVersion"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "type": "string",
+      "const": "1.0"
+    }
+  }
 }

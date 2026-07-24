@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [SubmissionSaveArtifactError.json](../../../../../packages/protocol/generated/json-schema/tools/SubmissionSaveArtifactError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [SubmissionSaveArtifactError.json](../../../../packages/protocol/generated/json-schema/tools/SubmissionSaveArtifactError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -17,6 +17,10 @@ See [SubmissionSaveArtifactError.json](../../../../../packages/protocol/generate
 | `code` | string | ✓ |  | minLength: 1 |
 | `message` | string | ✓ |  |  |
 | `details` | object |  |  |  |
+
+## Definitions
+
+### __schema0
 
 ---
 *Generated from Zod schema. Do not edit directly.*

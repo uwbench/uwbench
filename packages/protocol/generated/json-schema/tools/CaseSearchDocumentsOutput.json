@@ -11,17 +11,54 @@
           "documentId": {
             "type": "string"
           },
+          "sourceId": {
+            "type": "string"
+          },
           "snippet": {
             "type": "string"
           },
           "score": {
             "type": "number"
+          },
+          "citationAnchor": {
+            "type": "object",
+            "properties": {
+              "sourceId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "documentId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "page": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "startOffset": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "endOffset": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "sourceId"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
           "documentId",
+          "sourceId",
           "snippet",
-          "score"
+          "score",
+          "citationAnchor"
         ],
         "additionalProperties": false
       }

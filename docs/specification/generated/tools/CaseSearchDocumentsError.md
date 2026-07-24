@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [CaseSearchDocumentsError.json](../../../../../packages/protocol/generated/json-schema/tools/CaseSearchDocumentsError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [CaseSearchDocumentsError.json](../../../../packages/protocol/generated/json-schema/tools/CaseSearchDocumentsError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -17,6 +17,10 @@ See [CaseSearchDocumentsError.json](../../../../../packages/protocol/generated/j
 | `code` | string | ✓ |  | minLength: 1 |
 | `message` | string | ✓ |  |  |
 | `details` | object |  |  |  |
+
+## Definitions
+
+### __schema0
 
 ---
 *Generated from Zod schema. Do not edit directly.*

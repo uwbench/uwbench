@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [Memo.json](../../../packages/protocol/generated/json-schema/submission/Memo.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [Memo.json](../../json-schema/submission/Memo.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

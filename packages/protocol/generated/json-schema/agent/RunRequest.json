@@ -7,6 +7,10 @@
       "type": "string",
       "const": "1.0"
     },
+    "idempotencyKey": {
+      "type": "string",
+      "minLength": 1
+    },
     "benchmark": {
       "type": "string"
     },

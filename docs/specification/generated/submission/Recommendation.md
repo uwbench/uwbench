@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [Recommendation.json](../../../../../packages/protocol/generated/json-schema/submission/Recommendation.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [Recommendation.json](../../../../packages/protocol/generated/json-schema/submission/Recommendation.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -21,6 +21,12 @@ See [Recommendation.json](../../../../../packages/protocol/generated/json-schema
 | `conditions` | array<`object`> | ✓ |  |  |
 | `policyExceptions` | array<`object`> | ✓ |  |  |
 | `rationale` | array<`object`> | ✓ |  |  |
+
+## Definitions
+
+### __schema0
+
+### __schema1
 
 ---
 *Generated from Zod schema. Do not edit directly.*

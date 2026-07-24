@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [CaseListDocumentsInput.json](../../../packages/protocol/generated/json-schema/tools/CaseListDocumentsInput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [CaseListDocumentsInput.json](../../json-schema/tools/CaseListDocumentsInput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

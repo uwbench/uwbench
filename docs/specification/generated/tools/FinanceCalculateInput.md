@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [FinanceCalculateInput.json](../../../../../packages/protocol/generated/json-schema/tools/FinanceCalculateInput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [FinanceCalculateInput.json](../../../../packages/protocol/generated/json-schema/tools/FinanceCalculateInput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [PolicySearchInput.json](../../../../../packages/protocol/generated/json-schema/tools/PolicySearchInput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [PolicySearchInput.json](../../../../packages/protocol/generated/json-schema/tools/PolicySearchInput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

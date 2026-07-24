@@ -4,7 +4,7 @@ export interface AgentConfig {
 
 export class DeterministicAgent {
   constructor(_config: AgentConfig) {}
-  
+
   async start(): Promise<void> {}
   async stop(): Promise<void> {}
 }

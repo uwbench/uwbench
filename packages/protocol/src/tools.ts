@@ -7,23 +7,23 @@ import { z } from "zod";
  * All calls include a callId for idempotency.
  */
 
-export const ToolCallSchema = z.object({
-  callId: z.string().min(1),
-  name: z.string().min(1),
-  arguments: z.record(z.string(), z.unknown()),
-});
+export const ToolErrorSchema = z
+  .object({
+    code: z.string().min(1),
+    message: z.string(),
+    details: z.record(z.string(), z.json()).optional(),
+  })
+  .strict();
 
-export const ToolErrorSchema = z.object({
-  code: z.string().min(1),
-  message: z.string(),
-  details: z.record(z.string(), z.unknown()).optional(),
-});
-
-export const ToolResultSchema = z.object({
-  callId: z.string().min(1),
-  result: z.unknown(),
-  error: ToolErrorSchema.optional(),
-});
+export const CitationAnchorSchema = z
+  .object({
+    sourceId: z.string().min(1),
+    documentId: z.string().min(1).optional(),
+    page: z.number().int().positive().optional(),
+    startOffset: z.number().int().nonnegative().optional(),
+    endOffset: z.number().int().nonnegative().optional(),
+  })
+  .strict();
 
 /**
  * Case Tools (6 tools)
@@ -36,6 +36,7 @@ export const CaseListDocumentsOutputSchema = z.object({
   documents: z.array(
     z.object({
       documentId: z.string(),
+      sourceId: z.string(),
       title: z.string(),
       mimeType: z.string(),
       pageCount: z.number().int().nonnegative().optional(),
@@ -58,6 +59,7 @@ export const CaseGetDocumentMetadataInputSchema = z.object({
 
 export const CaseGetDocumentMetadataOutputSchema = z.object({
   documentId: z.string(),
+  sourceId: z.string(),
   title: z.string(),
   mimeType: z.string(),
   pageCount: z.number().int().nonnegative(),
@@ -81,11 +83,13 @@ export const CaseReadDocumentInputSchema = z.object({
 
 export const CaseReadDocumentOutputSchema = z.object({
   documentId: z.string(),
+  sourceId: z.string(),
   content: z.string(),
   pages: z.array(
     z.object({
       pageNumber: z.number().int().positive(),
       text: z.string(),
+      citationAnchor: CitationAnchorSchema,
     }),
   ),
 });
@@ -108,8 +112,10 @@ export const CaseSearchDocumentsOutputSchema = z.object({
   results: z.array(
     z.object({
       documentId: z.string(),
+      sourceId: z.string(),
       snippet: z.string(),
       score: z.number(),
+      citationAnchor: CitationAnchorSchema,
     }),
   ),
 });
@@ -128,7 +134,9 @@ export const CaseGetStructuredRecordInputSchema = z.object({
 });
 
 export const CaseGetStructuredRecordOutputSchema = z.object({
+  sourceId: z.string(),
   record: z.record(z.string(), z.unknown()),
+  citationAnchors: z.array(CitationAnchorSchema),
 });
 
 export const CaseGetStructuredRecordErrorSchema = ToolErrorSchema;
@@ -174,8 +182,10 @@ export const PolicySearchOutputSchema = z.object({
   rules: z.array(
     z.object({
       ruleId: z.string(),
+      sourceId: z.string(),
       title: z.string(),
       snippet: z.string(),
+      citationAnchors: z.array(CitationAnchorSchema),
     }),
   ),
 });
@@ -195,12 +205,14 @@ export const PolicyGetRuleInputSchema = z.object({
 
 export const PolicyGetRuleOutputSchema = z.object({
   ruleId: z.string(),
+  sourceId: z.string(),
   title: z.string(),
   appliesWhen: z.string(),
   input: z.record(z.string(), z.unknown()),
   operator: z.string(),
   threshold: z.unknown(),
   onFailure: z.string(),
+  citationAnchors: z.array(CitationAnchorSchema),
 });
 
 export const PolicyGetRuleErrorSchema = ToolErrorSchema;
@@ -282,6 +294,7 @@ export const SubmissionSaveArtifactInputSchema = z.object({
 export const SubmissionSaveArtifactOutputSchema = z.object({
   artifactId: z.string(),
   sourceId: z.string(),
+  citationAnchors: z.array(CitationAnchorSchema),
 });
 
 export const SubmissionSaveArtifactErrorSchema = ToolErrorSchema;
@@ -296,9 +309,8 @@ export const SubmissionSaveArtifactSchema = z.object({
  * Type Exports
  */
 
-export type ToolCall = z.infer<typeof ToolCallSchema>;
-export type ToolResult = z.infer<typeof ToolResultSchema>;
 export type ToolError = z.infer<typeof ToolErrorSchema>;
+export type CitationAnchor = z.infer<typeof CitationAnchorSchema>;
 
 // Case tool types
 export type CaseListDocumentsInput = z.infer<
@@ -426,6 +438,62 @@ export const TOOL_SCHEMAS = {
 
 export type ToolName = keyof typeof TOOL_SCHEMAS;
 
+const toolCallVariants = Object.entries(TOOL_SCHEMAS).map(([name, schema]) =>
+  z
+    .object({
+      schemaVersion: z.literal("1.0"),
+      callId: z.string().min(1),
+      name: z.literal(name as ToolName),
+      arguments: schema.shape.input,
+    })
+    .strict(),
+) as unknown as [
+  z.ZodObject<z.ZodRawShape>,
+  z.ZodObject<z.ZodRawShape>,
+  ...z.ZodObject<z.ZodRawShape>[],
+];
+
+export const ToolCallSchema = z.discriminatedUnion("name", toolCallVariants);
+
+const toolSuccessVariants = Object.entries(TOOL_SCHEMAS).map(([name, schema]) =>
+  z
+    .object({
+      schemaVersion: z.literal("1.0"),
+      callId: z.string().min(1),
+      ok: z.literal(true),
+      name: z.literal(name as ToolName),
+      result: schema.shape.output,
+    })
+    .strict(),
+) as unknown as [
+  z.ZodObject<z.ZodRawShape>,
+  z.ZodObject<z.ZodRawShape>,
+  ...z.ZodObject<z.ZodRawShape>[],
+];
+
+export const ToolSuccessResultSchema = z.discriminatedUnion(
+  "name",
+  toolSuccessVariants,
+);
+
+export const ToolFailureResultSchema = z
+  .object({
+    schemaVersion: z.literal("1.0"),
+    callId: z.string().min(1),
+    ok: z.literal(false),
+    name: z.enum(Object.keys(TOOL_SCHEMAS) as [ToolName, ...ToolName[]]),
+    error: ToolErrorSchema,
+  })
+  .strict();
+
+export const ToolResultSchema = z.union([
+  ToolSuccessResultSchema,
+  ToolFailureResultSchema,
+]);
+
+export type ToolCall = z.infer<typeof ToolCallSchema>;
+export type ToolResult = z.infer<typeof ToolResultSchema>;
+
 /**
  * Get the input schema for a tool by name
  */
@@ -528,22 +596,11 @@ export const TOOL_NAMES = Object.keys(TOOL_SCHEMAS) as readonly ToolName[];
  * Tool categories for organization
  */
 export const TOOL_CATEGORIES = {
-  case: [
-    "case.list_documents",
-    "case.get_document_metadata",
-    "case.read_document",
-    "case.search_documents",
-    "case.get_structured_record",
-    "case.request_information",
-  ] as const,
-  policy: ["policy.search", "policy.get_rule"] as const,
-  finance: [
-    "finance.calculate",
-    "finance.calculate_ratios",
-    "finance.validate_spread",
-  ] as const,
-  submission: ["submission.save_artifact"] as const,
-} as const;
+  case: TOOL_NAMES.filter((name) => name.startsWith("case.")),
+  policy: TOOL_NAMES.filter((name) => name.startsWith("policy.")),
+  finance: TOOL_NAMES.filter((name) => name.startsWith("finance.")),
+  submission: TOOL_NAMES.filter((name) => name.startsWith("submission.")),
+};
 
 /**
  * Check if a tool name is valid
@@ -558,10 +615,6 @@ export function isValidToolName(name: string): name is ToolName {
 export function getToolCategory(
   name: string,
 ): keyof typeof TOOL_CATEGORIES | undefined {
-  for (const [category, tools] of Object.entries(TOOL_CATEGORIES)) {
-    if ((tools as readonly string[]).includes(name)) {
-      return category as keyof typeof TOOL_CATEGORIES;
-    }
-  }
-  return undefined;
+  if (!isValidToolName(name)) return undefined;
+  return name.slice(0, name.indexOf(".")) as keyof typeof TOOL_CATEGORIES;
 }

@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [PolicyAssessment.json](../../../packages/protocol/generated/json-schema/submission/PolicyAssessment.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [PolicyAssessment.json](../../json-schema/submission/PolicyAssessment.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

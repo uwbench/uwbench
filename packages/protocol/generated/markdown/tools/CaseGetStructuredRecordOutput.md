@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [CaseGetStructuredRecordOutput.json](../../../packages/protocol/generated/json-schema/tools/CaseGetStructuredRecordOutput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [CaseGetStructuredRecordOutput.json](../../json-schema/tools/CaseGetStructuredRecordOutput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -14,7 +14,9 @@ See [CaseGetStructuredRecordOutput.json](../../../packages/protocol/generated/js
 
 | Name | Type | Required | Description | Constraints |
 |------|------|----------|-------------|-------------|
+| `sourceId` | string | ✓ |  |  |
 | `record` | object | ✓ |  |  |
+| `citationAnchors` | array<`object`> | ✓ |  |  |
 
 ---
 *Generated from Zod schema. Do not edit directly.*

@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
-import canonicalize from "canonical-json";
-import { createHash } from "node:crypto";
+import { canonicalizeJcs } from "./jcs.js";
 import {
   EventTypeSchema,
   EventSourceSchema,
@@ -135,15 +134,15 @@ describe("computeHash", () => {
   });
 
   it("excludes hash field from canonicalization (RFC 8785)", () => {
-    const base = createBaseEvent({ eventId: "evt_test" });
+    const base = createBaseEvent({
+      eventId: "evt_test",
+      timestamp: "2026-01-01T00:00:00.000Z",
+    });
     const hash = computeHash(base);
 
-    // Manually verify the hash matches canonical JSON without hash field
-    const canonical = canonicalize(base);
-    if (canonical === undefined)
-      throw new Error("Canonicalization returned undefined");
-    const expected = `sha256:${createHash("sha256").update(canonical).digest("hex")}`;
-    expect(hash).toBe(expected);
+    expect(hash).toBe(
+      "sha256:fa5ad444b21d232092832bc29a6ff402b5506ea85d5d273e39ab0e2dad9d5373",
+    );
   });
 
   it("canonicalizes object keys in deterministic order (RFC 8785)", () => {
@@ -170,7 +169,7 @@ describe("computeHash", () => {
     const event = createBaseEvent({ payload: { text: "hello\nworld" } });
     const hash = computeHash(event);
     // The canonical form should have the newline escaped as \n (literal backslash-n)
-    const canonical = canonicalize(event);
+    const canonical = canonicalizeJcs(event);
     expect(canonical).toContain("hello\\nworld"); // escaped newline
     expect(hash).toMatch(/^sha256:[a-f0-9]{64}$/);
   });
@@ -193,7 +192,7 @@ describe("verifyChain", () => {
     expect(verifyChain([e1, e2, e3])).toBe(true);
   });
 
-  it("returns true for empty array", () => {
+  it("returns true for an empty chain", () => {
     expect(verifyChain([])).toBe(true);
   });
 

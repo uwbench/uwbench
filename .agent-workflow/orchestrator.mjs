@@ -101,11 +101,13 @@ function validateTasks(tasks) {
         throw new Error(`${task.id}.${counter} must be a non-negative integer when present`);
       }
     }
-    if (
-      task.failure_limit !== undefined
-      && (!Number.isInteger(task.failure_limit) || task.failure_limit < 1)
-    ) {
-      throw new Error(`${task.id}.failure_limit must be a positive integer when present`);
+    for (const limit of ["failure_limit", "review_failure_limit"]) {
+      if (
+        task[limit] !== undefined
+        && (!Number.isInteger(task[limit]) || task[limit] < 1)
+      ) {
+        throw new Error(`${task.id}.${limit} must be a positive integer when present`);
+      }
     }
   }
 

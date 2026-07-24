@@ -76,6 +76,12 @@ task_review_failures() {
   printf '%s' "${value:-0}"
 }
 
+task_review_failure_limit() {
+  local value
+  value="$(task_value "$1" review_failure_limit)"
+  printf '%s' "${value:-$MAX_TASK_ATTEMPTS}"
+}
+
 task_title() {
   task_value "$1" title
 }
@@ -786,8 +792,10 @@ run_to_checkpoint() {
     if [[ "$checkpoint_exit" -eq 2 ]]; then
       die "Checkpoint reviewer could not complete; inspect $(checkpoint_dir "$target")."
     fi
-    if (( $(task_review_failures "$target") >= MAX_TASK_ATTEMPTS )); then
-      die "$target failed checkpoint review $(task_review_failures "$target") times."
+    local review_failure_limit
+    review_failure_limit="$(task_review_failure_limit "$target")"
+    if (( $(task_review_failures "$target") >= review_failure_limit )); then
+      die "$target failed checkpoint review $(task_review_failures "$target") times (limit: $review_failure_limit)."
     fi
     warn "Retrying $target with cumulative checkpoint feedback."
   done

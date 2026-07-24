@@ -26,7 +26,6 @@
     "vitest": "^2.0.5"
   },
   "dependencies": {
-    "canonical-json": "^0.4.0",
     "zod": "^4.3.6"
   }
 }

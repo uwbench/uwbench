@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [UnderwritingSubmission.json](../../../../../packages/protocol/generated/json-schema/submission/UnderwritingSubmission.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [UnderwritingSubmission.json](../../../../packages/protocol/generated/json-schema/submission/UnderwritingSubmission.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -33,14 +33,16 @@ See [UnderwritingSubmission.json](../../../../../packages/protocol/generated/jso
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `amount` | integer | ✓ |  |
-| `currency` | [`__schema1`](../../../../../packages/protocol/generated/json-schema/#/$defs/__schema1) | ✓ |  |
+| `amount` | [`__schema1`](#__schema1) | ✓ |  |
+| `currency` | [`__schema2`](#__schema2) | ✓ |  |
 
 ### __schema1
 
 ### __schema2
 
 ### __schema3
+
+### __schema4
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|

@@ -6,17 +6,21 @@
 
 ## JSON Schema
 
-See [ToolResult.json](../../../packages/protocol/generated/json-schema/tools/ToolResult.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [ToolResult.json](../../json-schema/tools/ToolResult.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
-**Type:** `object`
+## Definitions
 
-## Properties
+### __schema0
 
-| Name | Type | Required | Description | Constraints |
-|------|------|----------|-------------|-------------|
-| `callId` | string | ✓ |  | minLength: 1 |
-| `result` | object | ✓ |  |  |
-| `error` | object |  |  |  |
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `sourceId` | string | ✓ |  |
+| `documentId` | string |  |  |
+| `page` | integer |  |  |
+| `startOffset` | integer |  |  |
+| `endOffset` | integer |  |  |
+
+### __schema1
 
 ---
 *Generated from Zod schema. Do not edit directly.*

@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [PolicyGetRuleInput.json](../../../packages/protocol/generated/json-schema/tools/PolicyGetRuleInput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [PolicyGetRuleInput.json](../../json-schema/tools/PolicyGetRuleInput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

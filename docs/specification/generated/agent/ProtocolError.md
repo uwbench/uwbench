@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [ProtocolError.json](../../../../../packages/protocol/generated/json-schema/agent/ProtocolError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [ProtocolError.json](../../../../packages/protocol/generated/json-schema/agent/ProtocolError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -14,9 +14,15 @@ See [ProtocolError.json](../../../../../packages/protocol/generated/json-schema/
 
 | Name | Type | Required | Description | Constraints |
 |------|------|----------|-------------|-------------|
-| `code` | string | ✓ |  | enum: [INVALID_SCHEMA_VERSION, INVALID_RUN_REQUEST, RUN_NOT_FOUND, RUN_ALREADY_STARTED, RUN_NOT_RUNNABLE, INVALID_STATUS_TRANSITION, TOOL_CALL_FAILED, TOOL_TIMEOUT, BUDGET_EXCEEDED, INVALID_TOOL_CALL, UNAUTHORIZED, INTERNAL_ERROR] |
+| `schemaVersion` | string | ✓ |  |  |
+| `code` | string | ✓ |  | enum: [INVALID_SCHEMA_VERSION, UNKNOWN_BENCHMARK, LANE_NOT_SUPPORTED, CASE_NOT_FOUND, BUDGET_EXCEEDED, TOOL_ERROR, AGENT_TIMEOUT, AGENT_CRASHED, INVALID_SUBMISSION] |
 | `message` | string | ✓ |  |  |
 | `details` | object |  |  |  |
+| `requestId` | string | ✓ |  | minLength: 1 |
+
+## Definitions
+
+### __schema0
 
 ---
 *Generated from Zod schema. Do not edit directly.*

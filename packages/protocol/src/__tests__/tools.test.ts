@@ -25,10 +25,17 @@ import {
   validateToolError,
 } from "../tools.js";
 
+const citationAnchor = {
+  sourceId: "source_1",
+  documentId: "doc_1",
+  page: 1,
+};
+
 describe("Tool Protocol Base Schemas", () => {
   describe("ToolCallSchema", () => {
     it("accepts valid tool call", () => {
       const call = {
+        schemaVersion: "1.0",
         callId: "call_001",
         name: "case.read_document",
         arguments: { documentId: "doc_123", pages: [1, 2] },
@@ -39,6 +46,7 @@ describe("Tool Protocol Base Schemas", () => {
 
     it("rejects missing callId", () => {
       const result = ToolCallSchema.safeParse({
+        schemaVersion: "1.0",
         name: "case.read_document",
         arguments: {},
       });
@@ -47,6 +55,7 @@ describe("Tool Protocol Base Schemas", () => {
 
     it("rejects missing name", () => {
       const result = ToolCallSchema.safeParse({
+        schemaVersion: "1.0",
         callId: "call_001",
         arguments: {},
       });
@@ -55,28 +64,53 @@ describe("Tool Protocol Base Schemas", () => {
 
     it("rejects empty callId", () => {
       const result = ToolCallSchema.safeParse({
+        schemaVersion: "1.0",
         callId: "",
         name: "case.read_document",
         arguments: {},
       });
       expect(result.success).toBe(false);
     });
+
+    it("rejects unknown tools and arguments for the wrong tool", () => {
+      expect(
+        ToolCallSchema.safeParse({
+          schemaVersion: "1.0",
+          callId: "call_001",
+          name: "case.unknown",
+          arguments: {},
+        }).success,
+      ).toBe(false);
+      expect(
+        ToolCallSchema.safeParse({
+          schemaVersion: "1.0",
+          callId: "call_002",
+          name: "case.read_document",
+          arguments: { query: "revenue" },
+        }).success,
+      ).toBe(false);
+    });
   });
 
   describe("ToolResultSchema", () => {
     it("accepts successful result", () => {
       const result = {
+        schemaVersion: "1.0",
         callId: "call_001",
-        result: { documentId: "doc_123", content: "Hello" },
+        ok: true,
+        name: "finance.calculate",
+        result: { result: 42 },
       };
       const parsed = ToolResultSchema.safeParse(result);
       expect(parsed.success).toBe(true);
     });
 
-    it("accepts result with error", () => {
+    it("accepts an error result", () => {
       const result = {
+        schemaVersion: "1.0",
         callId: "call_001",
-        result: null,
+        ok: false,
+        name: "case.read_document",
         error: { code: "NOT_FOUND", message: "Document not found" },
       };
       const parsed = ToolResultSchema.safeParse(result);
@@ -85,9 +119,25 @@ describe("Tool Protocol Base Schemas", () => {
 
     it("rejects missing callId", () => {
       const result = ToolResultSchema.safeParse({
+        schemaVersion: "1.0",
+        ok: true,
+        name: "finance.calculate",
         result: { foo: "bar" },
       });
       expect(result.success).toBe(false);
+    });
+
+    it("rejects envelopes containing both result and error", () => {
+      expect(
+        ToolResultSchema.safeParse({
+          schemaVersion: "1.0",
+          callId: "call_001",
+          ok: true,
+          name: "finance.calculate",
+          result: { result: 42 },
+          error: { code: "TOOL_ERROR", message: "ambiguous" },
+        }).success,
+      ).toBe(false);
     });
   });
 
@@ -127,6 +177,7 @@ describe("Case Tool Schemas", () => {
         documents: [
           {
             documentId: "doc_1",
+            sourceId: "source_1",
             title: "Financial Statement",
             mimeType: "application/pdf",
             pageCount: 10,
@@ -142,6 +193,7 @@ describe("Case Tool Schemas", () => {
         documents: [
           {
             documentId: "doc_1",
+            sourceId: "source_1",
             title: "Financial Statement",
             mimeType: "application/pdf",
           },
@@ -162,6 +214,7 @@ describe("Case Tool Schemas", () => {
     it("accepts valid output", () => {
       const output = {
         documentId: "doc_1",
+        sourceId: "source_1",
         title: "Financial Statement",
         mimeType: "application/pdf",
         pageCount: 10,
@@ -204,10 +257,15 @@ describe("Case Tool Schemas", () => {
     it("accepts valid output", () => {
       const output = {
         documentId: "doc_1",
+        sourceId: "source_1",
         content: "Full document text...",
         pages: [
-          { pageNumber: 1, text: "Page 1" },
-          { pageNumber: 2, text: "Page 2" },
+          { pageNumber: 1, text: "Page 1", citationAnchor },
+          {
+            pageNumber: 2,
+            text: "Page 2",
+            citationAnchor: { ...citationAnchor, page: 2 },
+          },
         ],
       };
       const result = CaseReadDocumentSchema.shape.output.safeParse(output);
@@ -231,7 +289,13 @@ describe("Case Tool Schemas", () => {
     it("accepts valid output", () => {
       const output = {
         results: [
-          { documentId: "doc_1", snippet: "Revenue was $1M", score: 0.95 },
+          {
+            documentId: "doc_1",
+            sourceId: "source_1",
+            snippet: "Revenue was $1M",
+            score: 0.95,
+            citationAnchor,
+          },
         ],
       };
       const result = CaseSearchDocumentsSchema.shape.output.safeParse(output);
@@ -247,7 +311,11 @@ describe("Case Tool Schemas", () => {
     });
 
     it("accepts valid output with record", () => {
-      const output = { record: { field1: "value1", field2: 123 } };
+      const output = {
+        sourceId: "source_1",
+        record: { field1: "value1", field2: 123 },
+        citationAnchors: [citationAnchor],
+      };
       const result =
         CaseGetStructuredRecordSchema.shape.output.safeParse(output);
       expect(result.success).toBe(true);
@@ -316,8 +384,12 @@ describe("Policy Tool Schemas", () => {
         rules: [
           {
             ruleId: "rule_1",
+            sourceId: "policy_1",
             title: "Max Leverage",
             snippet: "Leverage must not exceed 3x",
+            citationAnchors: [
+              { sourceId: "policy_1", startOffset: 10, endOffset: 48 },
+            ],
           },
         ],
       };
@@ -336,12 +408,16 @@ describe("Policy Tool Schemas", () => {
     it("accepts valid output", () => {
       const output = {
         ruleId: "rule_1",
+        sourceId: "policy_1",
         title: "Max Leverage Ratio",
         appliesWhen: "commercial loan",
         input: { metric: "debt_to_ebitda" },
         operator: "<=",
         threshold: 3.0,
         onFailure: "DECLINE",
+        citationAnchors: [
+          { sourceId: "policy_1", startOffset: 10, endOffset: 48 },
+        ],
       };
       const result = PolicyGetRuleSchema.shape.output.safeParse(output);
       expect(result.success).toBe(true);
@@ -418,6 +494,7 @@ describe("Submission Tool Schemas", () => {
       const output = {
         artifactId: "artifact_1",
         sourceId: "src_artifact_1",
+        citationAnchors: [{ sourceId: "src_artifact_1" }],
       };
       const result =
         SubmissionSaveArtifactSchema.shape.output.safeParse(output);
@@ -425,7 +502,10 @@ describe("Submission Tool Schemas", () => {
     });
 
     it("rejects missing sourceId", () => {
-      const output = { artifactId: "artifact_1" };
+      const output = {
+        artifactId: "artifact_1",
+        citationAnchors: [{ sourceId: "artifact_1" }],
+      };
       const result =
         SubmissionSaveArtifactSchema.shape.output.safeParse(output);
       expect(result.success).toBe(false);
@@ -528,8 +608,9 @@ describe("Validation Helpers", () => {
   it("validateToolOutput accepts valid output", () => {
     const result = validateToolOutput("case.read_document", {
       documentId: "doc_1",
+      sourceId: "source_1",
       content: "text",
-      pages: [{ pageNumber: 1, text: "text" }],
+      pages: [{ pageNumber: 1, text: "text", citationAnchor }],
     });
     expect(result.success).toBe(true);
   });

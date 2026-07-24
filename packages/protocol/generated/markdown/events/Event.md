@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [Event.json](../../../packages/protocol/generated/json-schema/events/Event.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [Event.json](../../json-schema/events/Event.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -25,6 +25,10 @@ See [Event.json](../../../packages/protocol/generated/json-schema/events/Event.j
 | `payload` | object | ✓ |  |  |
 | `previousHash` | string | ✓ |  |  |
 | `hash` | string | ✓ |  |  |
+
+## Definitions
+
+### __schema0
 
 ---
 *Generated from Zod schema. Do not edit directly.*

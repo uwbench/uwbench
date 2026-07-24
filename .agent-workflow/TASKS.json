@@ -275,6 +275,7 @@
       ".gitignore",
       "eslint.config.js",
       "package.json",
+      "examples/deterministic-baseline/src/agent.ts",
       "tsconfig.base.json",
       "tsconfig.json"
     ],
@@ -286,14 +287,15 @@
     ],
     "estimated_minutes": 90,
     "failure_limit": 5,
+    "review_failure_limit": 5,
     "status": "gated_pass",
     "priority": 8,
     "assignee": "orchestrator",
-    "started_at": "2026-07-24T07:53:23.339Z",
-    "attempts": 6,
+    "started_at": "2026-07-24T08:48:58.501Z",
+    "attempts": 7,
     "failures": 3,
-    "review_failures": 2,
-    "completed_at": "2026-07-24T08:25:58.538Z"
+    "review_failures": 3,
+    "completed_at": "2026-07-24T08:48:58.537Z"
   },
   {
     "id": "T9",

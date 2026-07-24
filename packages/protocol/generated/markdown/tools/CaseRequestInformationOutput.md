@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [CaseRequestInformationOutput.json](../../../packages/protocol/generated/json-schema/tools/CaseRequestInformationOutput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [CaseRequestInformationOutput.json](../../json-schema/tools/CaseRequestInformationOutput.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

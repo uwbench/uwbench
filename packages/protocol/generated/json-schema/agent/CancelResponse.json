@@ -3,24 +3,22 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
     "agentRunId": {
       "type": "string"
     },
-    "status": {
-      "type": "string",
-      "enum": [
-        "accepted",
-        "running",
-        "awaiting_tool",
-        "completed",
-        "failed",
-        "cancelled"
-      ]
+    "cancelled": {
+      "type": "boolean",
+      "const": true
     }
   },
   "required": [
+    "schemaVersion",
     "agentRunId",
-    "status"
+    "cancelled"
   ],
   "additionalProperties": false
 }

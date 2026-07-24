@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [CaseGetDocumentMetadataError.json](../../../packages/protocol/generated/json-schema/tools/CaseGetDocumentMetadataError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [CaseGetDocumentMetadataError.json](../../json-schema/tools/CaseGetDocumentMetadataError.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -17,6 +17,10 @@ See [CaseGetDocumentMetadataError.json](../../../packages/protocol/generated/jso
 | `code` | string | ✓ |  | minLength: 1 |
 | `message` | string | ✓ |  |  |
 | `details` | object |  |  |  |
+
+## Definitions
+
+### __schema0
 
 ---
 *Generated from Zod schema. Do not edit directly.*

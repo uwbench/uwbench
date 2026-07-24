@@ -6,7 +6,7 @@
 
 ## JSON Schema
 
-See [RunRequest.json](../../../../../packages/protocol/generated/json-schema/agent/RunRequest.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [RunRequest.json](../../../../packages/protocol/generated/json-schema/agent/RunRequest.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 
@@ -15,6 +15,7 @@ See [RunRequest.json](../../../../../packages/protocol/generated/json-schema/age
 | Name | Type | Required | Description | Constraints |
 |------|------|----------|-------------|-------------|
 | `schemaVersion` | string | ✓ |  |  |
+| `idempotencyKey` | string |  |  | minLength: 1 |
 | `benchmark` | string | ✓ |  |  |
 | `benchmarkVersion` | string | ✓ |  |  |
 | `lane` | string | ✓ |  | enum: [raw_documents, normalized_data, reasoning_only] |
