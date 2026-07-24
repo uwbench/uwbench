@@ -33,16 +33,14 @@ See [UnderwritingSubmission.json](../../json-schema/submission/UnderwritingSubmi
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `amount` | [`__schema1`](#__schema1) | ✓ |  |
-| `currency` | [`__schema2`](#__schema2) | ✓ |  |
+| `amount` | integer | ✓ |  |
+| `currency` | [`__schema1`](#__schema1) | ✓ |  |
 
 ### __schema1
 
 ### __schema2
 
 ### __schema3
-
-### __schema4
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|

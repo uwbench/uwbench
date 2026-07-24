@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { UnderwritingSubmissionSchema } from "./submission.js";
+import { SchemaVersionSchema } from "./common.js";
 
-export const SchemaVersionSchema = z.literal("1.0");
+export { SchemaVersionSchema } from "./common.js";
 
 export const PROTOCOL_ERROR_CODES = [
   "INVALID_SCHEMA_VERSION",
@@ -13,6 +14,8 @@ export const PROTOCOL_ERROR_CODES = [
   "AGENT_TIMEOUT",
   "AGENT_CRASHED",
   "INVALID_SUBMISSION",
+  "RUN_NOT_FOUND",
+  "INVALID_RUN_STATE",
 ] as const;
 
 export const ProtocolErrorCodeSchema = z.enum(PROTOCOL_ERROR_CODES);

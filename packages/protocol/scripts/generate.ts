@@ -27,6 +27,7 @@ import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
 // Import all schemas from the protocol package
+import * as CommonSchemas from "../src/common.js";
 import * as AgentSchemas from "../src/agent.js";
 import * as ToolSchemas from "../src/tools.js";
 import * as EventSchemas from "../src/events.js";
@@ -53,9 +54,9 @@ interface JsonSchemaNode {
   properties?: Record<string, JsonSchemaNode>;
   required?: string[];
   $ref?: string;
-  allOf?: unknown[];
-  anyOf?: unknown[];
-  oneOf?: unknown[];
+  allOf?: JsonSchemaNode[];
+  anyOf?: JsonSchemaNode[];
+  oneOf?: JsonSchemaNode[];
   items?: JsonSchemaNode;
   format?: string;
   minLength?: number;
@@ -66,8 +67,108 @@ interface JsonSchemaNode {
   exclusiveMaximum?: number;
   pattern?: string;
   default?: unknown;
+  const?: unknown;
   definitions?: Record<string, JsonSchemaNode>;
   $defs?: Record<string, JsonSchemaNode>;
+}
+
+function localDefinition(
+  schema: JsonSchemaNode,
+  definitions: Record<string, JsonSchemaNode>,
+): JsonSchemaNode {
+  if (!schema.$ref?.startsWith("#/$defs/")) return schema;
+  return definitions[schema.$ref.slice("#/$defs/".length)] ?? schema;
+}
+
+function variantLabel(schema: JsonSchemaNode, index: number): string {
+  for (const discriminator of ["name", "status", "ok"]) {
+    const property = schema.properties?.[discriminator];
+    if (property?.const !== undefined) {
+      return `${discriminator} = ${JSON.stringify(property.const)}`;
+    }
+    if (property?.enum && property.enum.length <= 3) {
+      return `${discriminator} = ${property.enum
+        .map((value) => JSON.stringify(value))
+        .join(" | ")}`;
+    }
+  }
+  return `Variant ${index + 1}`;
+}
+
+function appendVariantProperties(
+  lines: string[],
+  schema: JsonSchemaNode,
+  definitions: Record<string, JsonSchemaNode>,
+  headingLevel: number,
+  includeNested = true,
+): void {
+  if (!schema.properties) {
+    lines.push("This variant is defined by a referenced composite schema.");
+    lines.push("");
+    return;
+  }
+
+  const properties = Object.entries(schema.properties);
+  if (properties.length === 0) {
+    lines.push("No fields.");
+    lines.push("");
+    return;
+  }
+
+  lines.push("| Name | Type | Required | Constraint |");
+  lines.push("|------|------|----------|------------|");
+  const required = new Set(schema.required ?? []);
+  for (const [name, property] of properties) {
+    const type =
+      typeof property.type === "string"
+        ? property.type
+        : (property.$ref?.split("/").pop() ?? "composite");
+    const constraint =
+      property.const !== undefined
+        ? `const: \`${JSON.stringify(property.const)}\``
+        : property.enum
+          ? `enum: ${property.enum.map((value) => `\`${JSON.stringify(value)}\``).join(", ")}`
+          : "";
+    lines.push(
+      `| \`${name}\` | \`${type}\` | ${required.has(name) ? "✓" : ""} | ${constraint} |`,
+    );
+  }
+  lines.push("");
+
+  if (!includeNested) return;
+  for (const [name, rawProperty] of properties) {
+    const property = localDefinition(rawProperty, definitions);
+    if (!property.properties) continue;
+    lines.push(`${"#".repeat(headingLevel)} ${name} fields`);
+    lines.push("");
+    appendVariantProperties(
+      lines,
+      property,
+      definitions,
+      headingLevel + 1,
+      false,
+    );
+  }
+}
+
+function appendVariants(
+  lines: string[],
+  schema: JsonSchemaNode,
+  definitions: Record<string, JsonSchemaNode>,
+  headingLevel = 3,
+): void {
+  const variants = schema.oneOf ?? schema.anyOf;
+  if (!variants) return;
+
+  variants.forEach((rawVariant, index) => {
+    const variant = localDefinition(rawVariant, definitions);
+    lines.push(`${"#".repeat(headingLevel)} ${variantLabel(variant, index)}`);
+    lines.push("");
+    appendVariantProperties(lines, variant, definitions, headingLevel + 1);
+    if (variant.oneOf || variant.anyOf) {
+      appendVariants(lines, variant, definitions, headingLevel + 1);
+    }
+  });
 }
 
 /**
@@ -83,7 +184,7 @@ const SCHEMAS: {
   // Agent Protocol Schemas
   {
     name: "SchemaVersion",
-    schema: AgentSchemas.SchemaVersionSchema,
+    schema: CommonSchemas.SchemaVersionSchema,
     category: "agent",
     description: "Agent protocol schema version",
   },
@@ -510,6 +611,12 @@ const SCHEMAS: {
       "Underwriting recommendation with decision, confidence, and rationale",
   },
   {
+    name: "Decision",
+    schema: SubmissionSchemas.DecisionSchema,
+    category: "submission",
+    description: "Canonical underwriting decision",
+  },
+  {
     name: "Memo",
     schema: SubmissionSchemas.MemoSchema,
     category: "submission",
@@ -548,6 +655,7 @@ function assertSchemaRegistryCoverage(): void {
   const missing: string[] = [];
 
   const modules = {
+    common: CommonSchemas,
     agent: AgentSchemas,
     tools: ToolSchemas,
     events: EventSchemas,
@@ -583,7 +691,7 @@ function assertSchemaRegistryCoverage(): void {
 function generateJsonSchema(schema: z.ZodTypeAny, title: string): object {
   const result = z.toJSONSchema(schema, {
     target: "draft-2020-12",
-    io: "output",
+    io: "input",
     reused: "ref",
   });
 
@@ -686,14 +794,6 @@ function generateOpenApiDoc(): object {
                 },
               },
             },
-            "409": {
-              description: "Run already started",
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/ProtocolError" },
-                },
-              },
-            },
           },
         },
       },
@@ -757,7 +857,7 @@ function generateOpenApiDoc(): object {
               },
             },
             "409": {
-              description: "Run not runnable",
+              description: "Run is already terminal and cannot be cancelled",
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/ProtocolError" },
@@ -942,6 +1042,12 @@ function generateMarkdown(
       );
     }
     lines.push("");
+  }
+
+  if (s.oneOf || s.anyOf) {
+    lines.push("## Variants");
+    lines.push("");
+    appendVariants(lines, s, s.$defs ?? s.definitions ?? {});
   }
 
   if (s.items) {

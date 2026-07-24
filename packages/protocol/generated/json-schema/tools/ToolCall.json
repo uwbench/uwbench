@@ -6,8 +6,7 @@
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "type": "string",
-          "const": "1.0"
+          "$ref": "#/$defs/__schema0"
         },
         "callId": {
           "type": "string",
@@ -35,8 +34,7 @@
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "type": "string",
-          "const": "1.0"
+          "$ref": "#/$defs/__schema0"
         },
         "callId": {
           "type": "string",
@@ -72,8 +70,7 @@
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "type": "string",
-          "const": "1.0"
+          "$ref": "#/$defs/__schema0"
         },
         "callId": {
           "type": "string",
@@ -117,8 +114,7 @@
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "type": "string",
-          "const": "1.0"
+          "$ref": "#/$defs/__schema0"
         },
         "callId": {
           "type": "string",
@@ -159,8 +155,7 @@
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "type": "string",
-          "const": "1.0"
+          "$ref": "#/$defs/__schema0"
         },
         "callId": {
           "type": "string",
@@ -196,8 +191,7 @@
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "type": "string",
-          "const": "1.0"
+          "$ref": "#/$defs/__schema0"
         },
         "callId": {
           "type": "string",
@@ -241,8 +235,7 @@
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "type": "string",
-          "const": "1.0"
+          "$ref": "#/$defs/__schema0"
         },
         "callId": {
           "type": "string",
@@ -283,8 +276,7 @@
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "type": "string",
-          "const": "1.0"
+          "$ref": "#/$defs/__schema0"
         },
         "callId": {
           "type": "string",
@@ -320,8 +312,7 @@
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "type": "string",
-          "const": "1.0"
+          "$ref": "#/$defs/__schema0"
         },
         "callId": {
           "type": "string",
@@ -367,8 +358,7 @@
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "type": "string",
-          "const": "1.0"
+          "$ref": "#/$defs/__schema0"
         },
         "callId": {
           "type": "string",
@@ -407,8 +397,7 @@
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "type": "string",
-          "const": "1.0"
+          "$ref": "#/$defs/__schema0"
         },
         "callId": {
           "type": "string",
@@ -447,8 +436,7 @@
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "type": "string",
-          "const": "1.0"
+          "$ref": "#/$defs/__schema0"
         },
         "callId": {
           "type": "string",
@@ -489,5 +477,11 @@
       ],
       "additionalProperties": false
     }
-  ]
+  ],
+  "$defs": {
+    "__schema0": {
+      "type": "string",
+      "const": "1.0"
+    }
+  }
 }

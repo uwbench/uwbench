@@ -4,24 +4,11 @@
   "type": "object",
   "properties": {
     "amount": {
-      "$ref": "#/$defs/__schema0"
-    },
-    "currency": {
-      "$ref": "#/$defs/__schema1"
-    }
-  },
-  "required": [
-    "amount",
-    "currency"
-  ],
-  "additionalProperties": false,
-  "$defs": {
-    "__schema0": {
       "type": "integer",
-      "minimum": -9007199254740991,
+      "minimum": 0,
       "maximum": 9007199254740991
     },
-    "__schema1": {
+    "currency": {
       "type": "string",
       "enum": [
         "AED",
@@ -203,5 +190,10 @@
         "ZWG"
       ]
     }
-  }
+  },
+  "required": [
+    "amount",
+    "currency"
+  ],
+  "additionalProperties": false
 }

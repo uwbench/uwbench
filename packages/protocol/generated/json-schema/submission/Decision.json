@@ -1,0 +1,12 @@
+{
+  "title": "Decision",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "string",
+  "enum": [
+    "APPROVE",
+    "APPROVE_WITH_CONDITIONS",
+    "REFER",
+    "DECLINE",
+    "INSUFFICIENT_INFORMATION"
+  ]
+}

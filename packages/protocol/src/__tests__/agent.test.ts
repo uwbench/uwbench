@@ -325,6 +325,8 @@ describe("Agent Protocol Schemas", () => {
         "AGENT_TIMEOUT",
         "AGENT_CRASHED",
         "INVALID_SUBMISSION",
+        "RUN_NOT_FOUND",
+        "INVALID_RUN_STATE",
       ];
       for (const code of requiredCodes) {
         expect(PROTOCOL_ERROR_CODES).toContain(code);

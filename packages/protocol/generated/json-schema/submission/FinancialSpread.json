@@ -73,9 +73,7 @@
   "required": [
     "revenue",
     "period",
-    "currency",
-    "scale",
-    "signConvention"
+    "currency"
   ],
   "additionalProperties": false,
   "$defs": {

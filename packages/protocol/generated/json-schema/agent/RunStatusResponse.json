@@ -44,8 +44,7 @@
           "type": "object",
           "properties": {
             "schemaVersion": {
-              "type": "string",
-              "const": "1.0"
+              "$ref": "#/$defs/__schema0"
             },
             "financialSpread": {
               "type": "object",
@@ -95,7 +94,7 @@
                   "additionalProperties": false
                 },
                 "currency": {
-                  "$ref": "#/$defs/__schema3"
+                  "$ref": "#/$defs/__schema2"
                 },
                 "scale": {
                   "default": "units",
@@ -120,9 +119,7 @@
               "required": [
                 "revenue",
                 "period",
-                "currency",
-                "scale",
-                "signConvention"
+                "currency"
               ],
               "additionalProperties": false
             },
@@ -143,7 +140,7 @@
                     "type": "string"
                   },
                   "currency": {
-                    "$ref": "#/$defs/__schema3"
+                    "$ref": "#/$defs/__schema2"
                   },
                   "scale": {
                     "type": "integer",
@@ -189,7 +186,7 @@
                     "minItems": 1,
                     "type": "array",
                     "items": {
-                      "$ref": "#/$defs/__schema4"
+                      "$ref": "#/$defs/__schema3"
                     }
                   },
                   "confidence": {
@@ -470,7 +467,22 @@
                   "maximum": 1
                 },
                 "proposedAmount": {
-                  "$ref": "#/$defs/__schema1"
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "currency": {
+                      "$ref": "#/$defs/__schema2"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
                 },
                 "proposedTermMonths": {
                   "type": "integer",
@@ -523,7 +535,7 @@
                 "rationale": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/$defs/__schema5"
+                    "$ref": "#/$defs/__schema4"
                   }
                 }
               },
@@ -545,7 +557,7 @@
                 "claims": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/$defs/__schema5"
+                    "$ref": "#/$defs/__schema4"
                   }
                 }
               },
@@ -656,7 +668,9 @@
                 "TOOL_ERROR",
                 "AGENT_TIMEOUT",
                 "AGENT_CRASHED",
-                "INVALID_SUBMISSION"
+                "INVALID_SUBMISSION",
+                "RUN_NOT_FOUND",
+                "INVALID_RUN_STATE"
               ]
             },
             "message": {
@@ -668,7 +682,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema6"
+                "$ref": "#/$defs/__schema5"
               }
             },
             "requestId": {
@@ -724,10 +738,12 @@
       "type": "object",
       "properties": {
         "amount": {
-          "$ref": "#/$defs/__schema2"
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
         },
         "currency": {
-          "$ref": "#/$defs/__schema3"
+          "$ref": "#/$defs/__schema2"
         }
       },
       "required": [
@@ -737,11 +753,6 @@
       "additionalProperties": false
     },
     "__schema2": {
-      "type": "integer",
-      "minimum": -9007199254740991,
-      "maximum": 9007199254740991
-    },
-    "__schema3": {
       "type": "string",
       "enum": [
         "AED",
@@ -923,10 +934,10 @@
         "ZWG"
       ]
     },
-    "__schema4": {
+    "__schema3": {
       "type": "string"
     },
-    "__schema5": {
+    "__schema4": {
       "type": "object",
       "properties": {
         "claim": {
@@ -951,7 +962,7 @@
       ],
       "additionalProperties": false
     },
-    "__schema6": {
+    "__schema5": {
       "anyOf": [
         {
           "type": "string"
@@ -968,7 +979,7 @@
         {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/__schema6"
+            "$ref": "#/$defs/__schema5"
           }
         },
         {
@@ -977,7 +988,7 @@
             "type": "string"
           },
           "additionalProperties": {
-            "$ref": "#/$defs/__schema6"
+            "$ref": "#/$defs/__schema5"
           }
         }
       ]

@@ -20,6 +20,8 @@ See [ProtocolErrorCode.json](../../json-schema/agent/ProtocolErrorCode.json) for
 - `AGENT_TIMEOUT`
 - `AGENT_CRASHED`
 - `INVALID_SUBMISSION`
+- `RUN_NOT_FOUND`
+- `INVALID_RUN_STATE`
 
 ---
 *Generated from Zod schema. Do not edit directly.*

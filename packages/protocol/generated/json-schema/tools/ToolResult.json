@@ -8,8 +8,7 @@
           "type": "object",
           "properties": {
             "schemaVersion": {
-              "type": "string",
-              "const": "1.0"
+              "$ref": "#/$defs/__schema0"
             },
             "callId": {
               "type": "string",
@@ -78,8 +77,7 @@
           "type": "object",
           "properties": {
             "schemaVersion": {
-              "type": "string",
-              "const": "1.0"
+              "$ref": "#/$defs/__schema0"
             },
             "callId": {
               "type": "string",
@@ -149,8 +147,7 @@
           "type": "object",
           "properties": {
             "schemaVersion": {
-              "type": "string",
-              "const": "1.0"
+              "$ref": "#/$defs/__schema0"
             },
             "callId": {
               "type": "string",
@@ -190,7 +187,7 @@
                         "type": "string"
                       },
                       "citationAnchor": {
-                        "$ref": "#/$defs/__schema0"
+                        "$ref": "#/$defs/__schema1"
                       }
                     },
                     "required": [
@@ -224,8 +221,7 @@
           "type": "object",
           "properties": {
             "schemaVersion": {
-              "type": "string",
-              "const": "1.0"
+              "$ref": "#/$defs/__schema0"
             },
             "callId": {
               "type": "string",
@@ -260,7 +256,7 @@
                         "type": "number"
                       },
                       "citationAnchor": {
-                        "$ref": "#/$defs/__schema0"
+                        "$ref": "#/$defs/__schema1"
                       }
                     },
                     "required": [
@@ -293,8 +289,7 @@
           "type": "object",
           "properties": {
             "schemaVersion": {
-              "type": "string",
-              "const": "1.0"
+              "$ref": "#/$defs/__schema0"
             },
             "callId": {
               "type": "string",
@@ -324,7 +319,7 @@
                 "citationAnchors": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/$defs/__schema0"
+                    "$ref": "#/$defs/__schema1"
                   }
                 }
               },
@@ -349,8 +344,7 @@
           "type": "object",
           "properties": {
             "schemaVersion": {
-              "type": "string",
-              "const": "1.0"
+              "$ref": "#/$defs/__schema0"
             },
             "callId": {
               "type": "string",
@@ -404,8 +398,7 @@
           "type": "object",
           "properties": {
             "schemaVersion": {
-              "type": "string",
-              "const": "1.0"
+              "$ref": "#/$defs/__schema0"
             },
             "callId": {
               "type": "string",
@@ -442,7 +435,7 @@
                       "citationAnchors": {
                         "type": "array",
                         "items": {
-                          "$ref": "#/$defs/__schema0"
+                          "$ref": "#/$defs/__schema1"
                         }
                       }
                     },
@@ -476,8 +469,7 @@
           "type": "object",
           "properties": {
             "schemaVersion": {
-              "type": "string",
-              "const": "1.0"
+              "$ref": "#/$defs/__schema0"
             },
             "callId": {
               "type": "string",
@@ -523,7 +515,7 @@
                 "citationAnchors": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/$defs/__schema0"
+                    "$ref": "#/$defs/__schema1"
                   }
                 }
               },
@@ -554,8 +546,7 @@
           "type": "object",
           "properties": {
             "schemaVersion": {
-              "type": "string",
-              "const": "1.0"
+              "$ref": "#/$defs/__schema0"
             },
             "callId": {
               "type": "string",
@@ -595,8 +586,7 @@
           "type": "object",
           "properties": {
             "schemaVersion": {
-              "type": "string",
-              "const": "1.0"
+              "$ref": "#/$defs/__schema0"
             },
             "callId": {
               "type": "string",
@@ -642,8 +632,7 @@
           "type": "object",
           "properties": {
             "schemaVersion": {
-              "type": "string",
-              "const": "1.0"
+              "$ref": "#/$defs/__schema0"
             },
             "callId": {
               "type": "string",
@@ -689,8 +678,7 @@
           "type": "object",
           "properties": {
             "schemaVersion": {
-              "type": "string",
-              "const": "1.0"
+              "$ref": "#/$defs/__schema0"
             },
             "callId": {
               "type": "string",
@@ -716,7 +704,7 @@
                 "citationAnchors": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/$defs/__schema0"
+                    "$ref": "#/$defs/__schema1"
                   }
                 }
               },
@@ -743,8 +731,7 @@
       "type": "object",
       "properties": {
         "schemaVersion": {
-          "type": "string",
-          "const": "1.0"
+          "$ref": "#/$defs/__schema0"
         },
         "callId": {
           "type": "string",
@@ -787,7 +774,7 @@
                 "type": "string"
               },
               "additionalProperties": {
-                "$ref": "#/$defs/__schema1"
+                "$ref": "#/$defs/__schema2"
               }
             }
           },
@@ -810,6 +797,10 @@
   ],
   "$defs": {
     "__schema0": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "__schema1": {
       "type": "object",
       "properties": {
         "sourceId": {
@@ -841,7 +832,7 @@
       ],
       "additionalProperties": false
     },
-    "__schema1": {
+    "__schema2": {
       "anyOf": [
         {
           "type": "string"
@@ -858,7 +849,7 @@
         {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/__schema1"
+            "$ref": "#/$defs/__schema2"
           }
         },
         {
@@ -867,7 +858,7 @@
             "type": "string"
           },
           "additionalProperties": {
-            "$ref": "#/$defs/__schema1"
+            "$ref": "#/$defs/__schema2"
           }
         }
       ]

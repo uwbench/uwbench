@@ -276,6 +276,7 @@
       "eslint.config.js",
       "package.json",
       "examples/deterministic-baseline/src/agent.ts",
+      "docs/specification/ADR-002-agent-protocol.md",
       "tsconfig.base.json",
       "tsconfig.json"
     ],
@@ -291,11 +292,11 @@
     "status": "gated_pass",
     "priority": 8,
     "assignee": "orchestrator",
-    "started_at": "2026-07-24T08:48:58.501Z",
-    "attempts": 7,
+    "started_at": "2026-07-24T09:54:16.426Z",
+    "attempts": 8,
     "failures": 3,
-    "review_failures": 3,
-    "completed_at": "2026-07-24T08:48:58.537Z"
+    "review_failures": 4,
+    "completed_at": "2026-07-24T09:54:16.450Z"
   },
   {
     "id": "T9",

@@ -55,7 +55,7 @@
           "additionalProperties": false
         },
         "currency": {
-          "$ref": "#/$defs/__schema2"
+          "$ref": "#/$defs/__schema1"
         },
         "scale": {
           "default": "units",
@@ -80,9 +80,7 @@
       "required": [
         "revenue",
         "period",
-        "currency",
-        "scale",
-        "signConvention"
+        "currency"
       ],
       "additionalProperties": false
     },
@@ -103,7 +101,7 @@
             "type": "string"
           },
           "currency": {
-            "$ref": "#/$defs/__schema2"
+            "$ref": "#/$defs/__schema1"
           },
           "scale": {
             "type": "integer",
@@ -149,7 +147,7 @@
             "minItems": 1,
             "type": "array",
             "items": {
-              "$ref": "#/$defs/__schema3"
+              "$ref": "#/$defs/__schema2"
             }
           },
           "confidence": {
@@ -430,7 +428,22 @@
           "maximum": 1
         },
         "proposedAmount": {
-          "$ref": "#/$defs/__schema0"
+          "type": "object",
+          "properties": {
+            "amount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "currency": {
+              "$ref": "#/$defs/__schema1"
+            }
+          },
+          "required": [
+            "amount",
+            "currency"
+          ],
+          "additionalProperties": false
         },
         "proposedTermMonths": {
           "type": "integer",
@@ -483,7 +496,7 @@
         "rationale": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/__schema4"
+            "$ref": "#/$defs/__schema3"
           }
         }
       },
@@ -505,7 +518,7 @@
         "claims": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/__schema4"
+            "$ref": "#/$defs/__schema3"
           }
         }
       },
@@ -581,10 +594,12 @@
       "type": "object",
       "properties": {
         "amount": {
-          "$ref": "#/$defs/__schema1"
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
         },
         "currency": {
-          "$ref": "#/$defs/__schema2"
+          "$ref": "#/$defs/__schema1"
         }
       },
       "required": [
@@ -594,11 +609,6 @@
       "additionalProperties": false
     },
     "__schema1": {
-      "type": "integer",
-      "minimum": -9007199254740991,
-      "maximum": 9007199254740991
-    },
-    "__schema2": {
       "type": "string",
       "enum": [
         "AED",
@@ -780,10 +790,10 @@
         "ZWG"
       ]
     },
-    "__schema3": {
+    "__schema2": {
       "type": "string"
     },
-    "__schema4": {
+    "__schema3": {
       "type": "object",
       "properties": {
         "claim": {

@@ -24,8 +24,8 @@ See [FinancialSpread.json](../../json-schema/submission/FinancialSpread.json) fo
 | `netIncome` | [`__schema0`](#__schema0) |  |  |  |
 | `period` | object | ✓ |  |  |
 | `currency` | [`__schema1`](#__schema1) | ✓ |  |  |
-| `scale` | string | ✓ |  Default: `"units"` | enum: [units, thousands, millions, billions] |
-| `signConvention` | string | ✓ |  Default: `"positive_revenue_negative_expense"` | enum: [positive_revenue_negative_expense, all_positive, all_negative] |
+| `scale` | string |  |  Default: `"units"` | enum: [units, thousands, millions, billions] |
+| `signConvention` | string |  |  Default: `"positive_revenue_negative_expense"` | enum: [positive_revenue_negative_expense, all_positive, all_negative] |
 
 ## Definitions
 

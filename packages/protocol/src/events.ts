@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createHash } from "node:crypto";
 import { canonicalizeJcs } from "./jcs.js";
+import { SchemaVersionSchema } from "./common.js";
 
 /**
  * RFC 8785 (JCS) canonicalization and SHA-256 hash chain for event log.
@@ -34,7 +35,7 @@ export const EventSourceSchema = z.enum([
 
 export const BaseEventSchema = z
   .object({
-    schemaVersion: z.literal("1.0"),
+    schemaVersion: SchemaVersionSchema,
     eventId: z.string(),
     runId: z.string(),
     caseId: z.string(),

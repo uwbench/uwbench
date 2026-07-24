@@ -22,11 +22,5 @@ See [Recommendation.json](../../json-schema/submission/Recommendation.json) for 
 | `policyExceptions` | array<`object`> | ✓ |  |  |
 | `rationale` | array<`object`> | ✓ |  |  |
 
-## Definitions
-
-### __schema0
-
-### __schema1
-
 ---
 *Generated from Zod schema. Do not edit directly.*

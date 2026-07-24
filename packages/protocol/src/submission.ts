@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SchemaVersionSchema } from "./common.js";
 
 export const ISO_4217_CURRENCIES = [
   "AED",
@@ -182,17 +183,17 @@ export const ISO_4217_CURRENCIES = [
 
 export const Iso4217CurrencySchema = z.enum(ISO_4217_CURRENCIES);
 
-export const MoneySchema = z.object({
+export const MoneySchema = z.strictObject({
   amount: z.number().int(),
   currency: Iso4217CurrencySchema,
 });
 
-export const NonnegativeMoneySchema = MoneySchema.refine(
-  ({ amount }) => amount >= 0,
-  { message: "amount must be nonnegative", path: ["amount"] },
-);
+export const NonnegativeMoneySchema = z.strictObject({
+  amount: z.number().int().nonnegative(),
+  currency: Iso4217CurrencySchema,
+});
 
-export const FinancialSpreadSchema = z.object({
+export const FinancialSpreadSchema = z.strictObject({
   revenue: MoneySchema,
   cogs: MoneySchema.optional(),
   grossProfit: MoneySchema.optional(),
@@ -201,7 +202,7 @@ export const FinancialSpreadSchema = z.object({
   interestExpense: MoneySchema.optional(),
   taxes: MoneySchema.optional(),
   netIncome: MoneySchema.optional(),
-  period: z.object({
+  period: z.strictObject({
     start: z.string().date(),
     end: z.string().date(),
   }),
@@ -214,7 +215,7 @@ export const FinancialSpreadSchema = z.object({
     .default("positive_revenue_negative_expense"),
 });
 
-export const NormalizedFactSchema = z.object({
+export const NormalizedFactSchema = z.strictObject({
   canonicalKey: z.string(),
   value: z.unknown(),
   normalizedValue: z.unknown().optional(),
@@ -223,17 +224,17 @@ export const NormalizedFactSchema = z.object({
   currency: Iso4217CurrencySchema.optional(),
   scale: z.number().int().optional(),
   period: z
-    .object({ start: z.string().date(), end: z.string().date() })
+    .strictObject({ start: z.string().date(), end: z.string().date() })
     .optional(),
   origin: z
-    .object({ documentId: z.string(), page: z.number().optional() })
+    .strictObject({ documentId: z.string(), page: z.number().optional() })
     .optional(),
   citations: z.array(z.string()).min(1),
   confidence: z.number().min(0).max(1).optional(),
   conflictGroup: z.string().optional(),
 });
 
-export const RiskFindingSchema = z.object({
+export const RiskFindingSchema = z.strictObject({
   riskId: z.string(),
   category: z.string(),
   severity: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFORMATIONAL"]),
@@ -243,7 +244,7 @@ export const RiskFindingSchema = z.object({
   evidenceSupport: z.array(z.string()).optional(),
 });
 
-export const DiscrepancySchema = z.object({
+export const DiscrepancySchema = z.strictObject({
   type: z.string(),
   description: z.string(),
   sourceA: z.string(),
@@ -253,7 +254,7 @@ export const DiscrepancySchema = z.object({
   status: z.enum(["OPEN", "RESOLVED", "ACKNOWLEDGED"]),
 });
 
-export const ComplianceFindingSchema = z.object({
+export const ComplianceFindingSchema = z.strictObject({
   subject: z.string(),
   provider: z.string(),
   matchScore: z.number().min(0).max(1),
@@ -263,7 +264,7 @@ export const ComplianceFindingSchema = z.object({
   disposition: z.enum(["CLEARED", "ESCALATED", "PENDING_REVIEW"]),
 });
 
-export const FollowUpRequestSchema = z.object({
+export const FollowUpRequestSchema = z.strictObject({
   requestId: z.string(),
   concept: z.string(),
   status: z.enum(["PENDING", "FULFILLED", "NEEDS_CLARIFICATION", "CANCELLED"]),
@@ -271,10 +272,10 @@ export const FollowUpRequestSchema = z.object({
   revealedDocuments: z.array(z.string()).optional(),
 });
 
-export const PolicyAssessmentSchema = z.object({
+export const PolicyAssessmentSchema = z.strictObject({
   applicableRules: z.array(z.string()),
   evaluations: z.array(
-    z.object({
+    z.strictObject({
       ruleId: z.string(),
       passed: z.boolean(),
       input: z.unknown(),
@@ -285,31 +286,33 @@ export const PolicyAssessmentSchema = z.object({
   ),
 });
 
-export const CitedClaimSchema = z.object({
+export const CitedClaimSchema = z.strictObject({
   claim: z.string(),
   evidenceIds: z.array(z.string()),
   confidence: z.number().min(0).max(1),
 });
 
-export const ConditionSchema = z.object({
+export const ConditionSchema = z.strictObject({
   description: z.string(),
   evidenceIds: z.array(z.string()).optional(),
 });
 
-export const PolicyExceptionSchema = z.object({
+export const PolicyExceptionSchema = z.strictObject({
   ruleId: z.string(),
   justification: z.string(),
   escalationPath: z.string().optional(),
 });
 
-export const RecommendationSchema = z.object({
-  decision: z.enum([
-    "APPROVE",
-    "APPROVE_WITH_CONDITIONS",
-    "REFER",
-    "DECLINE",
-    "INSUFFICIENT_INFORMATION",
-  ]),
+export const DecisionSchema = z.enum([
+  "APPROVE",
+  "APPROVE_WITH_CONDITIONS",
+  "REFER",
+  "DECLINE",
+  "INSUFFICIENT_INFORMATION",
+]);
+
+export const RecommendationSchema = z.strictObject({
+  decision: DecisionSchema,
   confidence: z.number().min(0).max(1),
   proposedAmount: NonnegativeMoneySchema.optional(),
   proposedTermMonths: z.number().int().positive().optional(),
@@ -318,24 +321,24 @@ export const RecommendationSchema = z.object({
   rationale: z.array(CitedClaimSchema),
 });
 
-export const MemoSchema = z.object({
+export const MemoSchema = z.strictObject({
   markdown: z.string(),
   claims: z.array(CitedClaimSchema),
 });
 
-export const ConfidenceSchema = z.object({
+export const ConfidenceSchema = z.strictObject({
   overall: z.number().min(0).max(1),
   byComponent: z.record(z.string(), z.number().min(0).max(1)),
 });
 
-export const UsageSchema = z.object({
+export const UsageSchema = z.strictObject({
   inputTokens: z.number().int().nonnegative().optional(),
   outputTokens: z.number().int().nonnegative().optional(),
   providerReportedCostUsd: z.number().nonnegative().optional(),
 });
 
-export const UnderwritingSubmissionSchema = z.object({
-  schemaVersion: z.literal("1.0"),
+export const UnderwritingSubmissionSchema = z.strictObject({
+  schemaVersion: SchemaVersionSchema,
   financialSpread: FinancialSpreadSchema,
   normalizedFacts: z.array(NormalizedFactSchema),
   risks: z.array(RiskFindingSchema),
@@ -360,6 +363,7 @@ export type PolicyAssessment = z.infer<typeof PolicyAssessmentSchema>;
 export type CitedClaim = z.infer<typeof CitedClaimSchema>;
 export type Condition = z.infer<typeof ConditionSchema>;
 export type PolicyException = z.infer<typeof PolicyExceptionSchema>;
+export type Decision = z.infer<typeof DecisionSchema>;
 export type Recommendation = z.infer<typeof RecommendationSchema>;
 export type Memo = z.infer<typeof MemoSchema>;
 export type Confidence = z.infer<typeof ConfidenceSchema>;

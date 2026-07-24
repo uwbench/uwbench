@@ -280,6 +280,10 @@
         "$ref": "../json-schema/submission/Recommendation.json",
         "description": "Underwriting recommendation with decision, confidence, and rationale"
       },
+      "Decision": {
+        "$ref": "../json-schema/submission/Decision.json",
+        "description": "Canonical underwriting decision"
+      },
       "Memo": {
         "$ref": "../json-schema/submission/Memo.json",
         "description": "Credit memo with markdown and cited claims"

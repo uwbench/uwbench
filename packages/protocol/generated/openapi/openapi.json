@@ -72,16 +72,6 @@
                 }
               }
             }
-          },
-          "409": {
-            "description": "Run already started",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProtocolError"
-                }
-              }
-            }
           }
         }
       }
@@ -158,7 +148,7 @@
             }
           },
           "409": {
-            "description": "Run not runnable",
+            "description": "Run is already terminal and cannot be cancelled",
             "content": {
               "application/json": {
                 "schema": {
@@ -504,6 +494,10 @@
       "Recommendation": {
         "$ref": "../json-schema/submission/Recommendation.json",
         "description": "Underwriting recommendation with decision, confidence, and rationale"
+      },
+      "Decision": {
+        "$ref": "../json-schema/submission/Decision.json",
+        "description": "Canonical underwriting decision"
       },
       "Memo": {
         "$ref": "../json-schema/submission/Memo.json",

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SchemaVersionSchema } from "./common.js";
 
 /**
  * Tool Protocol v1 — Base Schemas
@@ -8,7 +9,7 @@ import { z } from "zod";
  */
 
 export const ToolErrorSchema = z
-  .object({
+  .strictObject({
     code: z.string().min(1),
     message: z.string(),
     details: z.record(z.string(), z.json()).optional(),
@@ -16,7 +17,7 @@ export const ToolErrorSchema = z
   .strict();
 
 export const CitationAnchorSchema = z
-  .object({
+  .strictObject({
     sourceId: z.string().min(1),
     documentId: z.string().min(1).optional(),
     page: z.number().int().positive().optional(),
@@ -30,11 +31,11 @@ export const CitationAnchorSchema = z
  */
 
 // case.list_documents
-export const CaseListDocumentsInputSchema = z.object({});
+export const CaseListDocumentsInputSchema = z.strictObject({});
 
-export const CaseListDocumentsOutputSchema = z.object({
+export const CaseListDocumentsOutputSchema = z.strictObject({
   documents: z.array(
-    z.object({
+    z.strictObject({
       documentId: z.string(),
       sourceId: z.string(),
       title: z.string(),
@@ -46,18 +47,18 @@ export const CaseListDocumentsOutputSchema = z.object({
 
 export const CaseListDocumentsErrorSchema = ToolErrorSchema;
 
-export const CaseListDocumentsSchema = z.object({
+export const CaseListDocumentsSchema = z.strictObject({
   input: CaseListDocumentsInputSchema,
   output: CaseListDocumentsOutputSchema,
   error: CaseListDocumentsErrorSchema,
 });
 
 // case.get_document_metadata
-export const CaseGetDocumentMetadataInputSchema = z.object({
+export const CaseGetDocumentMetadataInputSchema = z.strictObject({
   documentId: z.string().min(1),
 });
 
-export const CaseGetDocumentMetadataOutputSchema = z.object({
+export const CaseGetDocumentMetadataOutputSchema = z.strictObject({
   documentId: z.string(),
   sourceId: z.string(),
   title: z.string(),
@@ -69,24 +70,24 @@ export const CaseGetDocumentMetadataOutputSchema = z.object({
 
 export const CaseGetDocumentMetadataErrorSchema = ToolErrorSchema;
 
-export const CaseGetDocumentMetadataSchema = z.object({
+export const CaseGetDocumentMetadataSchema = z.strictObject({
   input: CaseGetDocumentMetadataInputSchema,
   output: CaseGetDocumentMetadataOutputSchema,
   error: CaseGetDocumentMetadataErrorSchema,
 });
 
 // case.read_document
-export const CaseReadDocumentInputSchema = z.object({
+export const CaseReadDocumentInputSchema = z.strictObject({
   documentId: z.string().min(1),
   pages: z.array(z.number().int().positive()).optional(),
 });
 
-export const CaseReadDocumentOutputSchema = z.object({
+export const CaseReadDocumentOutputSchema = z.strictObject({
   documentId: z.string(),
   sourceId: z.string(),
   content: z.string(),
   pages: z.array(
-    z.object({
+    z.strictObject({
       pageNumber: z.number().int().positive(),
       text: z.string(),
       citationAnchor: CitationAnchorSchema,
@@ -96,21 +97,21 @@ export const CaseReadDocumentOutputSchema = z.object({
 
 export const CaseReadDocumentErrorSchema = ToolErrorSchema;
 
-export const CaseReadDocumentSchema = z.object({
+export const CaseReadDocumentSchema = z.strictObject({
   input: CaseReadDocumentInputSchema,
   output: CaseReadDocumentOutputSchema,
   error: CaseReadDocumentErrorSchema,
 });
 
 // case.search_documents
-export const CaseSearchDocumentsInputSchema = z.object({
+export const CaseSearchDocumentsInputSchema = z.strictObject({
   query: z.string().min(1),
   limit: z.number().int().positive().optional(),
 });
 
-export const CaseSearchDocumentsOutputSchema = z.object({
+export const CaseSearchDocumentsOutputSchema = z.strictObject({
   results: z.array(
-    z.object({
+    z.strictObject({
       documentId: z.string(),
       sourceId: z.string(),
       snippet: z.string(),
@@ -122,18 +123,18 @@ export const CaseSearchDocumentsOutputSchema = z.object({
 
 export const CaseSearchDocumentsErrorSchema = ToolErrorSchema;
 
-export const CaseSearchDocumentsSchema = z.object({
+export const CaseSearchDocumentsSchema = z.strictObject({
   input: CaseSearchDocumentsInputSchema,
   output: CaseSearchDocumentsOutputSchema,
   error: CaseSearchDocumentsErrorSchema,
 });
 
 // case.get_structured_record
-export const CaseGetStructuredRecordInputSchema = z.object({
+export const CaseGetStructuredRecordInputSchema = z.strictObject({
   recordId: z.string().min(1),
 });
 
-export const CaseGetStructuredRecordOutputSchema = z.object({
+export const CaseGetStructuredRecordOutputSchema = z.strictObject({
   sourceId: z.string(),
   record: z.record(z.string(), z.unknown()),
   citationAnchors: z.array(CitationAnchorSchema),
@@ -141,20 +142,20 @@ export const CaseGetStructuredRecordOutputSchema = z.object({
 
 export const CaseGetStructuredRecordErrorSchema = ToolErrorSchema;
 
-export const CaseGetStructuredRecordSchema = z.object({
+export const CaseGetStructuredRecordSchema = z.strictObject({
   input: CaseGetStructuredRecordInputSchema,
   output: CaseGetStructuredRecordOutputSchema,
   error: CaseGetStructuredRecordErrorSchema,
 });
 
 // case.request_information
-export const CaseRequestInformationInputSchema = z.object({
+export const CaseRequestInformationInputSchema = z.strictObject({
   concept: z.string().min(1),
   question: z.string().min(1),
   context: z.string().optional(),
 });
 
-export const CaseRequestInformationOutputSchema = z.object({
+export const CaseRequestInformationOutputSchema = z.strictObject({
   status: z.enum(["AVAILABLE", "ALREADY_PROVIDED", "NEEDS_CLARIFICATION"]),
   revealedDocumentIds: z.array(z.string()).optional(),
   clarification: z.string().optional(),
@@ -162,7 +163,7 @@ export const CaseRequestInformationOutputSchema = z.object({
 
 export const CaseRequestInformationErrorSchema = ToolErrorSchema;
 
-export const CaseRequestInformationSchema = z.object({
+export const CaseRequestInformationSchema = z.strictObject({
   input: CaseRequestInformationInputSchema,
   output: CaseRequestInformationOutputSchema,
   error: CaseRequestInformationErrorSchema,
@@ -173,14 +174,14 @@ export const CaseRequestInformationSchema = z.object({
  */
 
 // policy.search
-export const PolicySearchInputSchema = z.object({
+export const PolicySearchInputSchema = z.strictObject({
   query: z.string().min(1),
   limit: z.number().int().positive().optional(),
 });
 
-export const PolicySearchOutputSchema = z.object({
+export const PolicySearchOutputSchema = z.strictObject({
   rules: z.array(
-    z.object({
+    z.strictObject({
       ruleId: z.string(),
       sourceId: z.string(),
       title: z.string(),
@@ -192,18 +193,18 @@ export const PolicySearchOutputSchema = z.object({
 
 export const PolicySearchErrorSchema = ToolErrorSchema;
 
-export const PolicySearchSchema = z.object({
+export const PolicySearchSchema = z.strictObject({
   input: PolicySearchInputSchema,
   output: PolicySearchOutputSchema,
   error: PolicySearchErrorSchema,
 });
 
 // policy.get_rule
-export const PolicyGetRuleInputSchema = z.object({
+export const PolicyGetRuleInputSchema = z.strictObject({
   ruleId: z.string().min(1),
 });
 
-export const PolicyGetRuleOutputSchema = z.object({
+export const PolicyGetRuleOutputSchema = z.strictObject({
   ruleId: z.string(),
   sourceId: z.string(),
   title: z.string(),
@@ -217,7 +218,7 @@ export const PolicyGetRuleOutputSchema = z.object({
 
 export const PolicyGetRuleErrorSchema = ToolErrorSchema;
 
-export const PolicyGetRuleSchema = z.object({
+export const PolicyGetRuleSchema = z.strictObject({
   input: PolicyGetRuleInputSchema,
   output: PolicyGetRuleOutputSchema,
   error: PolicyGetRuleErrorSchema,
@@ -228,53 +229,53 @@ export const PolicyGetRuleSchema = z.object({
  */
 
 // finance.calculate
-export const FinanceCalculateInputSchema = z.object({
+export const FinanceCalculateInputSchema = z.strictObject({
   expression: z.string().min(1),
   variables: z.record(z.string(), z.number()),
 });
 
-export const FinanceCalculateOutputSchema = z.object({
+export const FinanceCalculateOutputSchema = z.strictObject({
   result: z.number(),
 });
 
 export const FinanceCalculateErrorSchema = ToolErrorSchema;
 
-export const FinanceCalculateSchema = z.object({
+export const FinanceCalculateSchema = z.strictObject({
   input: FinanceCalculateInputSchema,
   output: FinanceCalculateOutputSchema,
   error: FinanceCalculateErrorSchema,
 });
 
 // finance.calculate_ratios
-export const FinanceCalculateRatiosInputSchema = z.object({
+export const FinanceCalculateRatiosInputSchema = z.strictObject({
   spread: z.record(z.string(), z.unknown()),
 });
 
-export const FinanceCalculateRatiosOutputSchema = z.object({
+export const FinanceCalculateRatiosOutputSchema = z.strictObject({
   ratios: z.record(z.string(), z.number()),
 });
 
 export const FinanceCalculateRatiosErrorSchema = ToolErrorSchema;
 
-export const FinanceCalculateRatiosSchema = z.object({
+export const FinanceCalculateRatiosSchema = z.strictObject({
   input: FinanceCalculateRatiosInputSchema,
   output: FinanceCalculateRatiosOutputSchema,
   error: FinanceCalculateRatiosErrorSchema,
 });
 
 // finance.validate_spread
-export const FinanceValidateSpreadInputSchema = z.object({
+export const FinanceValidateSpreadInputSchema = z.strictObject({
   spread: z.record(z.string(), z.unknown()),
 });
 
-export const FinanceValidateSpreadOutputSchema = z.object({
+export const FinanceValidateSpreadOutputSchema = z.strictObject({
   valid: z.boolean(),
   errors: z.array(z.string()).optional(),
 });
 
 export const FinanceValidateSpreadErrorSchema = ToolErrorSchema;
 
-export const FinanceValidateSpreadSchema = z.object({
+export const FinanceValidateSpreadSchema = z.strictObject({
   input: FinanceValidateSpreadInputSchema,
   output: FinanceValidateSpreadOutputSchema,
   error: FinanceValidateSpreadErrorSchema,
@@ -285,13 +286,13 @@ export const FinanceValidateSpreadSchema = z.object({
  */
 
 // submission.save_artifact
-export const SubmissionSaveArtifactInputSchema = z.object({
+export const SubmissionSaveArtifactInputSchema = z.strictObject({
   artifactId: z.string().min(1),
   content: z.string(),
   contentType: z.string().min(1),
 });
 
-export const SubmissionSaveArtifactOutputSchema = z.object({
+export const SubmissionSaveArtifactOutputSchema = z.strictObject({
   artifactId: z.string(),
   sourceId: z.string(),
   citationAnchors: z.array(CitationAnchorSchema),
@@ -299,7 +300,7 @@ export const SubmissionSaveArtifactOutputSchema = z.object({
 
 export const SubmissionSaveArtifactErrorSchema = ToolErrorSchema;
 
-export const SubmissionSaveArtifactSchema = z.object({
+export const SubmissionSaveArtifactSchema = z.strictObject({
   input: SubmissionSaveArtifactInputSchema,
   output: SubmissionSaveArtifactOutputSchema,
   error: SubmissionSaveArtifactErrorSchema,
@@ -441,7 +442,7 @@ export type ToolName = keyof typeof TOOL_SCHEMAS;
 const toolCallVariants = Object.entries(TOOL_SCHEMAS).map(([name, schema]) =>
   z
     .object({
-      schemaVersion: z.literal("1.0"),
+      schemaVersion: SchemaVersionSchema,
       callId: z.string().min(1),
       name: z.literal(name as ToolName),
       arguments: schema.shape.input,
@@ -458,7 +459,7 @@ export const ToolCallSchema = z.discriminatedUnion("name", toolCallVariants);
 const toolSuccessVariants = Object.entries(TOOL_SCHEMAS).map(([name, schema]) =>
   z
     .object({
-      schemaVersion: z.literal("1.0"),
+      schemaVersion: SchemaVersionSchema,
       callId: z.string().min(1),
       ok: z.literal(true),
       name: z.literal(name as ToolName),
@@ -478,7 +479,7 @@ export const ToolSuccessResultSchema = z.discriminatedUnion(
 
 export const ToolFailureResultSchema = z
   .object({
-    schemaVersion: z.literal("1.0"),
+    schemaVersion: SchemaVersionSchema,
     callId: z.string().min(1),
     ok: z.literal(false),
     name: z.enum(Object.keys(TOOL_SCHEMAS) as [ToolName, ...ToolName[]]),
