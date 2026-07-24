@@ -129,7 +129,6 @@ cmd_preflight() {
   require_command git
   require_command codex
   require_command pnpm
-  require_command rg
   require_command "$PI_BIN"
   [[ "$MAX_TASK_ATTEMPTS" =~ ^[1-9][0-9]*$ ]] ||
     die "MAX_TASK_ATTEMPTS must be a positive integer."
@@ -401,7 +400,7 @@ record_gate_failure() {
 is_transient_provider_failure() {
   local log_file="$1"
   [[ -f "$log_file" ]] || return 1
-  rg -qi \
+  grep -Eqi \
     'ResourceExhausted|worker .*request limit|rate[ -]?limit|HTTP 429|temporarily unavailable|service unavailable|overloaded' \
     "$log_file"
 }
