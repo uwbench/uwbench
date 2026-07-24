@@ -35,6 +35,10 @@ failures have independent retry counters. Provider-capacity errors are recorded
 as deferrals, do not consume the implementation-failure budget, and stop the
 current run so it can be resumed later.
 
+`MAX_TASK_ATTEMPTS` is the default implementation-failure limit. A cumulative
+repair task may declare a higher `failure_limit` in `TASKS.json` when checkpoint
+feedback legitimately expands its scope.
+
 ## Branch and commit policy
 
 `bootstrap` creates the initial workflow commit on `main`, then creates or
@@ -139,6 +143,8 @@ necessary cross-cutting changes must be declared in a task's `scope_exceptions`.
 - Only gated patches are committed.
 - Implementation failures, provider deferrals, and checkpoint-review failures
   are tracked separately.
+- If pi changes the primary checkout instead of its isolated worktree, automatic
+  retries stop immediately and `primary-checkout-leak.status` records the paths.
 - A final review is invalidated when the reviewed branch changes.
 - `promote` uses a fast-forward merge and never rewrites `main`.
 

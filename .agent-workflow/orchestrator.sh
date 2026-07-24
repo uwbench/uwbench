@@ -64,6 +64,12 @@ task_failures() {
   printf '%s' "${value:-0}"
 }
 
+task_failure_limit() {
+  local value
+  value="$(task_value "$1" failure_limit)"
+  printf '%s' "${value:-$MAX_TASK_ATTEMPTS}"
+}
+
 task_review_failures() {
   local value
   value="$(task_value "$1" review_failures)"
@@ -743,8 +749,10 @@ run_to_checkpoint() {
       task_priority="$(task_value "$task_id" priority)"
       (( task_priority <= target_priority )) ||
         die "Reached $task_id before checkpoint target $target was complete."
-      (( $(task_failures "$task_id") < MAX_TASK_ATTEMPTS )) ||
-        die "$task_id reached MAX_TASK_ATTEMPTS=$MAX_TASK_ATTEMPTS implementation failures."
+      local failure_limit
+      failure_limit="$(task_failure_limit "$task_id")"
+      (( $(task_failures "$task_id") < failure_limit )) ||
+        die "$task_id reached its implementation failure limit of $failure_limit."
 
       local task_exit=0
       if run_active_task "$task_id"; then
@@ -759,7 +767,7 @@ run_to_checkpoint() {
         die "$task_id modified the primary checkout. Inspect $(artifact_dir "$task_id")/primary-checkout-leak.status before resuming."
       fi
       if [[ "$task_exit" -ne 0 ]]; then
-        if (( $(task_failures "$task_id") >= MAX_TASK_ATTEMPTS )); then
+        if (( $(task_failures "$task_id") >= failure_limit )); then
           die "$task_id failed its implementation gate $(task_failures "$task_id") times. Inspect $(artifact_dir "$task_id")."
         fi
         warn "Retrying $task_id with gate feedback."

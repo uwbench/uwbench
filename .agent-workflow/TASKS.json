@@ -267,6 +267,12 @@
     ],
     "scope_exceptions": [
       "packages/protocol/src/**",
+      "packages/protocol/scripts/**",
+      "packages/case-schema/package.json",
+      "packages/scorer-core/package.json",
+      "packages/tool-runtime/package.json",
+      ".changeset/**",
+      ".gitignore",
       "eslint.config.js",
       "package.json",
       "tsconfig.base.json",
@@ -279,13 +285,15 @@
       "T7"
     ],
     "estimated_minutes": 90,
-    "status": "gated_pass",
+    "failure_limit": 5,
+    "status": "pending",
     "priority": 8,
-    "assignee": "orchestrator",
+    "assignee": "pi",
     "started_at": "2026-07-24T03:27:07.197Z",
     "attempts": 3,
     "failures": 2,
-    "completed_at": "2026-07-24T06:23:19.286Z"
+    "review_notes": "Checkpoint T8 review failed: Automated T8 checks passed, but T1-T8 are not a stable protocol foundation. Blocking issues include runtime/generated-schema incompatibility, protocol/ADR divergence, fail-open event verification, an unusable OpenAPI base path, privacy-leaking tool outputs, and incomplete drift detection.\nRequired changes:\n- Make NDJSON parsing fail closed and make verification reject every malformed/unknown record; validate sequence continuity and consistent runId/caseId, with corruption and truncation tests.\n- Define whether generated schemas represent wire input or normalized output. Generate wire-compatible schemas, use strict/passthrough behavior deliberately, and add parity tests between Zod and JSON Schema for defaults and unknown fields.\n- Reconcile agent.ts with SPEC and accepted ADR-002: version envelopes, idempotent run creation, endpoint-specific response states, cancellation shape, and one authoritative set of error codes including requestId.\n- Derive a discriminated ToolCall contract from the tool registry, expose tool-specific argument/result schemas through OpenAPI, and return opaque artifact/source identifiers with citation anchors instead of storage URLs.\n- Fix OpenAPI server roots and validate the complete generated document with external references resolved.\n- Make drift CI inspect git status including untracked files. Correct Markdown relative paths and render Zod 4 $defs references.\n- Standardize all schema-owning workspace packages on Zod 4 before T9-T15 integration.\n- Stop ignoring .changeset/*.md and configure the changesets workflow for an event and permission set appropriate to version PRs or publishing.\n- Enforce ISO 4217 currencies and integral, bounded, nonnegative limits and usage values with tests.",
+    "review_failures": 1
   },
   {
     "id": "T9",
