@@ -235,13 +235,14 @@
       "T4"
     ],
     "estimated_minutes": 90,
-    "status": "pending",
+    "status": "gated_pass",
     "priority": 7,
-    "assignee": "pi",
-    "started_at": "2026-07-23T19:45:49.206Z",
-    "attempts": 1,
-    "review_notes": "Transient NVIDIA capacity failure: ResourceExhausted worker request limit. No implementation patch was produced; resume after provider capacity recovers.",
-    "deferrals": 1
+    "assignee": "orchestrator",
+    "started_at": "2026-07-24T02:34:20.625Z",
+    "attempts": 4,
+    "deferrals": 1,
+    "failures": 2,
+    "completed_at": "2026-07-24T02:40:15.172Z"
   },
   {
     "id": "T8",

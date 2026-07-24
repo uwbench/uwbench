@@ -19,6 +19,12 @@ export const FinancialSpreadSchema = z.object({
     end: z.string().date(),
   }),
   currency: z.string().length(3),
+  scale: z
+    .enum(["units", "thousands", "millions", "billions"])
+    .default("units"),
+  signConvention: z
+    .enum(["positive_revenue_negative_expense", "all_positive", "all_negative"])
+    .default("positive_revenue_negative_expense"),
 });
 
 export const NormalizedFactSchema = z.object({
@@ -35,7 +41,7 @@ export const NormalizedFactSchema = z.object({
   origin: z
     .object({ documentId: z.string(), page: z.number().optional() })
     .optional(),
-  citations: z.array(z.string()).optional(),
+  citations: z.array(z.string()).min(1),
   confidence: z.number().min(0).max(1).optional(),
   conflictGroup: z.string().optional(),
 });
@@ -75,7 +81,7 @@ export const FollowUpRequestSchema = z.object({
   concept: z.string(),
   status: z.enum(["PENDING", "FULFILLED", "NEEDS_CLARIFICATION", "CANCELLED"]),
   response: z.string().optional(),
-  revealedDocumentIds: z.array(z.string()).optional(),
+  revealedDocuments: z.array(z.string()).optional(),
 });
 
 export const PolicyAssessmentSchema = z.object({
