@@ -16,7 +16,9 @@ import {
   verifyEventsNDJSON,
 } from "./events.js";
 
-function createBaseEvent(overrides: Partial<EventWithoutHash> = {}): EventWithoutHash {
+function createBaseEvent(
+  overrides: Partial<EventWithoutHash> = {},
+): EventWithoutHash {
   return {
     schemaVersion: "1.0",
     eventId: "evt_001",
@@ -69,7 +71,12 @@ describe("EventTypeSchema", () => {
 
 describe("EventSourceSchema", () => {
   it("accepts all 4 sources", () => {
-    const sources = ["RUNNER", "AGENT", "TOOL_GATEWAY", "SCORER"] satisfies EventSource[];
+    const sources = [
+      "RUNNER",
+      "AGENT",
+      "TOOL_GATEWAY",
+      "SCORER",
+    ] satisfies EventSource[];
     for (const source of sources) {
       expect(EventSourceSchema.safeParse(source).success).toBe(true);
     }
@@ -133,7 +140,8 @@ describe("computeHash", () => {
 
     // Manually verify the hash matches canonical JSON without hash field
     const canonical = canonicalize(base);
-    if (canonical === undefined) throw new Error("Canonicalization returned undefined");
+    if (canonical === undefined)
+      throw new Error("Canonicalization returned undefined");
     const expected = `sha256:${createHash("sha256").update(canonical).digest("hex")}`;
     expect(hash).toBe(expected);
   });
@@ -196,19 +204,31 @@ describe("verifyChain", () => {
 
   it("returns false if previousHash does not match previous event hash", () => {
     const e1 = createEvent({ sequence: 1, eventId: "evt_1" });
-    const e2 = createEvent({ sequence: 2, eventId: "evt_2", previousHash: "sha256:wrong" });
+    const e2 = createEvent({
+      sequence: 2,
+      eventId: "evt_2",
+      previousHash: "sha256:wrong",
+    });
     expect(verifyChain([e1, e2])).toBe(false);
   });
 
   it("returns false if event hash does not match computed hash", () => {
     const e1 = createEvent({ sequence: 1, eventId: "evt_1" });
-    const e2Base = createBaseEvent({ sequence: 2, eventId: "evt_2", previousHash: e1.hash });
+    const e2Base = createBaseEvent({
+      sequence: 2,
+      eventId: "evt_2",
+      previousHash: e1.hash,
+    });
     const e2 = { ...e2Base, hash: "sha256:tampered" };
     expect(verifyChain([e1, e2])).toBe(false);
   });
 
   it("returns false if event is tampered (payload changed but hash same)", () => {
-    const e1 = createEvent({ sequence: 1, eventId: "evt_1", payload: { foo: "bar" } });
+    const e1 = createEvent({
+      sequence: 1,
+      eventId: "evt_1",
+      payload: { foo: "bar" },
+    });
     const tampered = { ...e1, payload: { foo: "baz" } };
     // Hash still matches original, but payload is different
     expect(verifyChain([tampered])).toBe(false);
@@ -258,7 +278,11 @@ describe("NDJSON writer/reader", () => {
 
   it("verifyEventsNDJSON returns valid=true for valid chain", () => {
     const e1 = createEvent({ sequence: 1, eventId: "evt_1" });
-    const e2 = createEvent({ sequence: 2, eventId: "evt_2", previousHash: e1.hash });
+    const e2 = createEvent({
+      sequence: 2,
+      eventId: "evt_2",
+      previousHash: e1.hash,
+    });
     const ndjson = writeEventsNDJSON([e1, e2]);
     const result = verifyEventsNDJSON(ndjson);
     expect(result.valid).toBe(true);
@@ -268,7 +292,11 @@ describe("NDJSON writer/reader", () => {
 
   it("verifyEventsNDJSON returns valid=false for broken chain", () => {
     const e1 = createEvent({ sequence: 1, eventId: "evt_1" });
-    const e2 = createEvent({ sequence: 2, eventId: "evt_2", previousHash: "sha256:wrong" });
+    const e2 = createEvent({
+      sequence: 2,
+      eventId: "evt_2",
+      previousHash: "sha256:wrong",
+    });
     const ndjson = writeEventsNDJSON([e1, e2]);
     const result = verifyEventsNDJSON(ndjson);
     expect(result.valid).toBe(false);

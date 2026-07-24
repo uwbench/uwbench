@@ -100,7 +100,10 @@ export function verifyChain(events: Event[]): boolean {
  * Write events to an NDJSON (newline-delimited JSON) string.
  */
 export function writeEventsNDJSON(events: Event[]): string {
-  return events.map((e) => JSON.stringify(e)).join("\n") + (events.length > 0 ? "\n" : "");
+  return (
+    events.map((e) => JSON.stringify(e)).join("\n") +
+    (events.length > 0 ? "\n" : "")
+  );
 }
 
 /**
@@ -119,7 +122,10 @@ export function readEventsNDJSON(ndjson: string): Event[] {
       if (result.success) {
         events.push(result.data);
       } else {
-        console.error(`[NDJSON] Invalid event at line ${i + 1}:`, result.error.format());
+        console.error(
+          `[NDJSON] Invalid event at line ${i + 1}:`,
+          result.error.format(),
+        );
       }
     } catch (e) {
       console.error(`[NDJSON] Parse error at line ${i + 1}:`, e);
@@ -142,5 +148,9 @@ export function verifyEventsNDJSON(ndjson: string): {
     return { valid: true, events: [] };
   }
   const valid = verifyChain(events);
-  return { valid, events, error: valid ? undefined : "Hash chain verification failed" };
+  return {
+    valid,
+    events,
+    error: valid ? undefined : "Hash chain verification failed",
+  };
 }
