@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SchemaVersionSchema } from "./common.js";
+import { EvidenceReferenceSchema, SchemaVersionSchema } from "./common.js";
 
 export const ISO_4217_CURRENCIES = [
   "AED",
@@ -200,6 +200,12 @@ export const FinancialSpreadSchema = z.strictObject({
   operatingExpenses: MoneySchema.optional(),
   ebitda: MoneySchema.optional(),
   interestExpense: MoneySchema.optional(),
+  debtService: NonnegativeMoneySchema.optional(),
+  totalDebt: NonnegativeMoneySchema.optional(),
+  cash: NonnegativeMoneySchema.optional(),
+  totalAssets: NonnegativeMoneySchema.optional(),
+  totalLiabilities: NonnegativeMoneySchema.optional(),
+  equity: MoneySchema.optional(),
   taxes: MoneySchema.optional(),
   netIncome: MoneySchema.optional(),
   period: z.strictObject({
@@ -207,18 +213,18 @@ export const FinancialSpreadSchema = z.strictObject({
     end: z.string().date(),
   }),
   currency: Iso4217CurrencySchema,
-  scale: z
-    .enum(["units", "thousands", "millions", "billions"])
-    .default("units"),
-  signConvention: z
-    .enum(["positive_revenue_negative_expense", "all_positive", "all_negative"])
-    .default("positive_revenue_negative_expense"),
+  scale: z.enum(["units", "thousands", "millions", "billions"]),
+  signConvention: z.enum([
+    "positive_revenue_negative_expense",
+    "all_positive",
+    "all_negative",
+  ]),
 });
 
 export const NormalizedFactSchema = z.strictObject({
   canonicalKey: z.string(),
-  value: z.unknown(),
-  normalizedValue: z.unknown().optional(),
+  value: z.json(),
+  normalizedValue: z.json().optional(),
   type: z.string(),
   unit: z.string().optional(),
   currency: Iso4217CurrencySchema.optional(),
@@ -226,10 +232,7 @@ export const NormalizedFactSchema = z.strictObject({
   period: z
     .strictObject({ start: z.string().date(), end: z.string().date() })
     .optional(),
-  origin: z
-    .strictObject({ documentId: z.string(), page: z.number().optional() })
-    .optional(),
-  citations: z.array(z.string()).min(1),
+  evidence: z.array(EvidenceReferenceSchema).min(1),
   confidence: z.number().min(0).max(1).optional(),
   conflictGroup: z.string().optional(),
 });
@@ -238,10 +241,9 @@ export const RiskFindingSchema = z.strictObject({
   riskId: z.string(),
   category: z.string(),
   severity: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFORMATIONAL"]),
-  weight: z.number().min(0).max(1),
-  requiredEvidence: z.array(z.string()).optional(),
-  acceptableConcepts: z.array(z.string()).optional(),
-  evidenceSupport: z.array(z.string()).optional(),
+  statement: z.string().min(1),
+  evidence: z.array(EvidenceReferenceSchema),
+  confidence: z.number().min(0).max(1),
 });
 
 export const DiscrepancySchema = z.strictObject({
@@ -278,8 +280,8 @@ export const PolicyAssessmentSchema = z.strictObject({
     z.strictObject({
       ruleId: z.string(),
       passed: z.boolean(),
-      input: z.unknown(),
-      threshold: z.unknown(),
+      input: z.json(),
+      threshold: z.json(),
       operator: z.string(),
       exceptionDisclosed: z.boolean().optional(),
     }),
@@ -288,13 +290,13 @@ export const PolicyAssessmentSchema = z.strictObject({
 
 export const CitedClaimSchema = z.strictObject({
   claim: z.string(),
-  evidenceIds: z.array(z.string()),
+  evidence: z.array(EvidenceReferenceSchema),
   confidence: z.number().min(0).max(1),
 });
 
 export const ConditionSchema = z.strictObject({
   description: z.string(),
-  evidenceIds: z.array(z.string()).optional(),
+  evidence: z.array(EvidenceReferenceSchema).optional(),
 });
 
 export const PolicyExceptionSchema = z.strictObject({
@@ -353,7 +355,8 @@ export const UnderwritingSubmissionSchema = z.strictObject({
 });
 
 export type Money = z.infer<typeof MoneySchema>;
-export type FinancialSpread = z.infer<typeof FinancialSpreadSchema>;
+export type FinancialSpread = z.input<typeof FinancialSpreadSchema>;
+export type ParsedFinancialSpread = z.output<typeof FinancialSpreadSchema>;
 export type NormalizedFact = z.infer<typeof NormalizedFactSchema>;
 export type RiskFinding = z.infer<typeof RiskFindingSchema>;
 export type Discrepancy = z.infer<typeof DiscrepancySchema>;
@@ -368,6 +371,9 @@ export type Recommendation = z.infer<typeof RecommendationSchema>;
 export type Memo = z.infer<typeof MemoSchema>;
 export type Confidence = z.infer<typeof ConfidenceSchema>;
 export type Usage = z.infer<typeof UsageSchema>;
-export type UnderwritingSubmission = z.infer<
+export type UnderwritingSubmission = z.input<
+  typeof UnderwritingSubmissionSchema
+>;
+export type ParsedUnderwritingSubmission = z.output<
   typeof UnderwritingSubmissionSchema
 >;

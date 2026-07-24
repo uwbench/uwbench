@@ -28,6 +28,24 @@
         "interestExpense": {
           "$ref": "#/$defs/__schema0"
         },
+        "debtService": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "totalDebt": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "cash": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "totalAssets": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "totalLiabilities": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "equity": {
+          "$ref": "#/$defs/__schema0"
+        },
         "taxes": {
           "$ref": "#/$defs/__schema0"
         },
@@ -58,7 +76,6 @@
           "$ref": "#/$defs/__schema1"
         },
         "scale": {
-          "default": "units",
           "type": "string",
           "enum": [
             "units",
@@ -68,7 +85,6 @@
           ]
         },
         "signConvention": {
-          "default": "positive_revenue_negative_expense",
           "type": "string",
           "enum": [
             "positive_revenue_negative_expense",
@@ -80,7 +96,9 @@
       "required": [
         "revenue",
         "period",
-        "currency"
+        "currency",
+        "scale",
+        "signConvention"
       ],
       "additionalProperties": false
     },
@@ -92,8 +110,12 @@
           "canonicalKey": {
             "type": "string"
           },
-          "value": {},
-          "normalizedValue": {},
+          "value": {
+            "$ref": "#/$defs/__schema3"
+          },
+          "normalizedValue": {
+            "$ref": "#/$defs/__schema4"
+          },
           "type": {
             "type": "string"
           },
@@ -128,26 +150,11 @@
             ],
             "additionalProperties": false
           },
-          "origin": {
-            "type": "object",
-            "properties": {
-              "documentId": {
-                "type": "string"
-              },
-              "page": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "documentId"
-            ],
-            "additionalProperties": false
-          },
-          "citations": {
+          "evidence": {
             "minItems": 1,
             "type": "array",
             "items": {
-              "$ref": "#/$defs/__schema2"
+              "$ref": "#/$defs/__schema5"
             }
           },
           "confidence": {
@@ -163,7 +170,7 @@
           "canonicalKey",
           "value",
           "type",
-          "citations"
+          "evidence"
         ],
         "additionalProperties": false
       }
@@ -189,35 +196,29 @@
               "INFORMATIONAL"
             ]
           },
-          "weight": {
+          "statement": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/__schema5"
+            }
+          },
+          "confidence": {
             "type": "number",
             "minimum": 0,
             "maximum": 1
-          },
-          "requiredEvidence": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "acceptableConcepts": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "evidenceSupport": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           }
         },
         "required": [
           "riskId",
           "category",
           "severity",
-          "weight"
+          "statement",
+          "evidence",
+          "confidence"
         ],
         "additionalProperties": false
       }
@@ -383,8 +384,12 @@
               "passed": {
                 "type": "boolean"
               },
-              "input": {},
-              "threshold": {},
+              "input": {
+                "$ref": "#/$defs/__schema6"
+              },
+              "threshold": {
+                "$ref": "#/$defs/__schema7"
+              },
               "operator": {
                 "type": "string"
               },
@@ -428,22 +433,7 @@
           "maximum": 1
         },
         "proposedAmount": {
-          "type": "object",
-          "properties": {
-            "amount": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 9007199254740991
-            },
-            "currency": {
-              "$ref": "#/$defs/__schema1"
-            }
-          },
-          "required": [
-            "amount",
-            "currency"
-          ],
-          "additionalProperties": false
+          "$ref": "#/$defs/__schema2"
         },
         "proposedTermMonths": {
           "type": "integer",
@@ -458,10 +448,10 @@
               "description": {
                 "type": "string"
               },
-              "evidenceIds": {
+              "evidence": {
                 "type": "array",
                 "items": {
-                  "type": "string"
+                  "$ref": "#/$defs/__schema5"
                 }
               }
             },
@@ -496,7 +486,7 @@
         "rationale": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/__schema3"
+            "$ref": "#/$defs/__schema8"
           }
         }
       },
@@ -518,7 +508,7 @@
         "claims": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/__schema3"
+            "$ref": "#/$defs/__schema8"
           }
         }
       },
@@ -791,18 +781,189 @@
       ]
     },
     "__schema2": {
-      "type": "string"
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "currency": {
+          "$ref": "#/$defs/__schema1"
+        }
+      },
+      "required": [
+        "amount",
+        "currency"
+      ],
+      "additionalProperties": false
     },
     "__schema3": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema3"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema3"
+          }
+        }
+      ]
+    },
+    "__schema4": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema4"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema4"
+          }
+        }
+      ]
+    },
+    "__schema5": {
+      "type": "object",
+      "properties": {
+        "sourceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "documentId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "page": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "startOffset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "endOffset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "sourceId"
+      ],
+      "additionalProperties": false
+    },
+    "__schema6": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema6"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema6"
+          }
+        }
+      ]
+    },
+    "__schema7": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema7"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema7"
+          }
+        }
+      ]
+    },
+    "__schema8": {
       "type": "object",
       "properties": {
         "claim": {
           "type": "string"
         },
-        "evidenceIds": {
+        "evidence": {
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/$defs/__schema5"
           }
         },
         "confidence": {
@@ -813,7 +974,7 @@
       },
       "required": [
         "claim",
-        "evidenceIds",
+        "evidence",
         "confidence"
       ],
       "additionalProperties": false

@@ -20,7 +20,7 @@
           "snippet": {
             "type": "string"
           },
-          "citationAnchors": {
+          "evidence": {
             "type": "array",
             "items": {
               "type": "object",
@@ -61,7 +61,7 @@
           "sourceId",
           "title",
           "snippet",
-          "citationAnchors"
+          "evidence"
         ],
         "additionalProperties": false
       }

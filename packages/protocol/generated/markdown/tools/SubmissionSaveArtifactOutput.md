@@ -16,7 +16,7 @@ See [SubmissionSaveArtifactOutput.json](../../json-schema/tools/SubmissionSaveAr
 |------|------|----------|-------------|-------------|
 | `artifactId` | string | ✓ |  |  |
 | `sourceId` | string | ✓ |  |  |
-| `citationAnchors` | array<`object`> | ✓ |  |  |
+| `evidence` | array<`object`> | ✓ |  |  |
 
 ---
 *Generated from Zod schema. Do not edit directly.*

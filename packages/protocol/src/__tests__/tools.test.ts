@@ -25,10 +25,24 @@ import {
   validateToolError,
 } from "../tools.js";
 
-const citationAnchor = {
+const evidenceReference = {
   sourceId: "source_1",
   documentId: "doc_1",
   page: 1,
+};
+const toolError = {
+  schemaVersion: "1.0" as const,
+  code: "NOT_FOUND",
+  message: "Document not found",
+  requestId: "request_1",
+};
+const financialSpread = {
+  revenue: { amount: 1_000_000, currency: "USD" },
+  ebitda: { amount: 200_000, currency: "USD" },
+  period: { start: "2025-01-01", end: "2025-12-31" },
+  currency: "USD",
+  scale: "units",
+  signConvention: "positive_revenue_negative_expense",
 };
 
 describe("Tool Protocol Base Schemas", () => {
@@ -111,7 +125,7 @@ describe("Tool Protocol Base Schemas", () => {
         callId: "call_001",
         ok: false,
         name: "case.read_document",
-        error: { code: "NOT_FOUND", message: "Document not found" },
+        error: toolError,
       };
       const parsed = ToolResultSchema.safeParse(result);
       expect(parsed.success).toBe(true);
@@ -135,7 +149,7 @@ describe("Tool Protocol Base Schemas", () => {
           ok: true,
           name: "finance.calculate",
           result: { result: 42 },
-          error: { code: "TOOL_ERROR", message: "ambiguous" },
+          error: { ...toolError, code: "TOOL_ERROR", message: "ambiguous" },
         }).success,
       ).toBe(false);
     });
@@ -144,16 +158,18 @@ describe("Tool Protocol Base Schemas", () => {
   describe("ToolErrorSchema", () => {
     it("accepts valid error", () => {
       const error = {
+        schemaVersion: "1.0",
         code: "NOT_FOUND",
         message: "Document not found",
         details: { documentId: "doc_123" },
+        requestId: "request_1",
       };
       const result = ToolErrorSchema.safeParse(error);
       expect(result.success).toBe(true);
     });
 
     it("accepts error without details", () => {
-      const error = { code: "NOT_FOUND", message: "Document not found" };
+      const error = toolError;
       const result = ToolErrorSchema.safeParse(error);
       expect(result.success).toBe(true);
     });
@@ -260,11 +276,11 @@ describe("Case Tool Schemas", () => {
         sourceId: "source_1",
         content: "Full document text...",
         pages: [
-          { pageNumber: 1, text: "Page 1", citationAnchor },
+          { pageNumber: 1, text: "Page 1", evidence: evidenceReference },
           {
             pageNumber: 2,
             text: "Page 2",
-            citationAnchor: { ...citationAnchor, page: 2 },
+            evidence: { ...evidenceReference, page: 2 },
           },
         ],
       };
@@ -294,7 +310,7 @@ describe("Case Tool Schemas", () => {
             sourceId: "source_1",
             snippet: "Revenue was $1M",
             score: 0.95,
-            citationAnchor,
+            evidence: evidenceReference,
           },
         ],
       };
@@ -314,7 +330,7 @@ describe("Case Tool Schemas", () => {
       const output = {
         sourceId: "source_1",
         record: { field1: "value1", field2: 123 },
-        citationAnchors: [citationAnchor],
+        evidence: [evidenceReference],
       };
       const result =
         CaseGetStructuredRecordSchema.shape.output.safeParse(output);
@@ -387,7 +403,7 @@ describe("Policy Tool Schemas", () => {
             sourceId: "policy_1",
             title: "Max Leverage",
             snippet: "Leverage must not exceed 3x",
-            citationAnchors: [
+            evidence: [
               { sourceId: "policy_1", startOffset: 10, endOffset: 48 },
             ],
           },
@@ -415,9 +431,7 @@ describe("Policy Tool Schemas", () => {
         operator: "<=",
         threshold: 3.0,
         onFailure: "DECLINE",
-        citationAnchors: [
-          { sourceId: "policy_1", startOffset: 10, endOffset: 48 },
-        ],
+        evidence: [{ sourceId: "policy_1", startOffset: 10, endOffset: 48 }],
       };
       const result = PolicyGetRuleSchema.shape.output.safeParse(output);
       expect(result.success).toBe(true);
@@ -442,9 +456,17 @@ describe("Finance Tool Schemas", () => {
 
   describe("FinanceCalculateRatiosSchema", () => {
     it("accepts valid input", () => {
-      const input = { spread: { revenue: 1000000, ebitda: 200000 } };
+      const input = { spread: financialSpread };
       const result = FinanceCalculateRatiosSchema.shape.input.safeParse(input);
       expect(result.success).toBe(true);
+    });
+
+    it("rejects ad hoc spreads outside the canonical contract", () => {
+      expect(
+        FinanceCalculateRatiosSchema.shape.input.safeParse({
+          spread: { revenue: 1_000_000, ebitda: 200_000 },
+        }).success,
+      ).toBe(false);
     });
 
     it("accepts valid output", () => {
@@ -459,7 +481,7 @@ describe("Finance Tool Schemas", () => {
 
   describe("FinanceValidateSpreadSchema", () => {
     it("accepts valid input", () => {
-      const input = { spread: { revenue: 1000000, cogs: 600000 } };
+      const input = { spread: financialSpread };
       const result = FinanceValidateSpreadSchema.shape.input.safeParse(input);
       expect(result.success).toBe(true);
     });
@@ -494,7 +516,7 @@ describe("Submission Tool Schemas", () => {
       const output = {
         artifactId: "artifact_1",
         sourceId: "src_artifact_1",
-        citationAnchors: [{ sourceId: "src_artifact_1" }],
+        evidence: [{ sourceId: "src_artifact_1" }],
       };
       const result =
         SubmissionSaveArtifactSchema.shape.output.safeParse(output);
@@ -504,7 +526,7 @@ describe("Submission Tool Schemas", () => {
     it("rejects missing sourceId", () => {
       const output = {
         artifactId: "artifact_1",
-        citationAnchors: [{ sourceId: "artifact_1" }],
+        evidence: [{ sourceId: "artifact_1" }],
       };
       const result =
         SubmissionSaveArtifactSchema.shape.output.safeParse(output);
@@ -610,15 +632,17 @@ describe("Validation Helpers", () => {
       documentId: "doc_1",
       sourceId: "source_1",
       content: "text",
-      pages: [{ pageNumber: 1, text: "text", citationAnchor }],
+      pages: [{ pageNumber: 1, text: "text", evidence: evidenceReference }],
     });
     expect(result.success).toBe(true);
   });
 
   it("validateToolError accepts valid error", () => {
     const result = validateToolError("case.read_document", {
+      schemaVersion: "1.0",
       code: "NOT_FOUND",
       message: "Document not found",
+      requestId: "request_1",
     });
     expect(result.success).toBe(true);
   });

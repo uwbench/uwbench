@@ -21,6 +21,24 @@
     "interestExpense": {
       "$ref": "#/$defs/__schema0"
     },
+    "debtService": {
+      "$ref": "#/$defs/__schema2"
+    },
+    "totalDebt": {
+      "$ref": "#/$defs/__schema2"
+    },
+    "cash": {
+      "$ref": "#/$defs/__schema2"
+    },
+    "totalAssets": {
+      "$ref": "#/$defs/__schema2"
+    },
+    "totalLiabilities": {
+      "$ref": "#/$defs/__schema2"
+    },
+    "equity": {
+      "$ref": "#/$defs/__schema0"
+    },
     "taxes": {
       "$ref": "#/$defs/__schema0"
     },
@@ -51,7 +69,6 @@
       "$ref": "#/$defs/__schema1"
     },
     "scale": {
-      "default": "units",
       "type": "string",
       "enum": [
         "units",
@@ -61,7 +78,6 @@
       ]
     },
     "signConvention": {
-      "default": "positive_revenue_negative_expense",
       "type": "string",
       "enum": [
         "positive_revenue_negative_expense",
@@ -73,7 +89,9 @@
   "required": [
     "revenue",
     "period",
-    "currency"
+    "currency",
+    "scale",
+    "signConvention"
   ],
   "additionalProperties": false,
   "$defs": {
@@ -276,6 +294,24 @@
         "ZMW",
         "ZWG"
       ]
+    },
+    "__schema2": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "currency": {
+          "$ref": "#/$defs/__schema1"
+        }
+      },
+      "required": [
+        "amount",
+        "currency"
+      ],
+      "additionalProperties": false
     }
   }
 }

@@ -17,5 +17,11 @@ See [PolicyAssessment.json](../../../../packages/protocol/generated/json-schema/
 | `applicableRules` | array<`string`> | ✓ |  |  |
 | `evaluations` | array<`object`> | ✓ |  |  |
 
+## Definitions
+
+### __schema0
+
+### __schema1
+
 ---
 *Generated from Zod schema. Do not edit directly.*

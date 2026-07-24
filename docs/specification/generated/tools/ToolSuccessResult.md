@@ -99,7 +99,7 @@ See [ToolSuccessResult.json](../../../../packages/protocol/generated/json-schema
 |------|------|----------|------------|
 | `sourceId` | `string` | ✓ |  |
 | `record` | `object` | ✓ |  |
-| `citationAnchors` | `array` | ✓ |  |
+| `evidence` | `array` | ✓ |  |
 
 ### name = "case.request_information"
 
@@ -155,9 +155,9 @@ See [ToolSuccessResult.json](../../../../packages/protocol/generated/json-schema
 | `appliesWhen` | `string` | ✓ |  |
 | `input` | `object` | ✓ |  |
 | `operator` | `string` | ✓ |  |
-| `threshold` | `composite` | ✓ |  |
+| `threshold` | `__schema4` | ✓ |  |
 | `onFailure` | `string` | ✓ |  |
-| `citationAnchors` | `array` | ✓ |  |
+| `evidence` | `array` | ✓ |  |
 
 ### name = "finance.calculate"
 
@@ -224,7 +224,7 @@ See [ToolSuccessResult.json](../../../../packages/protocol/generated/json-schema
 |------|------|----------|------------|
 | `artifactId` | `string` | ✓ |  |
 | `sourceId` | `string` | ✓ |  |
-| `citationAnchors` | `array` | ✓ |  |
+| `evidence` | `array` | ✓ |  |
 
 ## Definitions
 
@@ -239,6 +239,12 @@ See [ToolSuccessResult.json](../../../../packages/protocol/generated/json-schema
 | `page` | integer |  |  |
 | `startOffset` | integer |  |  |
 | `endOffset` | integer |  |  |
+
+### __schema2
+
+### __schema3
+
+### __schema4
 
 ---
 *Generated from Zod schema. Do not edit directly.*

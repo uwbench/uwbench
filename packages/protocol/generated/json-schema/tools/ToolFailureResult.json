@@ -4,8 +4,7 @@
   "type": "object",
   "properties": {
     "schemaVersion": {
-      "type": "string",
-      "const": "1.0"
+      "$ref": "#/$defs/__schema0"
     },
     "callId": {
       "type": "string",
@@ -35,6 +34,9 @@
     "error": {
       "type": "object",
       "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema0"
+        },
         "code": {
           "type": "string",
           "minLength": 1
@@ -48,13 +50,19 @@
             "type": "string"
           },
           "additionalProperties": {
-            "$ref": "#/$defs/__schema0"
+            "$ref": "#/$defs/__schema1"
           }
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
+        "schemaVersion",
         "code",
-        "message"
+        "message",
+        "requestId"
       ],
       "additionalProperties": false
     }
@@ -69,6 +77,10 @@
   "additionalProperties": false,
   "$defs": {
     "__schema0": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "__schema1": {
       "anyOf": [
         {
           "type": "string"
@@ -85,7 +97,7 @@
         {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/__schema0"
+            "$ref": "#/$defs/__schema1"
           }
         },
         {
@@ -94,7 +106,7 @@
             "type": "string"
           },
           "additionalProperties": {
-            "$ref": "#/$defs/__schema0"
+            "$ref": "#/$defs/__schema1"
           }
         }
       ]

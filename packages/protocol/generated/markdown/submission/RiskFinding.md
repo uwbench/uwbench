@@ -2,7 +2,7 @@
 
 **Category:** submission
 
-**Description:** Risk finding with severity, weight, evidence, and acceptable concepts
+**Description:** Participant risk finding with severity, evidence, and confidence
 
 ## JSON Schema
 
@@ -17,10 +17,9 @@ See [RiskFinding.json](../../json-schema/submission/RiskFinding.json) for the ca
 | `riskId` | string | ✓ |  |  |
 | `category` | string | ✓ |  |  |
 | `severity` | string | ✓ |  | enum: [CRITICAL, HIGH, MEDIUM, LOW, INFORMATIONAL] |
-| `weight` | number | ✓ |  | minimum: 0<br>maximum: 1 |
-| `requiredEvidence` | array<`string`> |  |  |  |
-| `acceptableConcepts` | array<`string`> |  |  |  |
-| `evidenceSupport` | array<`string`> |  |  |  |
+| `statement` | string | ✓ |  | minLength: 1 |
+| `evidence` | array<`object`> | ✓ |  |  |
+| `confidence` | number | ✓ |  | minimum: 0<br>maximum: 1 |
 
 ---
 *Generated from Zod schema. Do not edit directly.*

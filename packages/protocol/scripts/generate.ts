@@ -175,18 +175,18 @@ function appendVariants(
  * Schema definitions to generate.
  * Each entry maps a schema name to the Zod schema object.
  */
-const SCHEMAS: {
+export const SCHEMAS: {
   name: string;
   schema: z.ZodTypeAny;
-  category: "agent" | "tools" | "events" | "submission";
+  category: "common" | "agent" | "tools" | "events" | "submission";
   description: string;
 }[] = [
   // Agent Protocol Schemas
   {
     name: "SchemaVersion",
     schema: CommonSchemas.SchemaVersionSchema,
-    category: "agent",
-    description: "Agent protocol schema version",
+    category: "common",
+    description: "Shared protocol schema version",
   },
   {
     name: "ProtocolErrorCode",
@@ -239,10 +239,11 @@ const SCHEMAS: {
 
   // Tool Protocol Base Schemas
   {
-    name: "CitationAnchor",
-    schema: ToolSchemas.CitationAnchorSchema,
-    category: "tools",
-    description: "Stable source and document location for tool evidence",
+    name: "EvidenceReference",
+    schema: CommonSchemas.EvidenceReferenceSchema,
+    category: "common",
+    description:
+      "Canonical stable source, document, page, and range locator for evidence",
   },
   {
     name: "ToolCall",
@@ -550,14 +551,14 @@ const SCHEMAS: {
     schema: SubmissionSchemas.NormalizedFactSchema,
     category: "submission",
     description:
-      "Normalized fact with canonical key, value, citations, and confidence",
+      "Normalized fact with canonical key, value, evidence, and confidence",
   },
   {
     name: "RiskFinding",
     schema: SubmissionSchemas.RiskFindingSchema,
     category: "submission",
     description:
-      "Risk finding with severity, weight, evidence, and acceptable concepts",
+      "Participant risk finding with severity, evidence, and confidence",
   },
   {
     name: "Discrepancy",
@@ -1256,7 +1257,12 @@ async function main(): Promise<void> {
   console.log(`  - ${relative(ROOT_DIR, DOCS_SPEC_GENERATED_DIR)}`);
 }
 
-main().catch((err) => {
-  console.error("❌ Generation failed:", err);
-  process.exit(1);
-});
+if (
+  process.argv[1] &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  main().catch((err) => {
+    console.error("❌ Generation failed:", err);
+    process.exit(1);
+  });
+}

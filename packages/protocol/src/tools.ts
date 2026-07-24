@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { SchemaVersionSchema } from "./common.js";
+import { EvidenceReferenceSchema, SchemaVersionSchema } from "./common.js";
+import { FinancialSpreadSchema } from "./submission.js";
 
 /**
  * Tool Protocol v1 — Base Schemas
@@ -10,19 +11,11 @@ import { SchemaVersionSchema } from "./common.js";
 
 export const ToolErrorSchema = z
   .strictObject({
+    schemaVersion: SchemaVersionSchema,
     code: z.string().min(1),
     message: z.string(),
     details: z.record(z.string(), z.json()).optional(),
-  })
-  .strict();
-
-export const CitationAnchorSchema = z
-  .strictObject({
-    sourceId: z.string().min(1),
-    documentId: z.string().min(1).optional(),
-    page: z.number().int().positive().optional(),
-    startOffset: z.number().int().nonnegative().optional(),
-    endOffset: z.number().int().nonnegative().optional(),
+    requestId: z.string().min(1),
   })
   .strict();
 
@@ -90,7 +83,7 @@ export const CaseReadDocumentOutputSchema = z.strictObject({
     z.strictObject({
       pageNumber: z.number().int().positive(),
       text: z.string(),
-      citationAnchor: CitationAnchorSchema,
+      evidence: EvidenceReferenceSchema,
     }),
   ),
 });
@@ -116,7 +109,7 @@ export const CaseSearchDocumentsOutputSchema = z.strictObject({
       sourceId: z.string(),
       snippet: z.string(),
       score: z.number(),
-      citationAnchor: CitationAnchorSchema,
+      evidence: EvidenceReferenceSchema,
     }),
   ),
 });
@@ -136,8 +129,8 @@ export const CaseGetStructuredRecordInputSchema = z.strictObject({
 
 export const CaseGetStructuredRecordOutputSchema = z.strictObject({
   sourceId: z.string(),
-  record: z.record(z.string(), z.unknown()),
-  citationAnchors: z.array(CitationAnchorSchema),
+  record: z.record(z.string(), z.json()),
+  evidence: z.array(EvidenceReferenceSchema),
 });
 
 export const CaseGetStructuredRecordErrorSchema = ToolErrorSchema;
@@ -186,7 +179,7 @@ export const PolicySearchOutputSchema = z.strictObject({
       sourceId: z.string(),
       title: z.string(),
       snippet: z.string(),
-      citationAnchors: z.array(CitationAnchorSchema),
+      evidence: z.array(EvidenceReferenceSchema),
     }),
   ),
 });
@@ -209,11 +202,11 @@ export const PolicyGetRuleOutputSchema = z.strictObject({
   sourceId: z.string(),
   title: z.string(),
   appliesWhen: z.string(),
-  input: z.record(z.string(), z.unknown()),
+  input: z.record(z.string(), z.json()),
   operator: z.string(),
-  threshold: z.unknown(),
+  threshold: z.json(),
   onFailure: z.string(),
-  citationAnchors: z.array(CitationAnchorSchema),
+  evidence: z.array(EvidenceReferenceSchema),
 });
 
 export const PolicyGetRuleErrorSchema = ToolErrorSchema;
@@ -248,7 +241,7 @@ export const FinanceCalculateSchema = z.strictObject({
 
 // finance.calculate_ratios
 export const FinanceCalculateRatiosInputSchema = z.strictObject({
-  spread: z.record(z.string(), z.unknown()),
+  spread: FinancialSpreadSchema,
 });
 
 export const FinanceCalculateRatiosOutputSchema = z.strictObject({
@@ -265,7 +258,7 @@ export const FinanceCalculateRatiosSchema = z.strictObject({
 
 // finance.validate_spread
 export const FinanceValidateSpreadInputSchema = z.strictObject({
-  spread: z.record(z.string(), z.unknown()),
+  spread: FinancialSpreadSchema,
 });
 
 export const FinanceValidateSpreadOutputSchema = z.strictObject({
@@ -295,7 +288,7 @@ export const SubmissionSaveArtifactInputSchema = z.strictObject({
 export const SubmissionSaveArtifactOutputSchema = z.strictObject({
   artifactId: z.string(),
   sourceId: z.string(),
-  citationAnchors: z.array(CitationAnchorSchema),
+  evidence: z.array(EvidenceReferenceSchema),
 });
 
 export const SubmissionSaveArtifactErrorSchema = ToolErrorSchema;
@@ -311,10 +304,9 @@ export const SubmissionSaveArtifactSchema = z.strictObject({
  */
 
 export type ToolError = z.infer<typeof ToolErrorSchema>;
-export type CitationAnchor = z.infer<typeof CitationAnchorSchema>;
 
 // Case tool types
-export type CaseListDocumentsInput = z.infer<
+export type CaseListDocumentsInput = z.input<
   typeof CaseListDocumentsInputSchema
 >;
 export type CaseListDocumentsOutput = z.infer<
@@ -324,7 +316,7 @@ export type CaseListDocumentsError = z.infer<
   typeof CaseListDocumentsErrorSchema
 >;
 
-export type CaseGetDocumentMetadataInput = z.infer<
+export type CaseGetDocumentMetadataInput = z.input<
   typeof CaseGetDocumentMetadataInputSchema
 >;
 export type CaseGetDocumentMetadataOutput = z.infer<
@@ -334,13 +326,13 @@ export type CaseGetDocumentMetadataError = z.infer<
   typeof CaseGetDocumentMetadataErrorSchema
 >;
 
-export type CaseReadDocumentInput = z.infer<typeof CaseReadDocumentInputSchema>;
+export type CaseReadDocumentInput = z.input<typeof CaseReadDocumentInputSchema>;
 export type CaseReadDocumentOutput = z.infer<
   typeof CaseReadDocumentOutputSchema
 >;
 export type CaseReadDocumentError = z.infer<typeof CaseReadDocumentErrorSchema>;
 
-export type CaseSearchDocumentsInput = z.infer<
+export type CaseSearchDocumentsInput = z.input<
   typeof CaseSearchDocumentsInputSchema
 >;
 export type CaseSearchDocumentsOutput = z.infer<
@@ -350,7 +342,7 @@ export type CaseSearchDocumentsError = z.infer<
   typeof CaseSearchDocumentsErrorSchema
 >;
 
-export type CaseGetStructuredRecordInput = z.infer<
+export type CaseGetStructuredRecordInput = z.input<
   typeof CaseGetStructuredRecordInputSchema
 >;
 export type CaseGetStructuredRecordOutput = z.infer<
@@ -360,7 +352,7 @@ export type CaseGetStructuredRecordError = z.infer<
   typeof CaseGetStructuredRecordErrorSchema
 >;
 
-export type CaseRequestInformationInput = z.infer<
+export type CaseRequestInformationInput = z.input<
   typeof CaseRequestInformationInputSchema
 >;
 export type CaseRequestInformationOutput = z.infer<
@@ -371,22 +363,22 @@ export type CaseRequestInformationError = z.infer<
 >;
 
 // Policy tool types
-export type PolicySearchInput = z.infer<typeof PolicySearchInputSchema>;
+export type PolicySearchInput = z.input<typeof PolicySearchInputSchema>;
 export type PolicySearchOutput = z.infer<typeof PolicySearchOutputSchema>;
 export type PolicySearchError = z.infer<typeof PolicySearchErrorSchema>;
 
-export type PolicyGetRuleInput = z.infer<typeof PolicyGetRuleInputSchema>;
+export type PolicyGetRuleInput = z.input<typeof PolicyGetRuleInputSchema>;
 export type PolicyGetRuleOutput = z.infer<typeof PolicyGetRuleOutputSchema>;
 export type PolicyGetRuleError = z.infer<typeof PolicyGetRuleErrorSchema>;
 
 // Finance tool types
-export type FinanceCalculateInput = z.infer<typeof FinanceCalculateInputSchema>;
+export type FinanceCalculateInput = z.input<typeof FinanceCalculateInputSchema>;
 export type FinanceCalculateOutput = z.infer<
   typeof FinanceCalculateOutputSchema
 >;
 export type FinanceCalculateError = z.infer<typeof FinanceCalculateErrorSchema>;
 
-export type FinanceCalculateRatiosInput = z.infer<
+export type FinanceCalculateRatiosInput = z.input<
   typeof FinanceCalculateRatiosInputSchema
 >;
 export type FinanceCalculateRatiosOutput = z.infer<
@@ -396,7 +388,7 @@ export type FinanceCalculateRatiosError = z.infer<
   typeof FinanceCalculateRatiosErrorSchema
 >;
 
-export type FinanceValidateSpreadInput = z.infer<
+export type FinanceValidateSpreadInput = z.input<
   typeof FinanceValidateSpreadInputSchema
 >;
 export type FinanceValidateSpreadOutput = z.infer<
@@ -407,7 +399,7 @@ export type FinanceValidateSpreadError = z.infer<
 >;
 
 // Submission tool types
-export type SubmissionSaveArtifactInput = z.infer<
+export type SubmissionSaveArtifactInput = z.input<
   typeof SubmissionSaveArtifactInputSchema
 >;
 export type SubmissionSaveArtifactOutput = z.infer<
@@ -492,7 +484,7 @@ export const ToolResultSchema = z.union([
   ToolFailureResultSchema,
 ]);
 
-export type ToolCall = z.infer<typeof ToolCallSchema>;
+export type ToolCall = z.input<typeof ToolCallSchema>;
 export type ToolResult = z.infer<typeof ToolResultSchema>;
 
 /**

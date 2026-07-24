@@ -3,6 +3,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
     "code": {
       "type": "string",
       "minLength": 1
@@ -18,11 +22,17 @@
       "additionalProperties": {
         "$ref": "#/$defs/__schema0"
       }
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 1
     }
   },
   "required": [
+    "schemaVersion",
     "code",
-    "message"
+    "message",
+    "requestId"
   ],
   "additionalProperties": false,
   "$defs": {

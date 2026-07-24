@@ -86,15 +86,38 @@ See [RunStatusResponse.json](../../json-schema/agent/RunStatusResponse.json) for
 
 ### __schema3
 
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `amount` | integer | ✓ |  |
+| `currency` | [`__schema2`](#__schema2) | ✓ |  |
+
 ### __schema4
+
+### __schema5
+
+### __schema6
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `sourceId` | string | ✓ |  |
+| `documentId` | string |  |  |
+| `page` | integer |  |  |
+| `startOffset` | integer |  |  |
+| `endOffset` | integer |  |  |
+
+### __schema7
+
+### __schema8
+
+### __schema9
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `claim` | string | ✓ |  |
-| `evidenceIds` | array | ✓ |  |
+| `evidence` | array | ✓ |  |
 | `confidence` | number | ✓ |  |
 
-### __schema5
+### __schema10
 
 ---
 *Generated from Zod schema. Do not edit directly.*

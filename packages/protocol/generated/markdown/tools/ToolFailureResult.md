@@ -14,7 +14,7 @@ See [ToolFailureResult.json](../../json-schema/tools/ToolFailureResult.json) for
 
 | Name | Type | Required | Description | Constraints |
 |------|------|----------|-------------|-------------|
-| `schemaVersion` | string | ✓ |  |  |
+| `schemaVersion` | [`__schema0`](#__schema0) | ✓ |  |  |
 | `callId` | string | ✓ |  | minLength: 1 |
 | `ok` | boolean | ✓ |  |  |
 | `name` | string | ✓ |  | enum: [case.list_documents, case.get_document_metadata, case.read_document, case.search_documents, case.get_structured_record, case.request_information, policy.search, policy.get_rule, finance.calculate, finance.calculate_ratios, finance.validate_spread, submission.save_artifact] |
@@ -23,6 +23,8 @@ See [ToolFailureResult.json](../../json-schema/tools/ToolFailureResult.json) for
 ## Definitions
 
 ### __schema0
+
+### __schema1
 
 ---
 *Generated from Zod schema. Do not edit directly.*

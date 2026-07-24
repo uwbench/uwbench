@@ -165,6 +165,8 @@ describe("Agent Protocol Schemas", () => {
         revenue: { amount: 1000000, currency: "USD" },
         period: { start: "2024-01-01", end: "2024-12-31" },
         currency: "USD",
+        scale: "units",
+        signConvention: "positive_revenue_negative_expense",
       },
       normalizedFacts: [],
       risks: [],

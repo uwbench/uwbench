@@ -15,7 +15,7 @@ See [CitedClaim.json](../../json-schema/submission/CitedClaim.json) for the cano
 | Name | Type | Required | Description | Constraints |
 |------|------|----------|-------------|-------------|
 | `claim` | string | ✓ |  |  |
-| `evidenceIds` | array<`string`> | ✓ |  |  |
+| `evidence` | array<`object`> | ✓ |  |  |
 | `confidence` | number | ✓ |  | minimum: 0<br>maximum: 1 |
 
 ---

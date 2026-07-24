@@ -20,7 +20,7 @@
           "score": {
             "type": "number"
           },
-          "citationAnchor": {
+          "evidence": {
             "type": "object",
             "properties": {
               "sourceId": {
@@ -58,7 +58,7 @@
           "sourceId",
           "snippet",
           "score",
-          "citationAnchor"
+          "evidence"
         ],
         "additionalProperties": false
       }

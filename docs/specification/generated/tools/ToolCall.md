@@ -162,7 +162,7 @@ No fields.
 
 | Name | Type | Required | Constraint |
 |------|------|----------|------------|
-| `spread` | `object` | ✓ |  |
+| `spread` | `__schema1` | ✓ |  |
 
 ### name = "finance.validate_spread"
 
@@ -177,7 +177,7 @@ No fields.
 
 | Name | Type | Required | Constraint |
 |------|------|----------|------------|
-| `spread` | `object` | ✓ |  |
+| `spread` | `__schema1` | ✓ |  |
 
 ### name = "submission.save_artifact"
 
@@ -199,6 +199,45 @@ No fields.
 ## Definitions
 
 ### __schema0
+
+### __schema1
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `revenue` | [`__schema2`](#__schema2) | ✓ |  |
+| `cogs` | [`__schema2`](#__schema2) |  |  |
+| `grossProfit` | [`__schema2`](#__schema2) |  |  |
+| `operatingExpenses` | [`__schema2`](#__schema2) |  |  |
+| `ebitda` | [`__schema2`](#__schema2) |  |  |
+| `interestExpense` | [`__schema2`](#__schema2) |  |  |
+| `debtService` | [`__schema4`](#__schema4) |  |  |
+| `totalDebt` | [`__schema4`](#__schema4) |  |  |
+| `cash` | [`__schema4`](#__schema4) |  |  |
+| `totalAssets` | [`__schema4`](#__schema4) |  |  |
+| `totalLiabilities` | [`__schema4`](#__schema4) |  |  |
+| `equity` | [`__schema2`](#__schema2) |  |  |
+| `taxes` | [`__schema2`](#__schema2) |  |  |
+| `netIncome` | [`__schema2`](#__schema2) |  |  |
+| `period` | object | ✓ |  |
+| `currency` | [`__schema3`](#__schema3) | ✓ |  |
+| `scale` | string | ✓ |  |
+| `signConvention` | string | ✓ |  |
+
+### __schema2
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `amount` | integer | ✓ |  |
+| `currency` | [`__schema3`](#__schema3) | ✓ |  |
+
+### __schema3
+
+### __schema4
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `amount` | integer | ✓ |  |
+| `currency` | [`__schema3`](#__schema3) | ✓ |  |
 
 ---
 *Generated from Zod schema. Do not edit directly.*

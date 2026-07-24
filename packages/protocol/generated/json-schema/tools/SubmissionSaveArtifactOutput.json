@@ -9,7 +9,7 @@
     "sourceId": {
       "type": "string"
     },
-    "citationAnchors": {
+    "evidence": {
       "type": "array",
       "items": {
         "type": "object",
@@ -48,7 +48,7 @@
   "required": [
     "artifactId",
     "sourceId",
-    "citationAnchors"
+    "evidence"
   ],
   "additionalProperties": false
 }

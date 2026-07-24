@@ -133,10 +133,10 @@ export const CancelResponseSchema = z
   .strict();
 
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
-export type RunRequest = z.infer<typeof RunRequestSchema>;
+export type RunRequest = z.input<typeof RunRequestSchema>;
 export type RunStatus = z.infer<typeof RunStatusSchema>;
 export type RunResponse = z.infer<typeof RunResponseSchema>;
-export type RunStatusResponse = z.infer<typeof RunStatusResponseSchema>;
+export type RunStatusResponse = z.input<typeof RunStatusResponseSchema>;
 export type CancelResponse = z.infer<typeof CancelResponseSchema>;
 export type ProtocolError = z.infer<typeof ProtocolErrorSchema>;
 export type ProtocolErrorCode = z.infer<typeof ProtocolErrorCodeSchema>;

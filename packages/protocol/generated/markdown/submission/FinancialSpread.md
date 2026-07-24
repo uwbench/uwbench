@@ -20,12 +20,18 @@ See [FinancialSpread.json](../../json-schema/submission/FinancialSpread.json) fo
 | `operatingExpenses` | [`__schema0`](#__schema0) |  |  |  |
 | `ebitda` | [`__schema0`](#__schema0) |  |  |  |
 | `interestExpense` | [`__schema0`](#__schema0) |  |  |  |
+| `debtService` | [`__schema2`](#__schema2) |  |  |  |
+| `totalDebt` | [`__schema2`](#__schema2) |  |  |  |
+| `cash` | [`__schema2`](#__schema2) |  |  |  |
+| `totalAssets` | [`__schema2`](#__schema2) |  |  |  |
+| `totalLiabilities` | [`__schema2`](#__schema2) |  |  |  |
+| `equity` | [`__schema0`](#__schema0) |  |  |  |
 | `taxes` | [`__schema0`](#__schema0) |  |  |  |
 | `netIncome` | [`__schema0`](#__schema0) |  |  |  |
 | `period` | object | ✓ |  |  |
 | `currency` | [`__schema1`](#__schema1) | ✓ |  |  |
-| `scale` | string |  |  Default: `"units"` | enum: [units, thousands, millions, billions] |
-| `signConvention` | string |  |  Default: `"positive_revenue_negative_expense"` | enum: [positive_revenue_negative_expense, all_positive, all_negative] |
+| `scale` | string | ✓ |  | enum: [units, thousands, millions, billions] |
+| `signConvention` | string | ✓ |  | enum: [positive_revenue_negative_expense, all_positive, all_negative] |
 
 ## Definitions
 
@@ -37,6 +43,13 @@ See [FinancialSpread.json](../../json-schema/submission/FinancialSpread.json) fo
 | `currency` | [`__schema1`](#__schema1) | ✓ |  |
 
 ### __schema1
+
+### __schema2
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `amount` | integer | ✓ |  |
+| `currency` | [`__schema1`](#__schema1) | ✓ |  |
 
 ---
 *Generated from Zod schema. Do not edit directly.*

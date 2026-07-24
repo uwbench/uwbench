@@ -15,7 +15,7 @@ See [Condition.json](../../json-schema/submission/Condition.json) for the canoni
 | Name | Type | Required | Description | Constraints |
 |------|------|----------|-------------|-------------|
 | `description` | string | ✓ |  |  |
-| `evidenceIds` | array<`string`> |  |  |  |
+| `evidence` | array<`object`> |  |  |  |
 
 ---
 *Generated from Zod schema. Do not edit directly.*

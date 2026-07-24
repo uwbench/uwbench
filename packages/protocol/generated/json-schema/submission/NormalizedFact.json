@@ -6,8 +6,12 @@
     "canonicalKey": {
       "type": "string"
     },
-    "value": {},
-    "normalizedValue": {},
+    "value": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "normalizedValue": {
+      "$ref": "#/$defs/__schema1"
+    },
     "type": {
       "type": "string"
     },
@@ -221,26 +225,11 @@
       ],
       "additionalProperties": false
     },
-    "origin": {
-      "type": "object",
-      "properties": {
-        "documentId": {
-          "type": "string"
-        },
-        "page": {
-          "type": "number"
-        }
-      },
-      "required": [
-        "documentId"
-      ],
-      "additionalProperties": false
-    },
-    "citations": {
+    "evidence": {
       "minItems": 1,
       "type": "array",
       "items": {
-        "$ref": "#/$defs/__schema0"
+        "$ref": "#/$defs/__schema2"
       }
     },
     "confidence": {
@@ -256,12 +245,103 @@
     "canonicalKey",
     "value",
     "type",
-    "citations"
+    "evidence"
   ],
   "additionalProperties": false,
   "$defs": {
     "__schema0": {
-      "type": "string"
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema0"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema0"
+          }
+        }
+      ]
+    },
+    "__schema1": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema1"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema1"
+          }
+        }
+      ]
+    },
+    "__schema2": {
+      "type": "object",
+      "properties": {
+        "sourceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "documentId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "page": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "startOffset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "endOffset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "sourceId"
+      ],
+      "additionalProperties": false
     }
   }
 }

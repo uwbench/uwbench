@@ -15,7 +15,7 @@ See [Condition.json](../../../../packages/protocol/generated/json-schema/submiss
 | Name | Type | Required | Description | Constraints |
 |------|------|----------|-------------|-------------|
 | `description` | string | ✓ |  |  |
-| `evidenceIds` | array<`string`> |  |  |  |
+| `evidence` | array<`object`> |  |  |  |
 
 ---
 *Generated from Zod schema. Do not edit directly.*

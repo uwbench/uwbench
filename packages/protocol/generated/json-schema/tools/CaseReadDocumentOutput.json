@@ -25,7 +25,7 @@
           "text": {
             "type": "string"
           },
-          "citationAnchor": {
+          "evidence": {
             "type": "object",
             "properties": {
               "sourceId": {
@@ -61,7 +61,7 @@
         "required": [
           "pageNumber",
           "text",
-          "citationAnchor"
+          "evidence"
         ],
         "additionalProperties": false
       }

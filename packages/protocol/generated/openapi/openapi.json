@@ -224,8 +224,8 @@
     },
     "schemas": {
       "SchemaVersion": {
-        "$ref": "../json-schema/agent/SchemaVersion.json",
-        "description": "Agent protocol schema version"
+        "$ref": "../json-schema/common/SchemaVersion.json",
+        "description": "Shared protocol schema version"
       },
       "ProtocolErrorCode": {
         "$ref": "../json-schema/agent/ProtocolErrorCode.json",
@@ -259,9 +259,9 @@
         "$ref": "../json-schema/agent/ProtocolError.json",
         "description": "Protocol error response"
       },
-      "CitationAnchor": {
-        "$ref": "../json-schema/tools/CitationAnchor.json",
-        "description": "Stable source and document location for tool evidence"
+      "EvidenceReference": {
+        "$ref": "../json-schema/common/EvidenceReference.json",
+        "description": "Canonical stable source, document, page, and range locator for evidence"
       },
       "ToolCall": {
         "$ref": "../json-schema/tools/ToolCall.json",
@@ -457,11 +457,11 @@
       },
       "NormalizedFact": {
         "$ref": "../json-schema/submission/NormalizedFact.json",
-        "description": "Normalized fact with canonical key, value, citations, and confidence"
+        "description": "Normalized fact with canonical key, value, evidence, and confidence"
       },
       "RiskFinding": {
         "$ref": "../json-schema/submission/RiskFinding.json",
-        "description": "Risk finding with severity, weight, evidence, and acceptable concepts"
+        "description": "Participant risk finding with severity, evidence, and confidence"
       },
       "Discrepancy": {
         "$ref": "../json-schema/submission/Discrepancy.json",

@@ -277,6 +277,7 @@
       "package.json",
       "examples/deterministic-baseline/src/agent.ts",
       "docs/specification/ADR-002-agent-protocol.md",
+      "README.md",
       "tsconfig.base.json",
       "tsconfig.json"
     ],
@@ -288,15 +289,15 @@
     ],
     "estimated_minutes": 90,
     "failure_limit": 5,
-    "review_failure_limit": 5,
+    "review_failure_limit": 8,
     "status": "gated_pass",
     "priority": 8,
     "assignee": "orchestrator",
-    "started_at": "2026-07-24T09:54:16.426Z",
-    "attempts": 8,
+    "started_at": "2026-07-24T10:22:58.165Z",
+    "attempts": 9,
     "failures": 3,
-    "review_failures": 4,
-    "completed_at": "2026-07-24T09:54:16.450Z"
+    "review_failures": 5,
+    "completed_at": "2026-07-24T10:22:58.188Z"
   },
   {
     "id": "T9",

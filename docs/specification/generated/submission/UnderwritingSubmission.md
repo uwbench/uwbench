@@ -40,12 +40,35 @@ See [UnderwritingSubmission.json](../../../../packages/protocol/generated/json-s
 
 ### __schema2
 
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `amount` | integer | ✓ |  |
+| `currency` | [`__schema1`](#__schema1) | ✓ |  |
+
 ### __schema3
+
+### __schema4
+
+### __schema5
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `sourceId` | string | ✓ |  |
+| `documentId` | string |  |  |
+| `page` | integer |  |  |
+| `startOffset` | integer |  |  |
+| `endOffset` | integer |  |  |
+
+### __schema6
+
+### __schema7
+
+### __schema8
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `claim` | string | ✓ |  |
-| `evidenceIds` | array | ✓ |  |
+| `evidence` | array | ✓ |  |
 | `confidence` | number | ✓ |  |
 
 ---

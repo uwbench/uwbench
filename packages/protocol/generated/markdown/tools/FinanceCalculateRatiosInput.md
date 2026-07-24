@@ -16,5 +16,23 @@ See [FinanceCalculateRatiosInput.json](../../json-schema/tools/FinanceCalculateR
 |------|------|----------|-------------|-------------|
 | `spread` | object | ✓ |  |  |
 
+## Definitions
+
+### __schema0
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `amount` | integer | ✓ |  |
+| `currency` | [`__schema1`](#__schema1) | ✓ |  |
+
+### __schema1
+
+### __schema2
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `amount` | integer | ✓ |  |
+| `currency` | [`__schema1`](#__schema1) | ✓ |  |
+
 ---
 *Generated from Zod schema. Do not edit directly.*

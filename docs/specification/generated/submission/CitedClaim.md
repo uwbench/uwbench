@@ -15,7 +15,7 @@ See [CitedClaim.json](../../../../packages/protocol/generated/json-schema/submis
 | Name | Type | Required | Description | Constraints |
 |------|------|----------|-------------|-------------|
 | `claim` | string | ✓ |  |  |
-| `evidenceIds` | array<`string`> | ✓ |  |  |
+| `evidence` | array<`object`> | ✓ |  |  |
 | `confidence` | number | ✓ |  | minimum: 0<br>maximum: 1 |
 
 ---

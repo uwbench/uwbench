@@ -20,9 +20,15 @@ See [PolicyGetRuleOutput.json](../../../../packages/protocol/generated/json-sche
 | `appliesWhen` | string | ✓ |  |  |
 | `input` | object | ✓ |  |  |
 | `operator` | string | ✓ |  |  |
-| `threshold` | object | ✓ |  |  |
+| `threshold` | [`__schema1`](#__schema1) | ✓ |  |  |
 | `onFailure` | string | ✓ |  |  |
-| `citationAnchors` | array<`object`> | ✓ |  |  |
+| `evidence` | array<`object`> | ✓ |  |  |
+
+## Definitions
+
+### __schema0
+
+### __schema1
 
 ---
 *Generated from Zod schema. Do not edit directly.*

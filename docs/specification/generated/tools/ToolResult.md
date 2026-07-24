@@ -103,7 +103,7 @@ This variant is defined by a referenced composite schema.
 |------|------|----------|------------|
 | `sourceId` | `string` | ✓ |  |
 | `record` | `object` | ✓ |  |
-| `citationAnchors` | `array` | ✓ |  |
+| `evidence` | `array` | ✓ |  |
 
 #### name = "case.request_information"
 
@@ -159,9 +159,9 @@ This variant is defined by a referenced composite schema.
 | `appliesWhen` | `string` | ✓ |  |
 | `input` | `object` | ✓ |  |
 | `operator` | `string` | ✓ |  |
-| `threshold` | `composite` | ✓ |  |
+| `threshold` | `__schema4` | ✓ |  |
 | `onFailure` | `string` | ✓ |  |
-| `citationAnchors` | `array` | ✓ |  |
+| `evidence` | `array` | ✓ |  |
 
 #### name = "finance.calculate"
 
@@ -228,7 +228,7 @@ This variant is defined by a referenced composite schema.
 |------|------|----------|------------|
 | `artifactId` | `string` | ✓ |  |
 | `sourceId` | `string` | ✓ |  |
-| `citationAnchors` | `array` | ✓ |  |
+| `evidence` | `array` | ✓ |  |
 
 ### ok = false
 
@@ -244,9 +244,11 @@ This variant is defined by a referenced composite schema.
 
 | Name | Type | Required | Constraint |
 |------|------|----------|------------|
+| `schemaVersion` | `__schema0` | ✓ |  |
 | `code` | `string` | ✓ |  |
 | `message` | `string` | ✓ |  |
 | `details` | `object` |  |  |
+| `requestId` | `string` | ✓ |  |
 
 ## Definitions
 
@@ -263,6 +265,12 @@ This variant is defined by a referenced composite schema.
 | `endOffset` | integer |  |  |
 
 ### __schema2
+
+### __schema3
+
+### __schema4
+
+### __schema5
 
 ---
 *Generated from Zod schema. Do not edit directly.*

@@ -22,5 +22,17 @@ See [Recommendation.json](../../json-schema/submission/Recommendation.json) for 
 | `policyExceptions` | array<`object`> | ✓ |  |  |
 | `rationale` | array<`object`> | ✓ |  |  |
 
+## Definitions
+
+### __schema0
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `sourceId` | string | ✓ |  |
+| `documentId` | string |  |  |
+| `page` | integer |  |  |
+| `startOffset` | integer |  |  |
+| `endOffset` | integer |  |  |
+
 ---
 *Generated from Zod schema. Do not edit directly.*

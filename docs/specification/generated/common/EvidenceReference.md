@@ -1,12 +1,12 @@
-# CitationAnchor
+# EvidenceReference
 
-**Category:** tools
+**Category:** common
 
-**Description:** Stable source and document location for tool evidence
+**Description:** Canonical stable source, document, page, and range locator for evidence
 
 ## JSON Schema
 
-See [CitationAnchor.json](../../json-schema/tools/CitationAnchor.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
+See [EvidenceReference.json](../../../../packages/protocol/generated/json-schema/common/EvidenceReference.json) for the canonical JSON Schema (OpenAPI 3.1 compatible).
 
 **Type:** `object`
 

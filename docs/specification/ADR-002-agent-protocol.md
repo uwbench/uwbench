@@ -69,9 +69,9 @@ Authorization: Bearer <run-scoped-token>
 ### Wire Validation Policy
 
 - Every protocol object is strict: unknown properties are rejected in both Zod and generated JSON Schema.
-- Generated schemas use input semantics. Fields with Zod defaults may be omitted on the wire and are materialized by the TypeScript runtime after validation.
+- Generated schemas use input semantics. Protocol v1 does not materialize defaults: every required wire value is explicit, so validators in every language observe the same payload.
 - Wire constraints must be natively representable in JSON Schema; opaque Zod refinements are not permitted.
-- CI validates representative payloads against both Zod and Ajv Draft 2020-12, including defaults, unknown fields, numeric constraints, and every discriminated-union branch.
+- CI validates every generated schema and discovered constraint against both Zod and Ajv Draft 2020-12, including asserted formats, unknown fields, numeric boundaries, required fields, and every discriminated-union branch.
 
 ### Versioning Strategy
 

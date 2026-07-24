@@ -16,7 +16,11 @@ See [CaseGetStructuredRecordOutput.json](../../json-schema/tools/CaseGetStructur
 |------|------|----------|-------------|-------------|
 | `sourceId` | string | ✓ |  |  |
 | `record` | object | ✓ |  |  |
-| `citationAnchors` | array<`object`> | ✓ |  |  |
+| `evidence` | array<`object`> | ✓ |  |  |
+
+## Definitions
+
+### __schema0
 
 ---
 *Generated from Zod schema. Do not edit directly.*
