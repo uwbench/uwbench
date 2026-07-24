@@ -186,16 +186,25 @@
       "packages/protocol/src/index.ts",
       "packages/protocol/__tests__/events.test.ts"
     ],
+    "scope_exceptions": [
+      "packages/protocol/src/**",
+      "packages/protocol/package.json",
+      "package.json",
+      "tsconfig.base.json",
+      "tsconfig.json",
+      "vitest.config.ts",
+      "eslint.config.js"
+    ],
     "depends_on": [
       "T4"
     ],
     "estimated_minutes": 60,
-    "status": "gated_pass",
+    "status": "pending",
     "priority": 6,
-    "assignee": "orchestrator",
+    "assignee": "pi",
     "started_at": "2026-07-23T18:55:58.208Z",
     "attempts": 1,
-    "completed_at": "2026-07-23T19:45:49.134Z"
+    "review_notes": "Cumulative gate audit invalidated the earlier pass because the harness ignored non-final command failures. Repair the current repository foundation: pnpm lint reports 12 formatting errors in the event implementation/tests; pnpm typecheck and pnpm build fail in Vite/Rollup typings, including missing Worker; preserve the 121 passing tests; make lint, typecheck, test, build, and all currently applicable scripts exit successfully without modifying generated/tracked output. Also remove current trailing whitespace. This retry may update the declared scope exceptions for protocol/config dependencies."
   },
   {
     "id": "T7",
@@ -226,7 +235,12 @@
     ],
     "estimated_minutes": 90,
     "status": "pending",
-    "priority": 7
+    "priority": 7,
+    "assignee": "pi",
+    "started_at": "2026-07-23T19:45:49.206Z",
+    "attempts": 1,
+    "review_notes": "Transient NVIDIA capacity failure: ResourceExhausted worker request limit. No implementation patch was produced; resume after provider capacity recovers.",
+    "deferrals": 1
   },
   {
     "id": "T8",
@@ -247,6 +261,12 @@
       "packages/protocol/package.json",
       ".github/workflows/ci.yml",
       "docs/specification/generated/*"
+    ],
+    "scope_exceptions": [
+      "packages/protocol/src/**",
+      "package.json",
+      "tsconfig.base.json",
+      "tsconfig.json"
     ],
     "depends_on": [
       "T4",

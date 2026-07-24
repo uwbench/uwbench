@@ -21,6 +21,7 @@ PI_BIN="${PI_BIN:-pi}"
 PI_PROVIDER="${PI_PROVIDER:-nvidia}"
 PI_MODEL="${PI_MODEL:-nvidia/nemotron-3-ultra-550b-a55b}"
 PI_THINKING="${PI_THINKING:-}"
+SCOPE_MODE="${SCOPE_MODE:-enforce}"
 RUN_BRANCH="${RUN_BRANCH:-workflow/phase-1}"
 MAIN_BRANCH="${MAIN_BRANCH:-main}"
 MAX_TASK_ATTEMPTS="${MAX_TASK_ATTEMPTS:-3}"
@@ -54,6 +55,18 @@ task_status() {
 task_attempt() {
   local value
   value="$(task_value "$1" attempts)"
+  printf '%s' "${value:-0}"
+}
+
+task_failures() {
+  local value
+  value="$(task_value "$1" failures)"
+  printf '%s' "${value:-0}"
+}
+
+task_review_failures() {
+  local value
+  value="$(task_value "$1" review_failures)"
   printf '%s' "${value:-0}"
 }
 
@@ -116,9 +129,12 @@ cmd_preflight() {
   require_command git
   require_command codex
   require_command pnpm
+  require_command rg
   require_command "$PI_BIN"
   [[ "$MAX_TASK_ATTEMPTS" =~ ^[1-9][0-9]*$ ]] ||
     die "MAX_TASK_ATTEMPTS must be a positive integer."
+  [[ "$SCOPE_MODE" == "enforce" || "$SCOPE_MODE" == "warn" || "$SCOPE_MODE" == "off" ]] ||
+    die "SCOPE_MODE must be enforce, warn, or off."
   [[ -n "${NVIDIA_API_KEY:-}" ]] ||
     die "NVIDIA_API_KEY is not set in this shell; pi cannot use the NVIDIA provider."
   git check-ref-format --branch "$RUN_BRANCH" >/dev/null
@@ -218,13 +234,15 @@ cmd_deploy() {
   fi
 
   log "Running pi with $PI_MODEL for $task_id..."
-  set +e
-  (
+  local implement_exit=0
+  if (
     cd "$worktree"
     "${pi_args[@]}" < "$task_prompt"
-  ) > "$artifacts/implement.log" 2>&1
-  local implement_exit=$?
-  set -e
+  ) > "$artifacts/implement.log" 2>&1; then
+    implement_exit=0
+  else
+    implement_exit=$?
+  fi
 
   git -C "$worktree" add -N . >/dev/null
   git -C "$worktree" \
@@ -253,6 +271,85 @@ cmd_deploy() {
   ok "Implementation captured in $artifacts"
 }
 
+task_scope_patterns() {
+  local task_id="$1"
+  jq -r --arg id "$task_id" '
+    .[]
+    | select(.id == $id)
+    | (.files_touched + (.scope_exceptions // []))
+    | .[]
+  ' "$TASKS_FILE"
+}
+
+path_allowed_for_task() {
+  local task_id="$1"
+  local path="$2"
+  local pattern
+
+  # Dependency resolution is a mechanical consequence of package changes.
+  [[ "$path" == "pnpm-lock.yaml" ]] && return 0
+
+  while IFS= read -r pattern; do
+    [[ -n "$pattern" ]] || continue
+    if [[ "$path" == $pattern ]]; then
+      return 0
+    fi
+
+    # A task that owns a package source file may also update that package's
+    # manifest/config and add colocated tests without listing every test path.
+    if [[ "$pattern" =~ ^((packages|apps|examples)/[^/]+)/ ]]; then
+      local package_root="${BASH_REMATCH[1]}"
+      if [[ "$path" == "$package_root/package.json" ||
+            "$path" == "$package_root/tsconfig.json" ]]; then
+        return 0
+      fi
+      if [[ "$path" == "$package_root"/src/* ]] &&
+        [[ "$path" == *.test.ts ||
+           "$path" == *.spec.ts ||
+           "$path" == *"/__tests__/"* ]]; then
+        return 0
+      fi
+    fi
+  done < <(task_scope_patterns "$task_id")
+
+  return 1
+}
+
+write_scope_report() {
+  local task_id="$1"
+  local worktree="$2"
+  local baseline="$3"
+  local output="$4"
+  local unexpected=0
+  local path
+
+  {
+    printf 'Task: %s\nMode: %s\n\nChanged paths:\n' "$task_id" "$SCOPE_MODE"
+    while IFS= read -r path; do
+      [[ -n "$path" ]] || continue
+      if path_allowed_for_task "$task_id" "$path"; then
+        printf '  ALLOWED     %s\n' "$path"
+      else
+        printf '  UNEXPECTED  %s\n' "$path"
+        unexpected=$((unexpected + 1))
+      fi
+    done < <(
+      git -C "$worktree" diff --name-only "$baseline" -- . ':(exclude).agent-workflow'
+    )
+    printf '\nUnexpected path count: %s\n' "$unexpected"
+  } > "$output"
+
+  if (( unexpected > 0 )); then
+    if [[ "$SCOPE_MODE" == "enforce" ]]; then
+      return 1
+    fi
+    if [[ "$SCOPE_MODE" == "warn" ]]; then
+      warn "$task_id changed $unexpected path(s) outside its declared scope; see $output"
+    fi
+  fi
+  return 0
+}
+
 run_repository_checks() {
   local worktree="$1"
   local output="$2"
@@ -264,16 +361,17 @@ run_repository_checks() {
   fi
 
   (
+    set -uo pipefail
     cd "$worktree"
     if [[ ! -f pnpm-lock.yaml ]]; then
       printf 'pnpm-lock.yaml is missing.\n'
       exit 1
     fi
-    pnpm install --frozen-lockfile --ignore-scripts --prefer-offline
+    pnpm install --frozen-lockfile --ignore-scripts --prefer-offline || exit $?
     for script in lint typecheck test build generate smoke; do
       if jq -e --arg script "$script" '.scripts[$script] != null' package.json >/dev/null; then
         printf '\n## pnpm %s\n' "$script"
-        pnpm "$script"
+        pnpm "$script" || exit $?
       fi
     done
   ) >> "$output" 2>&1
@@ -300,6 +398,26 @@ record_gate_failure() {
   node "$ORCHESTRATOR" gate-fail "$task_id" "$feedback"
 }
 
+is_transient_provider_failure() {
+  local log_file="$1"
+  [[ -f "$log_file" ]] || return 1
+  rg -qi \
+    'ResourceExhausted|worker .*request limit|rate[ -]?limit|HTTP 429|temporarily unavailable|service unavailable|overloaded' \
+    "$log_file"
+}
+
+record_provider_deferral() {
+  local task_id="$1"
+  local log_file="$2"
+  local feedback
+  feedback="$(
+    gate_failure_feedback \
+      "Transient model-provider capacity failure. Resume this task later; do not change the implementation." \
+      "$log_file"
+  )"
+  node "$ORCHESTRATOR" defer "$task_id" "$feedback"
+}
+
 cmd_gate() {
   local task_id="${1:-$(current_task)}"
   [[ -n "$task_id" ]] || die "No active task to gate."
@@ -312,11 +430,13 @@ cmd_gate() {
   local patch
   local worktree
   local checks
+  local scope_report
   local before_diff
   local after_diff
   artifacts="$(artifact_dir "$task_id")"
   patch="$artifacts/implementation.patch"
   checks="$artifacts/local-gate.log"
+  scope_report="$artifacts/scope-report.txt"
   before_diff="$artifacts/diff-before-checks.patch"
   after_diff="$artifacts/diff-after-checks.patch"
   worktree="$GATE_WORKTREES/${task_id}-attempt-$(task_attempt "$task_id")"
@@ -336,11 +456,20 @@ cmd_gate() {
   git -C "$worktree" add -N . >/dev/null
   git -C "$worktree" diff --binary HEAD -- . ':(exclude).agent-workflow' > "$before_diff"
 
+  if ! write_scope_report "$task_id" "$worktree" HEAD "$scope_report"; then
+    remove_worktree "$worktree"
+    record_gate_failure "$task_id" "Implementation changed files outside the declared task scope." "$scope_report"
+    warn "$task_id failed scope enforcement and was reopened for retry."
+    return 1
+  fi
+
   log "Running deterministic gate for $task_id in an isolated worktree..."
-  set +e
-  run_repository_checks "$worktree" "$checks"
-  local checks_exit=$?
-  set -e
+  local checks_exit=0
+  if run_repository_checks "$worktree" "$checks"; then
+    checks_exit=0
+  else
+    checks_exit=$?
+  fi
   printf '%s\n' "$checks_exit" > "$artifacts/local-gate.exit-code"
 
   git -C "$worktree" add -N . >/dev/null
@@ -447,10 +576,12 @@ cmd_checkpoint() {
 
   prepare_worktree "$worktree" HEAD
   log "Re-running the complete repository gate for checkpoint $target..."
-  set +e
-  run_repository_checks "$worktree" "$checks"
-  local checks_exit=$?
-  set -e
+  local checks_exit=0
+  if run_repository_checks "$worktree" "$checks"; then
+    checks_exit=0
+  else
+    checks_exit=$?
+  fi
   printf '%s\n' "$checks_exit" > "$artifacts/checkpoint-checks.exit-code"
   if [[ "$checks_exit" -eq 0 ]] &&
     [[ -n "$(git -C "$worktree" status --porcelain -- . ':(exclude).agent-workflow')" ]]; then
@@ -468,8 +599,8 @@ cmd_checkpoint() {
   fi
 
   log "Running cumulative Codex review for checkpoint $target..."
-  set +e
-  codex exec \
+  local review_exit=0
+  if codex exec \
     -C "$worktree" \
     --add-dir "$WORKFLOW_DIR" \
     --add-dir "$artifacts" \
@@ -501,8 +632,11 @@ CLI behavior, and the smoke path.
 Do not modify files. Treat failed or unverified required checks as not met.
 Return only the JSON object required by the supplied output schema.
 EOF
-  local review_exit=$?
-  set -e
+  then
+    review_exit=0
+  else
+    review_exit=$?
+  fi
   remove_worktree "$worktree"
 
   if [[ "$review_exit" -ne 0 ]]; then
@@ -543,22 +677,31 @@ run_active_task() {
   local artifacts
   artifacts="$(artifact_dir "$task_id")"
 
-  set +e
-  cmd_deploy "$task_id"
-  local deploy_exit=$?
-  set -e
+  local deploy_exit=0
+  if cmd_deploy "$task_id"; then
+    deploy_exit=0
+  else
+    deploy_exit=$?
+  fi
   if [[ "$deploy_exit" -ne 0 ]]; then
+    if is_transient_provider_failure "$artifacts/implement.log"; then
+      record_provider_deferral "$task_id" "$artifacts/implement.log"
+      warn "Deferred $task_id because the model provider is temporarily saturated."
+      return 75
+    fi
     record_gate_failure \
       "$task_id" \
-      "Nemotron execution failed with status $deploy_exit." \
+      "pi/Nemotron execution failed with status $deploy_exit." \
       "$artifacts/implement.log"
     return 1
   fi
 
-  set +e
-  cmd_gate "$task_id"
-  local gate_exit=$?
-  set -e
+  local gate_exit=0
+  if cmd_gate "$task_id"; then
+    gate_exit=0
+  else
+    gate_exit=$?
+  fi
   return "$gate_exit"
 }
 
@@ -581,33 +724,40 @@ run_to_checkpoint() {
       task_priority="$(task_value "$task_id" priority)"
       (( task_priority <= target_priority )) ||
         die "Reached $task_id before checkpoint target $target was complete."
-      (( $(task_attempt "$task_id") <= MAX_TASK_ATTEMPTS )) ||
-        die "$task_id exceeded MAX_TASK_ATTEMPTS=$MAX_TASK_ATTEMPTS."
+      (( $(task_failures "$task_id") < MAX_TASK_ATTEMPTS )) ||
+        die "$task_id reached MAX_TASK_ATTEMPTS=$MAX_TASK_ATTEMPTS implementation failures."
 
-      set +e
-      run_active_task "$task_id"
-      local task_exit=$?
-      set -e
+      local task_exit=0
+      if run_active_task "$task_id"; then
+        task_exit=0
+      else
+        task_exit=$?
+      fi
+      if [[ "$task_exit" -eq 75 ]]; then
+        die "$task_id was deferred because NVIDIA capacity is unavailable. Resume with run-all later."
+      fi
       if [[ "$task_exit" -ne 0 ]]; then
-        if (( $(task_attempt "$task_id") >= MAX_TASK_ATTEMPTS )); then
-          die "$task_id failed after $(task_attempt "$task_id") attempts. Inspect $(artifact_dir "$task_id")."
+        if (( $(task_failures "$task_id") >= MAX_TASK_ATTEMPTS )); then
+          die "$task_id failed its implementation gate $(task_failures "$task_id") times. Inspect $(artifact_dir "$task_id")."
         fi
         warn "Retrying $task_id with gate feedback."
       fi
     done
 
-    set +e
-    cmd_checkpoint "$target"
-    local checkpoint_exit=$?
-    set -e
+    local checkpoint_exit=0
+    if cmd_checkpoint "$target"; then
+      checkpoint_exit=0
+    else
+      checkpoint_exit=$?
+    fi
     if [[ "$checkpoint_exit" -eq 0 ]]; then
       return 0
     fi
     if [[ "$checkpoint_exit" -eq 2 ]]; then
       die "Checkpoint reviewer could not complete; inspect $(checkpoint_dir "$target")."
     fi
-    if (( $(task_attempt "$target") >= MAX_TASK_ATTEMPTS )); then
-      die "$target failed checkpoint review after $(task_attempt "$target") attempts."
+    if (( $(task_review_failures "$target") >= MAX_TASK_ATTEMPTS )); then
+      die "$target failed checkpoint review $(task_review_failures "$target") times."
     fi
     warn "Retrying $target with cumulative checkpoint feedback."
   done
@@ -689,6 +839,7 @@ Environment:
   RUN_BRANCH=$RUN_BRANCH
   MAIN_BRANCH=$MAIN_BRANCH
   MAX_TASK_ATTEMPTS=$MAX_TASK_ATTEMPTS
+  SCOPE_MODE=$SCOPE_MODE
 EOF
 }
 

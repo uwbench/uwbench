@@ -90,6 +90,17 @@ function validateTasks(tasks) {
       throw new Error(`${task.id} must have acceptance criteria`);
     }
     if (!Array.isArray(task.files_touched)) throw new Error(`${task.id}.files_touched must be an array`);
+    if (task.scope_exceptions !== undefined && !Array.isArray(task.scope_exceptions)) {
+      throw new Error(`${task.id}.scope_exceptions must be an array when present`);
+    }
+    for (const counter of ["attempts", "failures", "deferrals", "review_failures"]) {
+      if (
+        task[counter] !== undefined
+        && (!Number.isInteger(task[counter]) || task[counter] < 0)
+      ) {
+        throw new Error(`${task.id}.${counter} must be a non-negative integer when present`);
+      }
+    }
   }
 
   for (const task of tasks) {
@@ -160,6 +171,9 @@ function taskPrompt(task, tasks) {
   const priorFeedback = task.review_notes
     ? `\n## Prior gate or checkpoint feedback\n${task.review_notes}\n`
     : "";
+  const scopeExceptions = task.scope_exceptions?.length
+    ? `\n## Allowed repair scope\nThese paths may be changed only when necessary to satisfy this task or its cumulative gate:\n${task.scope_exceptions.map((path) => `- \`${path}\``).join("\n")}\n`
+    : "";
 
   return `# Task ${task.id}: ${task.title}
 
@@ -180,6 +194,7 @@ ${task.acceptance.map((criterion) => `- [ ] ${criterion}`).join("\n")}
 
 ## Intended files
 ${task.files_touched.map((path) => `- \`${path}\``).join("\n")}
+${scopeExceptions}
 
 ## Required context
 Read these repository-relative files completely before editing:
@@ -280,6 +295,7 @@ function commandGateFail(taskId, reason) {
     task.assignee = "pi";
     task.completed_at = undefined;
     task.review_notes = reason.trim();
+    task.failures = (task.failures ?? 0) + 1;
     saveTasks(tasks, {
       command: "gate-fail",
       taskId: task.id,
@@ -287,6 +303,30 @@ function commandGateFail(taskId, reason) {
       reason: reason.trim(),
     });
     console.log(`Gate failed for ${task.id}; it is pending for another attempt.`);
+  });
+}
+
+function commandDefer(taskId, reason) {
+  if (!reason?.trim()) throw new Error("defer requires a non-empty reason");
+  withLock(() => {
+    const tasks = loadTasks();
+    const task = taskById(tasks, taskId);
+    if (task.status !== "in_progress") {
+      throw new Error(`${task.id} is ${task.status}; expected in_progress`);
+    }
+    task.status = "pending";
+    task.assignee = "pi";
+    task.completed_at = undefined;
+    task.review_notes = reason.trim();
+    task.deferrals = (task.deferrals ?? 0) + 1;
+    saveTasks(tasks, {
+      command: "defer",
+      taskId: task.id,
+      attempt: task.attempts,
+      deferrals: task.deferrals,
+      reason: reason.trim(),
+    });
+    console.log(`Deferred ${task.id} without counting an implementation failure.`);
   });
 }
 
@@ -311,10 +351,12 @@ function commandReopen(taskId, reason) {
     task.assignee = "pi";
     task.completed_at = undefined;
     task.review_notes = reason.trim();
+    task.review_failures = (task.review_failures ?? 0) + 1;
     saveTasks(tasks, {
       command: "reopen",
       taskId: task.id,
       attempt: task.attempts,
+      reviewFailures: task.review_failures,
       reason: reason.trim(),
     });
     console.log(`Reopened ${task.id} with checkpoint feedback.`);
@@ -363,7 +405,12 @@ function commandStatus() {
             : "WAIT";
     const waiting = dependency.waiting.length ? `; waits for ${dependency.waiting.join(",")}` : "";
     const attempt = task.attempts ? `; attempt ${task.attempts}` : "";
-    console.log(`${marker.padEnd(6)} ${task.id.padEnd(4)} ${task.title} [${task.status}${attempt}${waiting}]`);
+    const failures = task.failures ? `; failures ${task.failures}` : "";
+    const deferrals = task.deferrals ? `; deferrals ${task.deferrals}` : "";
+    const reviewFailures = task.review_failures ? `; review failures ${task.review_failures}` : "";
+    console.log(
+      `${marker.padEnd(6)} ${task.id.padEnd(4)} ${task.title} [${task.status}${attempt}${failures}${deferrals}${reviewFailures}${waiting}]`,
+    );
   }
   const active = activeTasks(tasks);
   if (active.length) {
@@ -384,6 +431,7 @@ Commands:
   next [task-id]
   gate-pass <task-id>
   gate-fail <task-id> <reason>
+  defer <task-id> <transient-provider-reason>
   reopen <task-id> <checkpoint-feedback>
   reset <task-id> [reason]
 
@@ -412,6 +460,10 @@ try {
     case "gate-fail":
       if (!args[0]) throw new Error("gate-fail requires a task id");
       commandGateFail(args[0], args.slice(1).join(" "));
+      break;
+    case "defer":
+      if (!args[0]) throw new Error("defer requires a task id");
+      commandDefer(args[0], args.slice(1).join(" "));
       break;
     case "reopen":
       if (!args[0]) throw new Error("reopen requires a task id");

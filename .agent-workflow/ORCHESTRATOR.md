@@ -24,12 +24,16 @@ T9 → … → T15 ── deterministic gate per task ── Codex end-to-end ch
 
 Deterministic gates run after every task. They install from the lockfile, execute
 every available root `lint`, `typecheck`, `test`, `build`, `generate`, and
-`smoke` script, and reject checks that mutate generated/tracked output.
+`smoke` script, stop at the first non-zero exit, and reject checks that mutate
+generated/tracked output. A patch is also rejected before checks if it changes a
+path outside the task's declared `files_touched` and `scope_exceptions`.
 
 If a gate fails, the task is automatically returned to `pending` with the end of
 the failing log in its next prompt. If a checkpoint fails, T8 or T15 is reopened
-with Codex's required changes. Retries stop at `MAX_TASK_ATTEMPTS` rather than
-looping indefinitely.
+with Codex's required changes. Implementation failures and checkpoint-review
+failures have independent retry counters. Provider-capacity errors are recorded
+as deferrals, do not consume the implementation-failure budget, and stop the
+current run so it can be resumed later.
 
 ## Branch and commit policy
 
@@ -103,6 +107,7 @@ export PI_THINKING=
 export RUN_BRANCH=workflow/phase-1
 export MAIN_BRANCH=main
 export MAX_TASK_ATTEMPTS=3
+export SCOPE_MODE=enforce
 ```
 
 Override these in the shell before starting the run.
@@ -112,6 +117,12 @@ provider/model above, and its normal coding tools. `NVIDIA_API_KEY` must be
 present in the shell that launches the orchestrator. The workflow intentionally
 never passes it as a CLI argument or writes it into the repository or artifacts.
 
+`SCOPE_MODE=enforce` is the certification-safe default. `warn` records
+out-of-scope paths without rejecting the patch, and `off` only writes the scope
+report. Keep `enforce` for normal runs. `pnpm-lock.yaml`, package-local manifests
+and configuration, and colocated tests are inferred where appropriate; other
+necessary cross-cutting changes must be declared in a task's `scope_exceptions`.
+
 ## Safety properties
 
 - At most one task may be `in_progress`.
@@ -120,10 +131,14 @@ never passes it as a CLI argument or writes it into the repository or artifacts.
 - Implementation diffs are anchored to a recorded pre-agent commit, so they capture
   untracked, binary, uncommitted, and accidentally committed changes.
 - Workflow state, logs, dependencies, and worktrees are excluded from patches.
+- Every changed path is checked against the active task's declared scope.
 - A task patch is tested in a disposable worktree before it touches the run branch.
+- Every repository command propagates its own non-zero exit; a later command
+  cannot turn a failed install, lint, typecheck, test, or build into a passing gate.
 - Checks that modify the candidate patch fail the gate.
 - Only gated patches are committed.
-- Checkpoint feedback is bounded by the same retry limit as task feedback.
+- Implementation failures, provider deferrals, and checkpoint-review failures
+  are tracked separately.
 - A final review is invalidated when the reviewed branch changes.
 - `promote` uses a fast-forward merge and never rewrites `main`.
 
@@ -167,6 +182,7 @@ Task artifacts:
 ├── implementation.patch
 ├── implementation-baseline.sha
 ├── status.txt
+├── scope-report.txt
 ├── local-gate.log
 ├── local-gate.exit-code
 ├── diff-before-checks.patch
@@ -207,6 +223,10 @@ node .agent-workflow/orchestrator.mjs reset T1 "Task was not deployed"
 If the process stops after the retry limit, inspect the matching attempt
 directory. Increase `MAX_TASK_ATTEMPTS` only after understanding the repeated
 failure.
+
+If NVIDIA reports `ResourceExhausted`, HTTP 429, overload, or temporary
+unavailability, the active task returns to `pending` without consuming a failure.
+Wait for provider capacity and run `run-all` again.
 
 If Codex itself cannot execute, the checkpoint is not treated as a failed
 implementation and the task is not reopened. Fix the local Codex invocation and
