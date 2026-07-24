@@ -115,6 +115,7 @@ JSON Schema and covered by Zod/Ajv parity tests.
 ```json
 {
   "schemaVersion": "1.0",
+  "idempotencyKey": "client-generated-key-0183",
   "benchmark": "commercial-credit",
   "benchmarkVersion": "0.1.0",
   "lane": "raw_documents",
@@ -140,6 +141,28 @@ JSON Schema and covered by Zod/Ajv parity tests.
   }
 }
 ```
+
+`idempotencyKey` is optional. When supplied, retrying the same run creation
+request with that key returns the original accepted response and
+`agentRunId`.
+
+**POST /v1/runs Response:**
+
+```json
+{
+  "schemaVersion": "1.0",
+  "agentRunId": "agent_run_0183",
+  "status": "accepted"
+}
+```
+
+The creation response is accepted-only. `GET /v1/runs/:agentRunId` owns the
+complete lifecycle and returns a status-discriminated `RunStatusResponse`:
+
+- `accepted`, `running`, or `awaiting_tool`: no terminal payload
+- `completed`: requires `result: UnderwritingSubmission`
+- `failed`: requires `error: ProtocolError`
+- `cancelled`: no terminal payload
 
 ### Evidence and Participant Risk Schemas
 

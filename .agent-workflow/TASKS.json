@@ -112,10 +112,11 @@
     "description": "Define agent lifecycle and transport schemas; submission-domain schemas are implemented separately in T7",
     "acceptance": [
       "packages/protocol/src/agent.ts exports all schemas with schemaVersion",
-      "RunRequest: benchmark, benchmarkVersion, lane, caseId, objective, requiredOutputs, toolGateway, limits",
-      "RunResponse: agentRunId, status (accepted|running|awaiting_tool|completed|failed|cancelled)",
-      "RunStatus enum matches spec",
-      "Run lifecycle response supports an optional schema-validated completion payload wired in T7 without duplicating submission types",
+      "RunRequest: optional idempotencyKey plus benchmark, benchmarkVersion, lane, caseId, objective, requiredOutputs, toolGateway, limits",
+      "POST RunResponse: agentRunId with accepted-only status",
+      "Polling RunStatusResponse owns accepted|running|awaiting_tool|completed|failed|cancelled and enforces status-specific terminal payloads",
+      "RunStatus enum matches the polling lifecycle states",
+      "Completed RunStatusResponse requires the schema-validated T7 submission payload without duplicating submission types",
       "Protocol errors have stable machine-readable codes",
       "Unit tests cover valid requests and rejected unknown versions/statuses",
       "No circular dependencies"
@@ -272,6 +273,7 @@
       "packages/scorer-core/package.json",
       "packages/tool-runtime/package.json",
       ".changeset/**",
+      ".agent-workflow/SPEC.md",
       ".gitignore",
       "eslint.config.js",
       "package.json",
@@ -298,11 +300,11 @@
     "status": "gated_pass",
     "priority": 8,
     "assignee": "orchestrator",
-    "started_at": "2026-07-24T10:37:38.174Z",
-    "attempts": 10,
+    "started_at": "2026-07-24T13:44:31.146Z",
+    "attempts": 11,
     "failures": 3,
-    "review_failures": 6,
-    "completed_at": "2026-07-24T10:37:38.199Z"
+    "review_failures": 7,
+    "completed_at": "2026-07-24T13:44:31.178Z"
   },
   {
     "id": "T9",
