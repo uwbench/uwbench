@@ -21,6 +21,7 @@ PI_BIN="${PI_BIN:-pi}"
 PI_PROVIDER="${PI_PROVIDER:-nvidia}"
 PI_MODEL="${PI_MODEL:-nvidia/nemotron-3-ultra-550b-a55b}"
 PI_THINKING="${PI_THINKING:-}"
+PI_TASK_TIMEOUT_SECONDS="${PI_TASK_TIMEOUT_SECONDS:-7200}"
 SCOPE_MODE="${SCOPE_MODE:-enforce}"
 RUN_BRANCH="${RUN_BRANCH:-workflow/phase-1}"
 MAIN_BRANCH="${MAIN_BRANCH:-main}"
@@ -39,6 +40,21 @@ die() { printf '%s✗%s %s\n' "$RED" "$NC" "$*" >&2; exit 1; }
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"
+}
+
+run_with_timeout() {
+  local seconds="$1"
+  shift
+
+  if command -v timeout >/dev/null 2>&1; then
+    timeout --signal=TERM --kill-after=30s "${seconds}s" "$@"
+  elif command -v gtimeout >/dev/null 2>&1; then
+    gtimeout --signal=TERM --kill-after=30s "${seconds}s" "$@"
+  else
+    # macOS does not ship GNU timeout. POSIX preserves an alarm across exec,
+    # so the replacement pi process receives SIGALRM when the deadline expires.
+    perl -e 'alarm shift @ARGV; exec @ARGV or die "exec failed: $!"' "$seconds" "$@"
+  fi
 }
 
 task_value() {
@@ -147,8 +163,14 @@ cmd_preflight() {
   require_command codex
   require_command pnpm
   require_command "$PI_BIN"
+  if ! command -v timeout >/dev/null 2>&1 &&
+    ! command -v gtimeout >/dev/null 2>&1; then
+    require_command perl
+  fi
   [[ "$MAX_TASK_ATTEMPTS" =~ ^[1-9][0-9]*$ ]] ||
     die "MAX_TASK_ATTEMPTS must be a positive integer."
+  [[ "$PI_TASK_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]] ||
+    die "PI_TASK_TIMEOUT_SECONDS must be a positive integer."
   [[ "$SCOPE_MODE" == "enforce" || "$SCOPE_MODE" == "warn" || "$SCOPE_MODE" == "off" ]] ||
     die "SCOPE_MODE must be enforce, warn, or off."
   [[ -n "${NVIDIA_API_KEY:-}" ]] ||
@@ -249,11 +271,11 @@ cmd_deploy() {
     pi_args+=(--thinking "$PI_THINKING")
   fi
 
-  log "Running pi with $PI_MODEL for $task_id..."
+  log "Running pi with $PI_MODEL for $task_id (timeout: ${PI_TASK_TIMEOUT_SECONDS}s)..."
   local implement_exit=0
   if (
     cd "$worktree"
-    "${pi_args[@]}" < "$task_prompt"
+    run_with_timeout "$PI_TASK_TIMEOUT_SECONDS" "${pi_args[@]}" < "$task_prompt"
   ) > "$artifacts/implement.log" 2>&1; then
     implement_exit=0
   else
@@ -720,6 +742,14 @@ run_active_task() {
       warn "Deferred $task_id because the model provider is temporarily saturated."
       return 75
     fi
+    if [[ "$deploy_exit" -eq 124 || "$deploy_exit" -eq 142 ]]; then
+      record_gate_failure \
+        "$task_id" \
+        "pi/Nemotron exceeded the ${PI_TASK_TIMEOUT_SECONDS}s task deadline. Retry from the clean task baseline and keep the implementation bounded to the declared scope." \
+        "$artifacts/implement.log"
+      warn "Stopped $task_id after the pi task deadline."
+      return 1
+    fi
     record_gate_failure \
       "$task_id" \
       "pi/Nemotron execution failed with status $deploy_exit." \
@@ -874,6 +904,7 @@ Environment:
   PI_PROVIDER=$PI_PROVIDER
   PI_MODEL=$PI_MODEL
   PI_THINKING=${PI_THINKING:-<model default>}
+  PI_TASK_TIMEOUT_SECONDS=$PI_TASK_TIMEOUT_SECONDS
   RUN_BRANCH=$RUN_BRANCH
   MAIN_BRANCH=$MAIN_BRANCH
   MAX_TASK_ATTEMPTS=$MAX_TASK_ATTEMPTS

@@ -108,6 +108,8 @@ export PI_PROVIDER=nvidia
 export PI_MODEL=nvidia/nemotron-3-ultra-550b-a55b
 # Optional: leave empty to use the model/extension default.
 export PI_THINKING=
+# Maximum wall-clock time for one pi implementation attempt (default: 2 hours).
+export PI_TASK_TIMEOUT_SECONDS=7200
 export RUN_BRANCH=workflow/phase-1
 export MAIN_BRANCH=main
 export MAX_TASK_ATTEMPTS=3
@@ -120,6 +122,12 @@ Override these in the shell before starting the run.
 provider/model above, and its normal coding tools. `NVIDIA_API_KEY` must be
 present in the shell that launches the orchestrator. The workflow intentionally
 never passes it as a CLI argument or writes it into the repository or artifacts.
+
+Each `pi` implementation attempt is bounded by `PI_TASK_TIMEOUT_SECONDS`. The
+orchestrator uses GNU `timeout`/`gtimeout` when installed and a portable Perl
+alarm fallback on macOS. A deadline breach preserves the attempt artifacts,
+records actionable retry feedback, and counts as a bounded implementation
+failure instead of leaving `run-all` blocked indefinitely.
 
 `SCOPE_MODE=enforce` is the certification-safe default. `warn` records
 out-of-scope paths without rejecting the patch, and `off` only writes the scope
