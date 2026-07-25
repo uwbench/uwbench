@@ -323,7 +323,8 @@
       "packages/testkit/src/fake-agent.ts",
       "packages/testkit/__tests__/conformance.test.ts",
       "packages/testkit/package.json",
-      "examples/deterministic-baseline/*"
+      "examples/deterministic-baseline/*",
+      "pnpm-workspace.yaml"
     ],
     "depends_on": [
       "T4",
@@ -332,10 +333,14 @@
       "T7"
     ],
     "estimated_minutes": 120,
-    "status": "pending",
+    "failure_limit": 5,
+    "status": "gated_pass",
     "priority": 9,
-    "attempts": 1,
-    "review_notes": "Attempt 1 was interrupted after a confirmed 10.5-hour provider hang. It produced a recovered partial patch but no completion output and modified files outside T9 scope. Retry from the clean baseline, keep changes within declared scope, and complete promptly."
+    "attempts": 5,
+    "assignee": "orchestrator",
+    "started_at": "2026-07-25T14:24:36.968Z",
+    "failures": 3,
+    "completed_at": "2026-07-25T14:29:25.012Z"
   },
   {
     "id": "T10",
