@@ -222,6 +222,7 @@ Read these repository-relative files completely before editing:
 7. Do not add generated artifacts that disagree with their source schemas.
 8. On a retry, address the prior feedback even if a narrowly scoped dependency-owned file must change.
 9. Finish with a concise summary containing changed files, commands run, results, and any remaining blocker.
+10. Run \`git diff --check\` before finishing and remove every whitespace error it reports.
 `;
 }
 

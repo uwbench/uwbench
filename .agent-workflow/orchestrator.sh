@@ -476,12 +476,14 @@ cmd_gate() {
   local worktree
   local checks
   local scope_report
+  local patch_check
   local before_diff
   local after_diff
   artifacts="$(artifact_dir "$task_id")"
   patch="$artifacts/implementation.patch"
   checks="$artifacts/local-gate.log"
   scope_report="$artifacts/scope-report.txt"
+  patch_check="$artifacts/patch-check.log"
   before_diff="$artifacts/diff-before-checks.patch"
   after_diff="$artifacts/diff-after-checks.patch"
   worktree="$GATE_WORKTREES/${task_id}-attempt-$(task_attempt "$task_id")"
@@ -492,9 +494,14 @@ cmd_gate() {
 
   mkdir -p "$GATE_WORKTREES"
   prepare_worktree "$worktree" HEAD
-  if ! git -C "$worktree" apply --check --whitespace=error-all "$patch"; then
+  if ! git -C "$worktree" apply --check --whitespace=error-all "$patch" \
+    > "$patch_check" 2>&1; then
+    cat "$patch_check" >&2
     remove_worktree "$worktree"
-    record_gate_failure "$task_id" "Patch does not apply cleanly to the current branch." "$artifacts/implement.log"
+    record_gate_failure \
+      "$task_id" \
+      "Patch failed strict application or whitespace validation." \
+      "$patch_check"
     return 1
   fi
   git -C "$worktree" apply "$patch"

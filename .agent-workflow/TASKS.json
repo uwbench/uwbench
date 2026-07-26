@@ -343,31 +343,138 @@
     "completed_at": "2026-07-25T14:29:25.012Z"
   },
   {
-    "id": "T10",
+    "id": "T10A",
     "phase": 1,
-    "title": "Case Schema v1 + validator + packer (packages/case-schema)",
-    "description": "Define case.yaml schema, case directory validator, .uwb packer with input/reference split",
+    "title": "Case schema and manifest contracts (packages/case-schema)",
+    "description": "Define strict Case Schema v1, archive-manifest contracts, shared types, and package exports without implementing validation or archive behavior.",
     "acceptance": [
-      "packages/case-schema/src/case.ts: CaseSchema with schema_version, case_id, track, benchmark_version, jurisdiction, as_of_date, currency, requested_product, requested_amount, supported_lanes, features, budgets",
-      "packages/case-schema/src/validator.ts: validates directory structure, required files, no traversal paths, no symlinks, all logical IDs unique, citations within document bounds, policy rules have deterministic test form, PII has legal-use classification",
-      "packages/case-schema/src/packer.ts: creates input.uwb with normalized/ only for normalized_data and reasoning_only lanes, never raw_documents; reference.uwb contains private/ expected outputs and scorer config",
-      "The package exports a validateCase API for the CLI task to consume",
-      "Packaging round-trip: pack → unpack → validate passes"
+      "CaseSchema includes schema_version, case_id, track, benchmark_version, jurisdiction, as_of_date, currency, requested_product, requested_amount, supported_lanes, features, and budgets",
+      "Shared contracts cover logical IDs, sources, citation anchors, deterministic policy-test forms, and PII legal-use classification",
+      "Archive manifest contracts are strict, versioned, and distinguish input from reference contents",
+      "The package index exports the schema and inferred public types",
+      "Focused tests reject unknown, malformed, and internally inconsistent contract values"
     ],
     "files_touched": [
       "packages/case-schema/src/case.ts",
-      "packages/case-schema/src/validator.ts",
-      "packages/case-schema/src/packer.ts",
-      "packages/case-schema/__tests__/case.test.ts",
+      "packages/case-schema/src/types.ts",
+      "packages/case-schema/src/index.ts",
+      "packages/case-schema/__tests__/case-schema.test.ts",
       "packages/case-schema/package.json"
     ],
     "depends_on": [
       "T5",
       "T7"
     ],
-    "estimated_minutes": 120,
+    "estimated_minutes": 35,
     "status": "pending",
-    "priority": 10
+    "priority": 10,
+    "review_notes": "This bounded task replaces the contract portion of the former monolithic T10. Do not reuse its rejected patch wholesale."
+  },
+  {
+    "id": "T10B",
+    "phase": 1,
+    "title": "Secure case-directory validation (packages/case-schema)",
+    "description": "Validate required case-directory structure and filesystem safety with structured deterministic diagnostics.",
+    "acceptance": [
+      "validateCase and validateCaseSync validate case.yaml and required case-directory files",
+      "All resolved paths remain inside the selected case root",
+      "Traversal paths, absolute paths, symlinks, and duplicate logical IDs are rejected",
+      "Validation diagnostics have stable machine-readable codes and repository-relative locations",
+      "Focused fixtures and tests cover valid structure and every filesystem rejection"
+    ],
+    "files_touched": [
+      "packages/case-schema/src/validator.ts",
+      "packages/case-schema/src/index.ts",
+      "packages/case-schema/__tests__/validator-structure.test.ts",
+      "packages/case-schema/__fixtures__/structure/**"
+    ],
+    "depends_on": [
+      "T10A"
+    ],
+    "estimated_minutes": 35,
+    "status": "pending",
+    "priority": 11
+  },
+  {
+    "id": "T10C",
+    "phase": 1,
+    "title": "Semantic case validation (packages/case-schema)",
+    "description": "Add deterministic semantic checks for citations, policy tests, and PII/legal-use declarations.",
+    "acceptance": [
+      "Citation source IDs resolve to declared documents or records",
+      "Citation page, row, cell, and character anchors remain within declared source bounds",
+      "Policy rules require deterministic inputs, operators, thresholds, and failure outcomes",
+      "PII-bearing sources require an explicit allowed legal-use classification",
+      "Focused tests cover valid and invalid citations, policies, and PII declarations"
+    ],
+    "files_touched": [
+      "packages/case-schema/src/validator.ts",
+      "packages/case-schema/__tests__/validator-semantics.test.ts",
+      "packages/case-schema/__fixtures__/semantics/**"
+    ],
+    "depends_on": [
+      "T10B"
+    ],
+    "estimated_minutes": 30,
+    "status": "pending",
+    "priority": 12
+  },
+  {
+    "id": "T10D",
+    "phase": 1,
+    "title": "Deterministic UWB archive packer (packages/case-schema)",
+    "description": "Implement deterministic input/reference archive creation, integrity verification, and safe unpacking.",
+    "acceptance": [
+      "Archive creation is byte-deterministic for identical canonical inputs",
+      "Every archive entry has a SHA-256 digest, size, media type, role, and lane",
+      "Archive reading verifies manifest and payload integrity before returning data",
+      "Unpacking rejects traversal, absolute, duplicate, and symlink-like entries",
+      "Focused tests cover deterministic creation, corruption rejection, and safe unpacking"
+    ],
+    "files_touched": [
+      "packages/case-schema/src/packer.ts",
+      "packages/case-schema/src/index.ts",
+      "packages/case-schema/__tests__/packer.test.ts",
+      "packages/case-schema/__fixtures__/packer/**",
+      "packages/case-schema/package.json"
+    ],
+    "depends_on": [
+      "T10C"
+    ],
+    "estimated_minutes": 40,
+    "status": "pending",
+    "priority": 13
+  },
+  {
+    "id": "T10E",
+    "phase": 1,
+    "title": "Case lane, privacy, and round-trip integration",
+    "description": "Certify input/reference privacy boundaries and pack-unpack-validate behavior across all supported lanes.",
+    "acceptance": [
+      "raw_documents input archives exclude normalized and private scorer data",
+      "normalized_data and reasoning_only input archives include only their allowed normalized data",
+      "Reference archives contain private expected outputs, scorer configuration, and citation indices but never leak into input archives",
+      "Pack to unpack to validate passes for every supported lane",
+      "Integration tests prove archive determinism, manifest integrity, and input/reference disjointness"
+    ],
+    "files_touched": [
+      "packages/case-schema/__tests__/case-roundtrip.test.ts",
+      "packages/case-schema/__fixtures__/roundtrip/**"
+    ],
+    "scope_exceptions": [
+      "packages/case-schema/src/case.ts",
+      "packages/case-schema/src/types.ts",
+      "packages/case-schema/src/index.ts",
+      "packages/case-schema/src/validator.ts",
+      "packages/case-schema/src/packer.ts",
+      "packages/case-schema/package.json"
+    ],
+    "depends_on": [
+      "T10D"
+    ],
+    "estimated_minutes": 35,
+    "status": "pending",
+    "priority": 14
   },
   {
     "id": "T11",
@@ -392,13 +499,13 @@
     "depends_on": [
       "T6",
       "T9",
-      "T10",
+      "T10E",
       "T12",
       "T13"
     ],
     "estimated_minutes": 120,
     "status": "pending",
-    "priority": 11
+    "priority": 15
   },
   {
     "id": "T12",
@@ -422,11 +529,11 @@
     ],
     "depends_on": [
       "T5",
-      "T10"
+      "T10E"
     ],
     "estimated_minutes": 90,
     "status": "pending",
-    "priority": 12
+    "priority": 16
   },
   {
     "id": "T13",
@@ -451,7 +558,7 @@
     ],
     "estimated_minutes": 60,
     "status": "pending",
-    "priority": 13
+    "priority": 17
   },
   {
     "id": "T14",
@@ -480,7 +587,7 @@
     ],
     "estimated_minutes": 90,
     "status": "pending",
-    "priority": 14
+    "priority": 18
   },
   {
     "id": "T15",
@@ -507,11 +614,11 @@
     ],
     "depends_on": [
       "T9",
-      "T10",
+      "T10E",
       "T14"
     ],
     "estimated_minutes": 180,
     "status": "pending",
-    "priority": 15
+    "priority": 19
   }
 ]
