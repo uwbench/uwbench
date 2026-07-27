@@ -368,7 +368,11 @@
     "estimated_minutes": 35,
     "status": "pending",
     "priority": 10,
-    "review_notes": "This bounded task replaces the contract portion of the former monolithic T10. Do not reuse its rejected patch wholesale."
+    "review_notes": "Attempts 1-3 ended with transient NVIDIA request timeouts and were administratively reclassified as deferrals. Retry from the clean T10A baseline without reusing partial patches wholesale.",
+    "assignee": "pi",
+    "started_at": "2026-07-26T17:37:48.849Z",
+    "attempts": 3,
+    "deferrals": 3
   },
   {
     "id": "T10B",

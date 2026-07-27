@@ -447,7 +447,7 @@ is_transient_provider_failure() {
   local log_file="$1"
   [[ -f "$log_file" ]] || return 1
   grep -Eqi \
-    'ResourceExhausted|worker .*request limit|rate[ -]?limit|HTTP 429|temporarily unavailable|service unavailable|overloaded' \
+    'ResourceExhausted|worker .*request limit|rate[ -]?limit|HTTP 429|temporarily unavailable|service unavailable|overloaded|request timed out|request timeout|ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT|Headers Timeout Error' \
     "$log_file"
 }
 
@@ -457,7 +457,7 @@ record_provider_deferral() {
   local feedback
   feedback="$(
     gate_failure_feedback \
-      "Transient model-provider capacity failure. Resume this task later; do not change the implementation." \
+      "Transient model-provider capacity or request-timeout failure. Retry this task from its clean baseline without broadening scope." \
       "$log_file"
   )"
   node "$ORCHESTRATOR" defer "$task_id" "$feedback"

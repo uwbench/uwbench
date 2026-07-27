@@ -37,6 +37,11 @@ A failed checkpoint reopens its checkpoint task with the review findings for a
 bounded remediation attempt. Human approval is required only after T15 passes;
 promotion then fast-forwards `main` to the reviewed commit.
 
+Transient model-provider capacity and request-timeout failures are deferrals,
+not implementation failures. A deferral stops the current `run-all` invocation
+so recovery is retried explicitly instead of exhausting the task budget in a
+tight loop.
+
 Run the slice with:
 
 ```bash
