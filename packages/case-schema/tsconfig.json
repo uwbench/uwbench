@@ -4,7 +4,8 @@
     "composite": true,
     "tsBuildInfoFile": "./.tsbuildinfo",
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "skipLibCheck": true
   },
   "include": ["src/**/*"],
   "references": []

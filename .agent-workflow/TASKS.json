@@ -374,13 +374,14 @@
     ],
     "estimated_minutes": 35,
     "failure_limit": 6,
-    "status": "pending",
+    "status": "gated_pass",
     "priority": 10,
-    "review_notes": "Attempts 14-16 were administratively reclassified as provider deferrals because pi exited successfully with empty logs and empty patches. Resume from the clean T10A baseline and follow the task-specific constraints.",
-    "attempts": 16,
+    "attempts": 17,
     "deferrals": 13,
     "failures": 3,
-    "assignee": "pi"
+    "assignee": "orchestrator",
+    "started_at": "2026-07-28T07:37:44.575Z",
+    "completed_at": "2026-07-28T08:20:38.658Z"
   },
   {
     "id": "T10B",
