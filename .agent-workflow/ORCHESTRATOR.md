@@ -37,7 +37,10 @@ current run so it can be resumed later.
 
 `MAX_TASK_ATTEMPTS` is the default implementation-failure limit. A cumulative
 repair task may declare a higher `failure_limit` in `TASKS.json` when checkpoint
-feedback legitimately expands its scope.
+feedback legitimately expands its scope. A task may also declare
+`implementation_constraints`; these are rendered prominently in every attempt
+prompt for repository-specific boundaries that cannot be inferred from a failed
+gate's final log lines.
 
 ## Branch and commit policy
 

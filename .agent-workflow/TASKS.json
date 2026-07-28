@@ -358,21 +358,28 @@
       "packages/case-schema/src/case.ts",
       "packages/case-schema/src/types.ts",
       "packages/case-schema/src/index.ts",
-      "packages/case-schema/__tests__/case-schema.test.ts",
+      "packages/case-schema/src/__tests__/case-schema.test.ts",
+      "packages/case-schema/tsconfig.json",
       "packages/case-schema/package.json"
+    ],
+    "implementation_constraints": [
+      "Keep focused Vitest tests under packages/case-schema/src so the existing root Vitest include pattern executes them",
+      "Set skipLibCheck true in packages/case-schema/tsconfig.json, matching packages/protocol, so Vitest's transitive Node declarations do not conflict during the composite build while project source and tests remain typechecked",
+      "Retain the package's existing Zod 3 dependency; model JSON values with Zod 3-compatible schemas instead of upgrading Zod or rewriting pnpm-lock.yaml",
+      "Do not create or modify validator.ts, manifest.ts, the root package.json, or any T10B-T10E behavior"
     ],
     "depends_on": [
       "T5",
       "T7"
     ],
     "estimated_minutes": 35,
+    "failure_limit": 6,
     "status": "pending",
     "priority": 10,
-    "review_notes": "Attempts 4-6 ended with transient NVIDIA HTTP 429 responses and were administratively reclassified as deferrals. Retry from the clean T10A baseline.",
-    "assignee": "pi",
-    "started_at": "2026-07-27T02:02:43.813Z",
-    "attempts": 6,
-    "deferrals": 6
+    "review_notes": "Attempts 11 and 13 stayed within product scope but failed because case-schema tests were placed under src while packages/case-schema/tsconfig.json lacked the protocol package's skipLibCheck setting; attempt 12 also changed T10B-owned files. Follow the task-specific constraints exactly: keep executable tests under src, add skipLibCheck to the package tsconfig, retain Zod 3, and do not touch validator, manifest, or root configuration.",
+    "attempts": 13,
+    "deferrals": 10,
+    "failures": 3
   },
   {
     "id": "T10B",
