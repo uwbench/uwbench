@@ -33,7 +33,9 @@ the failing log in its next prompt. If a checkpoint fails, T8 or T15 is reopened
 with Codex's required changes. Implementation failures and checkpoint-review
 failures have independent retry counters. Provider-capacity errors are recorded
 as deferrals, do not consume the implementation-failure budget, and stop the
-current run so it can be resumed later.
+current run so it can be resumed later. Bodyless provider transport errors and
+successful pi exits with neither output nor a patch follow the same deferral
+path, preventing an upstream empty response from exhausting the retry budget.
 
 `MAX_TASK_ATTEMPTS` is the default implementation-failure limit. A cumulative
 repair task may declare a higher `failure_limit` in `TASKS.json` when checkpoint

@@ -310,6 +310,10 @@ cmd_deploy() {
     return 76
   fi
   if [[ ! -s "$artifacts/implementation.patch" ]]; then
+    if [[ ! -s "$artifacts/implement.log" ]]; then
+      warn "pi returned success with no output and no implementation patch."
+      return 74
+    fi
     warn "pi produced no implementation patch."
     return 1
   fi
@@ -447,7 +451,7 @@ is_transient_provider_failure() {
   local log_file="$1"
   [[ -f "$log_file" ]] || return 1
   grep -Eqi \
-    'ResourceExhausted|worker .*request limit|rate[ -]?limit|HTTP 429|429 status code|status code[^0-9]*429|temporarily unavailable|service unavailable|overloaded|request timed out|request timeout|ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT|Headers Timeout Error' \
+    'ResourceExhausted|worker .*request limit|rate[ -]?limit|HTTP 429|429 status code|status code[^0-9]*429|400 status code \(no body\)|temporarily unavailable|service unavailable|overloaded|request timed out|request timeout|ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT|Headers Timeout Error' \
     "$log_file"
 }
 
@@ -743,6 +747,11 @@ run_active_task() {
         "$artifacts/primary-checkout-leak.status"
       warn "Stopped $task_id because pi escaped its isolated worktree."
       return 76
+    fi
+    if [[ "$deploy_exit" -eq 74 ]]; then
+      record_provider_deferral "$task_id" "$artifacts/implement.log"
+      warn "Deferred $task_id because pi returned an empty provider response."
+      return 75
     fi
     if is_transient_provider_failure "$artifacts/implement.log"; then
       record_provider_deferral "$task_id" "$artifacts/implement.log"
