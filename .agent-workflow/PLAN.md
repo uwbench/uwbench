@@ -105,6 +105,8 @@ T5 + T7 → T10A → T10B → T10C → T10D → T10E
 Each task must:
 
 - use the existing root TypeScript, ESLint, Prettier, and Vitest configuration;
+- keep focused tests under the owning package's `src` tree so the root Vitest
+  include pattern executes them;
 - avoid new root configuration files;
 - declare every package file, fixture, test, dependency, and lockfile it may
   modify;

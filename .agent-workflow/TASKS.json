@@ -437,7 +437,7 @@
     ],
     "files_touched": [
       "packages/case-schema/src/validator.ts",
-      "packages/case-schema/__tests__/validator-semantics.test.ts",
+      "packages/case-schema/src/__tests__/validator-semantics.test.ts",
       "packages/case-schema/__fixtures__/semantics/**"
     ],
     "depends_on": [
@@ -462,7 +462,7 @@
     "files_touched": [
       "packages/case-schema/src/packer.ts",
       "packages/case-schema/src/index.ts",
-      "packages/case-schema/__tests__/packer.test.ts",
+      "packages/case-schema/src/__tests__/packer.test.ts",
       "packages/case-schema/__fixtures__/packer/**",
       "packages/case-schema/package.json"
     ],
@@ -486,7 +486,7 @@
       "Integration tests prove archive determinism, manifest integrity, and input/reference disjointness"
     ],
     "files_touched": [
-      "packages/case-schema/__tests__/case-roundtrip.test.ts",
+      "packages/case-schema/src/__tests__/case-roundtrip.test.ts",
       "packages/case-schema/__fixtures__/roundtrip/**"
     ],
     "scope_exceptions": [
@@ -521,7 +521,7 @@
     "files_touched": [
       "packages/runner/src/local-runner.ts",
       "packages/runner/src/budget.ts",
-      "packages/runner/__tests__/runner.test.ts",
+      "packages/runner/src/__tests__/runner.test.ts",
       "apps/cli/src/commands/run.ts"
     ],
     "depends_on": [
@@ -553,7 +553,7 @@
     "files_touched": [
       "packages/tool-runtime/src/gateway.ts",
       "packages/tool-runtime/src/tools/*.ts",
-      "packages/tool-runtime/__tests__/gateway.test.ts"
+      "packages/tool-runtime/src/__tests__/gateway.test.ts"
     ],
     "depends_on": [
       "T5",
@@ -579,7 +579,7 @@
     ],
     "files_touched": [
       "packages/tool-runtime/src/scenario.ts",
-      "packages/tool-runtime/__tests__/scenario.test.ts"
+      "packages/tool-runtime/src/__tests__/scenario.test.ts"
     ],
     "depends_on": [
       "T12"
