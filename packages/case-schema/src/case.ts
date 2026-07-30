@@ -31,7 +31,7 @@ export type Case = z.infer<typeof CaseSchema>;
 /**
  * Validation helper for case.yaml content.
  */
-export function validateCase(
+export function validateCaseYaml(
   yamlContent: unknown,
 ): z.SafeParseReturnType<Case, Case> {
   return CaseSchema.safeParse(yamlContent);

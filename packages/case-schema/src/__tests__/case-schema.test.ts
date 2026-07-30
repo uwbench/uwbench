@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { CaseSchema, validateCase } from "../case.js";
+import { CaseSchema, validateCaseYaml } from "../case.js";
 import {
   SourceIdSchema,
   DocumentIdSchema,
@@ -54,7 +54,7 @@ describe("CaseSchema", () => {
   };
 
   it("accepts a valid case.yaml object", () => {
-    const result = validateCase(validCaseYaml);
+    const result = validateCaseYaml(validCaseYaml);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.case_id).toBe("case-00001");

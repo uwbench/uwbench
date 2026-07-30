@@ -396,17 +396,32 @@
       "Focused fixtures and tests cover valid structure and every filesystem rejection"
     ],
     "files_touched": [
+      "packages/case-schema/src/case.ts",
       "packages/case-schema/src/validator.ts",
       "packages/case-schema/src/index.ts",
-      "packages/case-schema/__tests__/validator-structure.test.ts",
-      "packages/case-schema/__fixtures__/structure/**"
+      "packages/case-schema/src/__tests__/case-schema.test.ts",
+      "packages/case-schema/src/__tests__/validator-structure.test.ts",
+      "packages/case-schema/__fixtures__/structure/**",
+      "packages/case-schema/package.json"
+    ],
+    "implementation_constraints": [
+      "The public directory validator owns validateCase and validateCaseSync; rename the T10A YAML-only helper to validateCaseYaml and update its focused test imports",
+      "Keep Vitest tests under packages/case-schema/src so the existing root Vitest include pattern executes them",
+      "Add only the package-local YAML dependency required to parse case.yaml; do not modify the root package.json",
+      "Do not implement semantic citation, policy, or PII validation owned by T10C"
     ],
     "depends_on": [
       "T10A"
     ],
     "estimated_minutes": 35,
-    "status": "pending",
-    "priority": 11
+    "status": "gated_pass",
+    "priority": 11,
+    "assignee": "orchestrator",
+    "started_at": "2026-07-30T07:03:28.734Z",
+    "attempts": 4,
+    "failures": 1,
+    "deferrals": 2,
+    "completed_at": "2026-07-30T07:03:44.173Z"
   },
   {
     "id": "T10C",
