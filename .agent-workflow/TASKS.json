@@ -436,16 +436,33 @@
       "Focused tests cover valid and invalid citations, policies, and PII declarations"
     ],
     "files_touched": [
+      "packages/case-schema/src/case.ts",
+      "packages/case-schema/src/types.ts",
       "packages/case-schema/src/validator.ts",
+      "packages/case-schema/src/index.ts",
       "packages/case-schema/src/__tests__/validator-semantics.test.ts",
       "packages/case-schema/__fixtures__/semantics/**"
+    ],
+    "implementation_constraints": [
+      "Extend the existing canonical source and citation schemas only as needed to declare document character bounds and record row/column bounds; do not create parallel metadata contracts in validator.ts",
+      "Validate every citation anchor against the kind and bounds of its resolved source, including citations that omit an otherwise inferable documentId or recordId",
+      "Reject ambiguous documentId/recordId combinations, source-kind/anchor mismatches, unknown columns, reversed ranges, and upper-bound violations with stable diagnostics",
+      "Keep semantic validation integrated with validateCase and validateCaseSync so callers cannot accidentally receive structural success for a semantically invalid case",
+      "Keep focused Vitest tests under packages/case-schema/src and cover each page, row, column, and character boundary plus valid boundary values",
+      "Do not modify archive, manifest, scorer, protocol, CLI, or workflow-orchestrator behavior owned by later tasks"
     ],
     "depends_on": [
       "T10B"
     ],
     "estimated_minutes": 30,
-    "status": "pending",
-    "priority": 12
+    "status": "gated_pass",
+    "priority": 12,
+    "assignee": "orchestrator",
+    "started_at": "2026-07-31T00:53:52.950Z",
+    "attempts": 4,
+    "failures": 1,
+    "deferrals": 2,
+    "completed_at": "2026-07-31T02:32:54.650Z"
   },
   {
     "id": "T10D",

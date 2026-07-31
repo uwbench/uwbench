@@ -4,7 +4,11 @@ import {
   SupportedLaneSchema,
   CaseFeaturesSchema,
   CaseBudgetsSchema,
+  SourceSchema,
+  PolicyTestFormSchema,
+  PiiDeclarationSchema,
 } from "./types.js";
+import type { SemanticDiagnosticCode } from "./types.js";
 
 /**
  * Case Schema v1 — strict contract for case.yaml.
@@ -24,9 +28,28 @@ export const CaseSchema = z.strictObject({
   supported_lanes: z.array(SupportedLaneSchema).min(1),
   features: CaseFeaturesSchema,
   budgets: CaseBudgetsSchema,
+  /** Declared input sources (documents, records, policies) */
+  sources: z.array(SourceSchema).default([]),
+  /** Deterministic policy test forms */
+  policyTests: z.array(PolicyTestFormSchema).default([]),
+  /** PII/legal-use declarations for sources containing personal data */
+  piiDeclarations: z.array(PiiDeclarationSchema).default([]),
 });
 
 export type Case = z.infer<typeof CaseSchema>;
+
+/**
+ * Validation result for case.yaml semantic validation.
+ */
+export interface SemanticValidationResult {
+  success: boolean;
+  diagnostics: {
+    code: SemanticDiagnosticCode;
+    message: string;
+    location: string;
+    context?: Record<string, unknown>;
+  }[];
+}
 
 /**
  * Validation helper for case.yaml content.

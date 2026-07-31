@@ -6,3 +6,8 @@ export type {
   Diagnostic,
   ValidationResult,
 } from "./validator.js";
+export {
+  validateCaseSemantics,
+  validateCaseSemanticsSync,
+} from "./validator.js";
+export type { SemanticValidationResult } from "./case.js";

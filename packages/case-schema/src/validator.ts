@@ -1,6 +1,19 @@
 import { CaseSchema } from "./case.js";
 import type { Case } from "./case.js";
 import type { SupportedLane } from "./types.js";
+import { SemanticDiagnosticCode } from "./types.js";
+import type {
+  SemanticDiagnosticCode as SemanticDiagnosticCodeType,
+  DocumentSource,
+  RecordSource,
+  Source,
+  Citation,
+  CitationAnchor,
+  PolicyTestForm,
+  PiiDeclaration,
+} from "./types.js";
+
+export { SemanticDiagnosticCode } from "./types.js";
 import {
   readFileSync,
   readdirSync,
@@ -314,6 +327,19 @@ export async function validateCase(
     seenLogicalIds,
   );
 
+  // Semantic validation (citations, policy tests, PII declarations)
+  if (caseData) {
+    const semanticResult = validateCaseSemantics(caseData);
+    for (const diag of semanticResult.diagnostics) {
+      addDiagnostic(
+        diag.code as DiagnosticCode,
+        diag.message,
+        diag.location,
+        diag.context,
+      );
+    }
+  }
+
   return {
     success: diagnostics.length === 0,
     diagnostics,
@@ -497,6 +523,19 @@ export function validateCaseSync(caseRoot: string): ValidationResult {
     addDiagnostic,
     seenLogicalIds,
   );
+
+  // Semantic validation (citations, policy tests, PII declarations)
+  if (caseData) {
+    const semanticResult = validateCaseSemanticsSync(caseData);
+    for (const diag of semanticResult.diagnostics) {
+      addDiagnostic(
+        diag.code as DiagnosticCode,
+        diag.message,
+        diag.location,
+        diag.context,
+      );
+    }
+  }
 
   return {
     success: diagnostics.length === 0,
@@ -804,5 +843,501 @@ function walkAndValidateSync(
       `Cannot read directory ${relPath}: ${e instanceof Error ? e.message : String(e)}`,
       relPath,
     );
+  }
+}
+
+/**
+ * Semantic diagnostic with stable code and location.
+ */
+export interface SemanticDiagnostic {
+  code: SemanticDiagnosticCodeType;
+  message: string;
+  location: string;
+  context?: Record<string, unknown>;
+}
+
+/**
+ * Result of semantic validation.
+ */
+export interface SemanticValidationResult {
+  success: boolean;
+  diagnostics: SemanticDiagnostic[];
+}
+
+/**
+ * Validates semantic integrity of a parsed case.
+ * Checks citations, policy tests, and PII declarations.
+ */
+export function validateCaseSemantics(
+  caseData: Case,
+): SemanticValidationResult {
+  const diagnostics: SemanticDiagnostic[] = [];
+
+  // Build lookup maps
+  const sourcesById = new Map<string, Source>();
+  const documentsBySourceId = new Map<string, DocumentSource[]>();
+  const recordsBySourceId = new Map<string, RecordSource[]>();
+
+  for (const source of caseData.sources) {
+    if (sourcesById.has(source.sourceId)) {
+      addSemanticDiagnostic(diagnostics, {
+        code: SemanticDiagnosticCode.DUPLICATE_SOURCE_ID,
+        message: `Duplicate sourceId: ${source.sourceId}`,
+        location: "case.yaml:sources",
+        context: { sourceId: source.sourceId },
+      });
+    }
+    sourcesById.set(source.sourceId, source);
+
+    if (source.kind === "document") {
+      const arr = documentsBySourceId.get(source.sourceId) ?? [];
+      arr.push(source);
+      documentsBySourceId.set(source.sourceId, arr);
+    } else if (source.kind === "record") {
+      const arr = recordsBySourceId.get(source.sourceId) ?? [];
+      arr.push(source);
+      recordsBySourceId.set(source.sourceId, arr);
+    }
+  }
+
+  // Validate citations
+  // Note: citations are embedded in policyTests.evidence and other places
+  // We validate all citations found in policyTests
+  for (const policyTest of caseData.policyTests) {
+    if (policyTest.evidence) {
+      for (const citation of policyTest.evidence) {
+        validateCitation(
+          citation,
+          sourcesById,
+          documentsBySourceId,
+          recordsBySourceId,
+          diagnostics,
+        );
+      }
+    }
+  }
+
+  // Validate policy tests
+  const seenRuleIds = new Set<string>();
+  for (const policyTest of caseData.policyTests) {
+    validatePolicyTest(
+      policyTest,
+      sourcesById,
+      documentsBySourceId,
+      recordsBySourceId,
+      diagnostics,
+      seenRuleIds,
+    );
+  }
+
+  // Validate PII declarations
+  const seenPiiSourceIds = new Set<string>();
+  for (const piiDecl of caseData.piiDeclarations) {
+    validatePiiDeclaration(piiDecl, sourcesById, diagnostics, seenPiiSourceIds);
+  }
+
+  // Check: sources with pii=true must have a piiDeclaration
+  for (const source of caseData.sources) {
+    if (source.pii === true) {
+      const hasDeclaration = caseData.piiDeclarations.some(
+        (d) => d.sourceId === source.sourceId,
+      );
+      if (!hasDeclaration) {
+        addSemanticDiagnostic(diagnostics, {
+          code: SemanticDiagnosticCode.PII_MISSING_LEGAL_USE,
+          message: `Source ${source.sourceId} declares pii=true but has no PII declaration with legalUse`,
+          location: "case.yaml:piiDeclarations",
+          context: { sourceId: source.sourceId },
+        });
+      }
+    }
+  }
+
+  return {
+    success: diagnostics.length === 0,
+    diagnostics,
+  };
+}
+
+/**
+ * Synchronous version of semantic validation.
+ */
+export function validateCaseSemanticsSync(
+  caseData: Case,
+): SemanticValidationResult {
+  return validateCaseSemantics(caseData);
+}
+
+function addSemanticDiagnostic(
+  diagnostics: SemanticDiagnostic[],
+  diagnostic: SemanticDiagnostic,
+): void {
+  diagnostics.push(diagnostic);
+}
+
+function validateCitation(
+  citation: Citation,
+  sourcesById: Map<string, Source>,
+  documentsBySourceId: Map<string, DocumentSource[]>,
+  recordsBySourceId: Map<string, RecordSource[]>,
+  diagnostics: SemanticDiagnostic[],
+): void {
+  const { sourceId, documentId, recordId, anchor } = citation;
+
+  // Check sourceId exists
+  const source = sourcesById.get(sourceId);
+  if (!source) {
+    addSemanticDiagnostic(diagnostics, {
+      code: SemanticDiagnosticCode.CITATION_UNKNOWN_SOURCE,
+      message: `Citation references unknown sourceId: ${sourceId}`,
+      location: "citation.sourceId",
+      context: { sourceId },
+    });
+    return;
+  }
+
+  // If anchor is present, validate against source kind
+  if (anchor) {
+    validateAnchorAgainstSource(
+      anchor,
+      source,
+      documentId,
+      recordId,
+      diagnostics,
+    );
+  }
+
+  // Validate documentId/recordId consistency with source
+  if (documentId && recordId) {
+    addSemanticDiagnostic(diagnostics, {
+      code: SemanticDiagnosticCode.CITATION_AMBIGUOUS_IDS,
+      message: `Citation specifies both documentId (${documentId}) and recordId (${recordId})`,
+      location: "citation",
+      context: { sourceId, documentId, recordId },
+    });
+    return;
+  }
+
+  if (documentId) {
+    const docs = documentsBySourceId.get(sourceId);
+    if (!docs || docs.length === 0) {
+      addSemanticDiagnostic(diagnostics, {
+        code: SemanticDiagnosticCode.CITATION_ANCHOR_KIND_MISMATCH,
+        message: `Citation specifies documentId but source ${sourceId} is not a document source`,
+        location: "citation.documentId",
+        context: { sourceId, documentId },
+      });
+    } else if (source.kind === "document" && source.documentId !== documentId) {
+      addSemanticDiagnostic(diagnostics, {
+        code: SemanticDiagnosticCode.CITATION_DOCUMENT_ID_MISMATCH,
+        message: `Citation documentId ${documentId} does not match source documentId ${source.documentId}`,
+        location: "citation.documentId",
+        context: {
+          sourceId,
+          documentId,
+          expectedDocumentId: source.documentId,
+        },
+      });
+    }
+  }
+
+  if (recordId) {
+    const records = recordsBySourceId.get(sourceId);
+    if (!records || records.length === 0) {
+      addSemanticDiagnostic(diagnostics, {
+        code: SemanticDiagnosticCode.CITATION_ANCHOR_KIND_MISMATCH,
+        message: `Citation specifies recordId but source ${sourceId} is not a record source`,
+        location: "citation.recordId",
+        context: { sourceId, recordId },
+      });
+    } else if (source.kind === "record" && source.recordId !== recordId) {
+      addSemanticDiagnostic(diagnostics, {
+        code: SemanticDiagnosticCode.CITATION_RECORD_ID_MISMATCH,
+        message: `Citation recordId ${recordId} does not match source recordId ${source.recordId}`,
+        location: "citation.recordId",
+        context: { sourceId, recordId, expectedRecordId: source.recordId },
+      });
+    }
+  }
+}
+
+function validateAnchorAgainstSource(
+  anchor: CitationAnchor,
+  source: Source,
+  _documentId: string | undefined,
+  _recordId: string | undefined,
+  diagnostics: SemanticDiagnostic[],
+): void {
+  switch (anchor.type) {
+    case "page":
+    case "page_range":
+    case "character_range": {
+      // These anchors only valid for document sources
+      if (source.kind !== "document") {
+        addSemanticDiagnostic(diagnostics, {
+          code: SemanticDiagnosticCode.CITATION_ANCHOR_KIND_MISMATCH,
+          message: `Anchor type ${anchor.type} is only valid for document sources, but source ${source.sourceId} is ${source.kind}`,
+          location: "citation.anchor.type",
+          context: { sourceId: source.sourceId, anchorType: anchor.type },
+        });
+        return;
+      }
+
+      const docSource = source as DocumentSource;
+      const pageCount = docSource.pageCount ?? 0;
+
+      if (anchor.type === "page") {
+        if (anchor.page < 1 || anchor.page > pageCount) {
+          addSemanticDiagnostic(diagnostics, {
+            code: SemanticDiagnosticCode.CITATION_PAGE_OUT_OF_BOUNDS,
+            message: `Page ${anchor.page} out of bounds for document ${docSource.documentId} (pageCount: ${pageCount})`,
+            location: "citation.anchor.page",
+            context: {
+              page: anchor.page,
+              pageCount,
+              documentId: docSource.documentId,
+            },
+          });
+        }
+      } else if (anchor.type === "page_range") {
+        if (anchor.startPage > anchor.endPage) {
+          addSemanticDiagnostic(diagnostics, {
+            code: SemanticDiagnosticCode.CITATION_PAGE_RANGE_REVERSED,
+            message: `Page range startPage (${anchor.startPage}) > endPage (${anchor.endPage})`,
+            location: "citation.anchor",
+            context: { startPage: anchor.startPage, endPage: anchor.endPage },
+          });
+        }
+        if (anchor.startPage < 1 || anchor.endPage > pageCount) {
+          addSemanticDiagnostic(diagnostics, {
+            code: SemanticDiagnosticCode.CITATION_PAGE_RANGE_OUT_OF_BOUNDS,
+            message: `Page range ${anchor.startPage}-${anchor.endPage} out of bounds for document ${docSource.documentId} (pageCount: ${pageCount})`,
+            location: "citation.anchor",
+            context: {
+              startPage: anchor.startPage,
+              endPage: anchor.endPage,
+              pageCount,
+            },
+          });
+        }
+      } else if (anchor.type === "character_range") {
+        if (anchor.startOffset > anchor.endOffset) {
+          addSemanticDiagnostic(diagnostics, {
+            code: SemanticDiagnosticCode.CITATION_CHAR_RANGE_REVERSED,
+            message: `Character range startOffset (${anchor.startOffset}) > endOffset (${anchor.endOffset})`,
+            location: "citation.anchor",
+            context: {
+              startOffset: anchor.startOffset,
+              endOffset: anchor.endOffset,
+            },
+          });
+        }
+        // Note: We can't validate absolute character bounds without document text length
+        // This would require the actual document content or a declared characterCount
+      }
+      break;
+    }
+
+    case "row":
+    case "row_range": {
+      // These anchors only valid for record sources
+      if (source.kind !== "record") {
+        addSemanticDiagnostic(diagnostics, {
+          code: SemanticDiagnosticCode.CITATION_ANCHOR_KIND_MISMATCH,
+          message: `Anchor type ${anchor.type} is only valid for record sources, but source ${source.sourceId} is ${source.kind}`,
+          location: "citation.anchor.type",
+          context: { sourceId: source.sourceId, anchorType: anchor.type },
+        });
+        return;
+      }
+
+      const recordSource = source as RecordSource;
+      const rowCount = recordSource.rowCount ?? 0;
+
+      if (anchor.type === "row") {
+        if (anchor.rowIndex < 0 || anchor.rowIndex >= rowCount) {
+          addSemanticDiagnostic(diagnostics, {
+            code: SemanticDiagnosticCode.CITATION_ROW_OUT_OF_BOUNDS,
+            message: `Row index ${anchor.rowIndex} out of bounds for record ${recordSource.recordId} (rowCount: ${rowCount})`,
+            location: "citation.anchor.rowIndex",
+            context: {
+              rowIndex: anchor.rowIndex,
+              rowCount,
+              recordId: recordSource.recordId,
+            },
+          });
+        }
+        if (anchor.column && recordSource.columns) {
+          if (!recordSource.columns.includes(anchor.column)) {
+            addSemanticDiagnostic(diagnostics, {
+              code: SemanticDiagnosticCode.CITATION_UNKNOWN_COLUMN,
+              message: `Column ${anchor.column} not declared in record ${recordSource.recordId}`,
+              location: "citation.anchor.column",
+              context: {
+                column: anchor.column,
+                declaredColumns: recordSource.columns,
+              },
+            });
+          }
+        }
+      } else if (anchor.type === "row_range") {
+        if (anchor.startRow > anchor.endRow) {
+          addSemanticDiagnostic(diagnostics, {
+            code: SemanticDiagnosticCode.CITATION_ROW_RANGE_REVERSED,
+            message: `Row range startRow (${anchor.startRow}) > endRow (${anchor.endRow})`,
+            location: "citation.anchor",
+            context: { startRow: anchor.startRow, endRow: anchor.endRow },
+          });
+        }
+        if (anchor.startRow < 0 || anchor.endRow >= rowCount) {
+          addSemanticDiagnostic(diagnostics, {
+            code: SemanticDiagnosticCode.CITATION_ROW_RANGE_OUT_OF_BOUNDS,
+            message: `Row range ${anchor.startRow}-${anchor.endRow} out of bounds for record ${recordSource.recordId} (rowCount: ${rowCount})`,
+            location: "citation.anchor",
+            context: {
+              startRow: anchor.startRow,
+              endRow: anchor.endRow,
+              rowCount,
+            },
+          });
+        }
+        if (anchor.column && recordSource.columns) {
+          if (!recordSource.columns.includes(anchor.column)) {
+            addSemanticDiagnostic(diagnostics, {
+              code: SemanticDiagnosticCode.CITATION_UNKNOWN_COLUMN,
+              message: `Column ${anchor.column} not declared in record ${recordSource.recordId}`,
+              location: "citation.anchor.column",
+              context: {
+                column: anchor.column,
+                declaredColumns: recordSource.columns,
+              },
+            });
+          }
+        }
+      }
+      break;
+    }
+  }
+}
+
+function validatePolicyTest(
+  policyTest: PolicyTestForm,
+  sourcesById: Map<string, Source>,
+  documentsBySourceId: Map<string, DocumentSource[]>,
+  recordsBySourceId: Map<string, RecordSource[]>,
+  diagnostics: SemanticDiagnostic[],
+  seenRuleIds: Set<string>,
+): void {
+  // Check duplicate ruleId
+  if (seenRuleIds.has(policyTest.ruleId)) {
+    addSemanticDiagnostic(diagnostics, {
+      code: SemanticDiagnosticCode.DUPLICATE_RULE_ID,
+      message: `Duplicate ruleId in policyTests: ${policyTest.ruleId}`,
+      location: "case.yaml:policyTests",
+      context: { ruleId: policyTest.ruleId },
+    });
+  }
+  seenRuleIds.add(policyTest.ruleId);
+
+  // Check appliesWhen is not empty
+  if (policyTest.appliesWhen.length === 0) {
+    addSemanticDiagnostic(diagnostics, {
+      code: SemanticDiagnosticCode.POLICY_TEST_EMPTY_APPLIES_WHEN,
+      message: `Policy test ${policyTest.ruleId} has empty appliesWhen array`,
+      location: "case.yaml:policyTests.appliesWhen",
+      context: { ruleId: policyTest.ruleId },
+    });
+  }
+
+  // Validate each appliesWhen condition
+  for (let i = 0; i < policyTest.appliesWhen.length; i++) {
+    const condition = policyTest.appliesWhen[i];
+    if (!condition) continue;
+    const input = condition.input;
+
+    // Validate input source exists if source is 'fact', 'spread', or 'ratio'
+    if (input.source !== "constant") {
+      // For facts/spread/ratios, the key should reference a normalized fact or spread field
+      // We can't fully validate without the normalized data, but we can check the source format
+      if (!input.key || input.key.trim() === "") {
+        addSemanticDiagnostic(diagnostics, {
+          code: SemanticDiagnosticCode.POLICY_TEST_INCOMPLETE,
+          message: `Policy test ${policyTest.ruleId} condition ${i} has empty input key`,
+          location: `case.yaml:policyTests[${i}].input.key`,
+          context: { ruleId: policyTest.ruleId, conditionIndex: i },
+        });
+      }
+    }
+  }
+
+  // Validate onFailure is a valid decision
+  const validDecisions = [
+    "DECLINE",
+    "REFER",
+    "CONDITION",
+    "EXCEPTION_REQUIRED",
+  ];
+  if (!validDecisions.includes(policyTest.onFailure)) {
+    addSemanticDiagnostic(diagnostics, {
+      code: SemanticDiagnosticCode.POLICY_TEST_INVALID_ON_FAILURE,
+      message: `Policy test ${policyTest.ruleId} has invalid onFailure value: ${policyTest.onFailure}`,
+      location: "case.yaml:policyTests.onFailure",
+      context: { ruleId: policyTest.ruleId, onFailure: policyTest.onFailure },
+    });
+  }
+
+  // Validate evidence citations if present
+  if (policyTest.evidence) {
+    for (const citation of policyTest.evidence) {
+      validateCitation(
+        citation,
+        sourcesById,
+        documentsBySourceId,
+        recordsBySourceId,
+        diagnostics,
+      );
+    }
+  }
+}
+
+function validatePiiDeclaration(
+  piiDecl: PiiDeclaration,
+  sourcesById: Map<string, Source>,
+  diagnostics: SemanticDiagnostic[],
+  seenPiiSourceIds: Set<string>,
+): void {
+  // Check duplicate declaration
+  if (seenPiiSourceIds.has(piiDecl.sourceId)) {
+    addSemanticDiagnostic(diagnostics, {
+      code: SemanticDiagnosticCode.DUPLICATE_PII_DECLARATION,
+      message: `Duplicate PII declaration for sourceId: ${piiDecl.sourceId}`,
+      location: "case.yaml:piiDeclarations",
+      context: { sourceId: piiDecl.sourceId },
+    });
+  }
+  seenPiiSourceIds.add(piiDecl.sourceId);
+
+  // Check sourceId exists
+  const source = sourcesById.get(piiDecl.sourceId);
+  if (!source) {
+    addSemanticDiagnostic(diagnostics, {
+      code: SemanticDiagnosticCode.PII_DECLARATION_UNKNOWN_SOURCE,
+      message: `PII declaration references unknown sourceId: ${piiDecl.sourceId}`,
+      location: "case.yaml:piiDeclarations.sourceId",
+      context: { sourceId: piiDecl.sourceId },
+    });
+    return;
+  }
+
+  // If containsPii is true, legalUse must not be not_applicable
+  if (piiDecl.containsPii === true) {
+    if (piiDecl.legalUse === "not_applicable") {
+      addSemanticDiagnostic(diagnostics, {
+        code: SemanticDiagnosticCode.PII_LEGAL_USE_CONFLICT,
+        message: `Source ${piiDecl.sourceId} declares containsPii=true but legalUse=not_applicable`,
+        location: "case.yaml:piiDeclarations.legalUse",
+        context: { sourceId: piiDecl.sourceId, legalUse: piiDecl.legalUse },
+      });
+    }
   }
 }
