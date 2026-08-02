@@ -487,8 +487,14 @@
       "T10C"
     ],
     "estimated_minutes": 40,
-    "status": "pending",
-    "priority": 13
+    "status": "gated_pass",
+    "priority": 13,
+    "assignee": "orchestrator",
+    "started_at": "2026-08-02T14:58:57.806Z",
+    "attempts": 6,
+    "deferrals": 4,
+    "failures": 1,
+    "completed_at": "2026-08-02T15:34:38.150Z"
   },
   {
     "id": "T10E",
