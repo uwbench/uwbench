@@ -20,11 +20,14 @@
     "clean": "rm -rf dist .tsbuildinfo"
   },
   "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.10",
     "typescript": "^5.5.4",
-    "vitest": "^2.0.5",
-    "@types/node": "^20.14.10"
+    "vitest": "^2.0.5"
   },
   "dependencies": {
-    "zod": "^3.23.8"
+    "@uwbench/protocol": "workspace:*",
+    "express": "^4.19.2",
+    "zod": "^4.3.6"
   }
 }

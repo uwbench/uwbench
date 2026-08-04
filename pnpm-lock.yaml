@@ -182,10 +182,19 @@ importers:
 
   packages/tool-runtime:
     dependencies:
+      '@uwbench/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      express:
+        specifier: ^4.19.2
+        version: 4.22.2
       zod:
-        specifier: ^3.23.8
-        version: 3.25.76
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
+      '@types/express':
+        specifier: ^4.17.21
+        version: 4.17.25
       '@types/node':
         specifier: ^20.14.10
         version: 20.19.43

@@ -582,13 +582,24 @@
       "packages/tool-runtime/src/tools/*.ts",
       "packages/tool-runtime/src/__tests__/gateway.test.ts"
     ],
+    "scope_exceptions": [
+      "packages/tool-runtime/package.json",
+      "packages/tool-runtime/tsconfig.json",
+      "pnpm-lock.yaml"
+    ],
     "depends_on": [
       "T5",
       "T10E"
     ],
     "estimated_minutes": 90,
-    "status": "pending",
-    "priority": 16
+    "status": "gated_pass",
+    "priority": 16,
+    "assignee": "orchestrator",
+    "started_at": "2026-08-04T15:14:17.009Z",
+    "attempts": 6,
+    "failures": 3,
+    "deferrals": 2,
+    "completed_at": "2026-08-04T15:23:46.930Z"
   },
   {
     "id": "T13",
