@@ -619,12 +619,20 @@
       "packages/tool-runtime/src/scenario.ts",
       "packages/tool-runtime/src/__tests__/scenario.test.ts"
     ],
+    "scope_exceptions": [
+      "packages/tool-runtime/src/gateway.ts"
+    ],
     "depends_on": [
       "T12"
     ],
     "estimated_minutes": 60,
-    "status": "pending",
-    "priority": 17
+    "status": "gated_pass",
+    "priority": 17,
+    "assignee": "orchestrator",
+    "started_at": "2026-08-04T16:25:26.115Z",
+    "attempts": 3,
+    "failures": 2,
+    "completed_at": "2026-08-04T16:42:24.722Z"
   },
   {
     "id": "T14",
