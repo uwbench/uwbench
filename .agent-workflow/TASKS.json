@@ -702,13 +702,21 @@
       "packages/scorer-core/*",
       "scripts/smoke-reasoning-only.sh"
     ],
+    "scope_exceptions": [
+      "apps/cli/src/commands/run.ts"
+    ],
     "depends_on": [
       "T9",
       "T10E",
       "T14"
     ],
     "estimated_minutes": 180,
-    "status": "pending",
-    "priority": 19
+    "status": "gated_pass",
+    "priority": 19,
+    "assignee": "orchestrator",
+    "started_at": "2026-08-05T06:00:38.037Z",
+    "attempts": 4,
+    "failures": 3,
+    "completed_at": "2026-08-05T06:03:47.271Z"
   }
 ]

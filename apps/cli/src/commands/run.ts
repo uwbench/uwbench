@@ -20,7 +20,10 @@ export const runCommand = new Command("run")
     "--max-concurrent-tool-calls <count>",
     "Maximum concurrent tool calls",
   )
-  .option("--json", "Output result as JSON")
+  .option(
+    "--json",
+    "Output result as JSON only (suppresses informational messages)",
+  )
   .action(
     async (options: {
       case: string;
@@ -35,15 +38,21 @@ export const runCommand = new Command("run")
       maxConcurrentToolCalls?: string;
       json?: boolean;
     }) => {
-      console.log("UWBench Run (Phase 1 - not_scored)");
-      console.log(`Case: ${options.case}`);
-      console.log(`Agent: ${options.agent}`);
-      console.log(`Lane: ${options.lane}`);
-      console.log("");
+      const isJson = options.json === true;
+
+      if (!isJson) {
+        console.log("UWBench Run (Phase 1 - not_scored)");
+        console.log(`Case: ${options.case}`);
+        console.log(`Agent: ${options.agent}`);
+        console.log(`Lane: ${options.lane}`);
+        console.log("");
+      }
 
       // Resolve case path
       const casePath = resolve(options.case);
-      console.log(`Resolved case path: ${casePath}`);
+      if (!isJson) {
+        console.log(`Resolved case path: ${casePath}`);
+      }
 
       // Build limits object from options
       const limits: Partial<Budget> = {};
@@ -88,28 +97,36 @@ export const runCommand = new Command("run")
 
         const result = await runner.run(runOptions);
 
-        if (options.json) {
+        if (isJson) {
           console.log(JSON.stringify(result, null, 2));
         } else {
           printResult(result);
         }
 
         if (result.status === "completed") {
-          console.log("\n✅ Run completed successfully (not_scored)");
+          if (!isJson) {
+            console.log("\n✅ Run completed successfully (not_scored)");
+          }
           process.exit(0);
         } else {
-          console.error(`\n❌ Run ${result.status}`);
+          if (!isJson) {
+            console.error(`\n❌ Run ${result.status}`);
+          }
           if (result.error) {
-            console.error(
-              `Error: ${result.error.message} (${result.error.code})`,
-            );
+            if (!isJson) {
+              console.error(
+                `Error: ${result.error.message} (${result.error.code})`,
+              );
+            }
           }
           process.exit(1);
         }
       } catch (error) {
-        console.error(
-          `Run failed: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        if (!isJson) {
+          console.error(
+            `Run failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
         process.exit(1);
       }
     },
