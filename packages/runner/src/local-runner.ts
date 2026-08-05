@@ -64,6 +64,7 @@ import {
 const DEFAULT_MAX_OUTPUT_BYTES = 5_000_000;
 const DEFAULT_MAX_CONCURRENT_TOOL_CALLS = 4;
 const POLL_INTERVAL_MS = 100;
+const RUN_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 
 async function fetchWithTimeout(
   url: string,
@@ -182,6 +183,18 @@ function protocolError(
     message,
     requestId: `req-${randomUUID()}`,
   };
+}
+
+function validateRunId(runId: string): void {
+  if (!RUN_ID_PATTERN.test(runId)) {
+    throw new Error(
+      "runId must be a 1-128 character opaque identifier containing only letters, numbers, '.', '_' or '-' and starting with a letter or number",
+    );
+  }
+}
+
+function createOpaqueCaseId(): string {
+  return `opaque_${randomUUID().replaceAll("-", "")}`;
 }
 
 function sha256(content: string | Buffer): string {
@@ -413,17 +426,43 @@ function buildLaneToolFixtures(
         if (!entry.isFile() || entry.name.startsWith(".")) continue;
         const file = join(documentsRoot, entry.name);
         const bytes = readFileSync(file);
-        const content = bytes.toString("utf8");
         const declared = sourceForInputFile(caseData, "document", entry.name);
         const documentId = declared?.documentId ?? `document:${entry.name}`;
+        const extension = extname(entry.name).toLocaleLowerCase();
+        const mimeType =
+          declared?.mimeType ??
+          (extension === ".txt" || extension === ".md" || extension === ".csv"
+            ? "text/plain"
+            : extension === ".json"
+              ? "application/json"
+              : extension === ".pdf"
+                ? "application/pdf"
+                : "application/octet-stream");
+        if (!(
+          mimeType.startsWith("text/") || mimeType === "application/json"
+        )) {
+          throw new Error(
+            `Raw document ${entry.name} has unsupported binary media type ${mimeType}; provide authoritative extracted text and page metadata before running raw_documents`,
+          );
+        }
+        const pageCount = declared?.pageCount ?? 1;
+        if (pageCount !== 1) {
+          throw new Error(
+            `Raw document ${entry.name} declares ${pageCount} pages but has no authoritative per-page extraction`,
+          );
+        }
+        let content: string;
+        try {
+          content = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+        } catch {
+          throw new Error(`Raw document ${entry.name} is not valid UTF-8 text`);
+        }
         documents.push({
           documentId,
           sourceId: declared?.sourceId ?? documentId,
           title: declared?.title ?? entry.name,
-          mimeType:
-            declared?.mimeType ??
-            (entry.name.endsWith(".pdf") ? "application/pdf" : "text/plain"),
-          pageCount: 1,
+          mimeType,
+          pageCount,
           sizeBytes: bytes.length,
           sha256: createHash("sha256").update(bytes).digest("hex"),
           content,
@@ -484,16 +523,21 @@ export function createParticipantView(
   caseData: Case,
 ): string {
   const view = mkdtempSync(join(tmpdir(), `uwbench-${lane}-`));
-  for (const entry of getLaneProjection(lane)) {
-    copyIfPresent(join(casePath, entry), join(view, entry));
+  try {
+    for (const entry of getLaneProjection(lane)) {
+      copyIfPresent(join(casePath, entry), join(view, entry));
+    }
+    mkdirSync(join(view, "environment"), { recursive: true });
+    writeFileSync(
+      join(view, "environment", "tool-fixtures.json"),
+      JSON.stringify(buildLaneToolFixtures(casePath, caseData, lane), null, 2),
+    );
+    writeFileSync(join(view, "lane.json"), JSON.stringify({ lane }));
+    return view;
+  } catch (error) {
+    rmSync(view, { recursive: true, force: true });
+    throw error;
   }
-  mkdirSync(join(view, "environment"), { recursive: true });
-  writeFileSync(
-    join(view, "environment", "tool-fixtures.json"),
-    JSON.stringify(buildLaneToolFixtures(casePath, caseData, lane), null, 2),
-  );
-  writeFileSync(join(view, "lane.json"), JSON.stringify({ lane }));
-  return view;
 }
 
 export class LocalRunner {
@@ -505,6 +549,7 @@ export class LocalRunner {
   private currentRunDir = "";
   private currentRunId = "";
   private currentCaseId = "";
+  private participantCaseId = "";
   private currentAgentUrl = "";
   private currentLane: SupportedLane = "reasoning_only";
   private currentBenchmark = "";
@@ -999,6 +1044,7 @@ export class LocalRunner {
   }
 
   async run(options: RunOptions): Promise<RunResult> {
+    if (options.runId !== undefined) validateRunId(options.runId);
     const casePath = resolve(options.casePath);
     const validation = validateCaseSync(casePath);
     if (!validation.success || !validation.case) {
@@ -1058,6 +1104,7 @@ export class LocalRunner {
       options.outputDir ?? join(this.defaultOutputBase, this.currentRunId),
     );
     this.currentCaseId = caseData.case_id;
+    this.participantCaseId = createOpaqueCaseId();
     this.currentAgentUrl = normalizedAgentUrl;
     this.currentLane = lane;
     this.currentBenchmark = caseData.track;
@@ -1123,7 +1170,7 @@ export class LocalRunner {
         benchmark: this.currentBenchmark,
         benchmarkVersion: this.currentBenchmarkVersion,
         lane: this.currentLane,
-        caseId: this.currentCaseId,
+        caseId: this.participantCaseId,
         objective: this.currentObjective,
         requiredOutputs: this.currentRequiredOutputs,
         toolGateway: {

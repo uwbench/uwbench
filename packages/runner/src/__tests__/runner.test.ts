@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   mkdirSync,
+  cpSync,
   writeFileSync,
   rmSync,
   existsSync,
@@ -115,6 +116,7 @@ let mockAgentUrl = "";
 let mockDeleteCount = 0;
 let mockStartedRunCount = 0;
 let mockToolCallStarted = false;
+let mockLastRunRequest: Record<string, unknown> | undefined;
 
 async function startMockAgent(
   behavior:
@@ -150,6 +152,7 @@ async function startMockAgent(
   mockDeleteCount = 0;
   mockStartedRunCount = 0;
   mockToolCallStarted = false;
+  mockLastRunRequest = undefined;
 
   const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? "", `http://127.0.0.1:${port}`);
@@ -185,6 +188,7 @@ async function startMockAgent(
       let body = "";
       for await (const chunk of req) body += chunk;
       const request = JSON.parse(body);
+      mockLastRunRequest = request;
 
       // Check idempotency
       if (request.idempotencyKey) {
@@ -578,6 +582,31 @@ describe("LocalRunner", () => {
     testTimeout,
   );
 
+  it("sends a run-scoped opaque case ID while retaining the authoring ID internally", async () => {
+    const runner = new LocalRunner({
+      outputBase: join(tmpdir(), `uwbench-opaque-case-${randomUUID()}`),
+    });
+    const result = await runner.run({ casePath: testCaseDir, agentUrl });
+
+    expect(mockLastRunRequest?.["caseId"]).toMatch(/^opaque_[a-f0-9]{32}$/);
+    expect(mockLastRunRequest?.["caseId"]).not.toBe("case-00001");
+    const manifest = JSON.parse(readFileSync(result.manifestPath, "utf8"));
+    expect(manifest.caseId).toBe("case-00001");
+  });
+
+  it.each(["../outside", "nested/run", "/tmp/uwbench-outside", "..", "."])(
+    "rejects unsafe run ID %s before creating output",
+    async (runId) => {
+      const outputBase = join(tmpdir(), `uwbench-safe-root-${randomUUID()}`);
+      const runner = new LocalRunner({ outputBase });
+      await expect(
+        runner.run({ casePath: testCaseDir, agentUrl, runId }),
+      ).rejects.toThrow("runId must be a 1-128 character opaque identifier");
+      expect(existsSync(outputBase)).toBe(true);
+      expect(readdirSync(outputBase)).toEqual([]);
+    },
+  );
+
   it(
     "should write valid events.ndjson with hash chain",
     async () => {
@@ -845,8 +874,47 @@ describe("LocalRunner", () => {
     }
   });
 
+  it("rejects PDF bytes until authoritative extraction is available", () => {
+    const rawCase = createTempCase({ supported_lanes: ["raw_documents"] });
+    writeFileSync(
+      join(rawCase, "inputs", "documents", "statement.pdf"),
+      Buffer.from("%PDF-1.7\nnot extracted"),
+    );
+    const validation = validateCaseSync(rawCase);
+    expect(validation.case).toBeDefined();
+    expect(() =>
+      createParticipantView(rawCase, "raw_documents", validation.case!),
+    ).toThrow("unsupported binary media type application/pdf");
+    cleanupTempDir(rawCase);
+  });
+
+  it("rejects multi-page text without authoritative per-page extraction", () => {
+    const rawCase = createTempCase({ supported_lanes: ["raw_documents"] });
+    writeFileSync(
+      join(rawCase, "inputs", "documents", "statement.txt"),
+      "Page one\nPage two",
+    );
+    const validation = validateCaseSync(rawCase);
+    expect(validation.case).toBeDefined();
+    validation.case!.sources.push({
+      kind: "document",
+      sourceId: "src_statement",
+      documentId: "doc_statement",
+      title: "Statement",
+      mimeType: "text/plain",
+      pageCount: 2,
+      sha256: "a".repeat(64),
+      pii: false,
+      legalUse: "public_record",
+    });
+    expect(() =>
+      createParticipantView(rawCase, "raw_documents", validation.case!),
+    ).toThrow("declares 2 pages but has no authoritative per-page extraction");
+    cleanupTempDir(rawCase);
+  });
+
   it("maps raw record files to declared sources by stable identity", () => {
-    const authoredCase = resolve(
+    const fixtureCase = resolve(
       __dirname,
       "..",
       "..",
@@ -855,6 +923,11 @@ describe("LocalRunner", () => {
       "__fixtures__",
       "roundtrip",
       "full-case",
+    );
+    const authoredCase = join(tmpdir(), `uwbench-authored-${randomUUID()}`);
+    cpSync(fixtureCase, authoredCase, { recursive: true });
+    rmSync(
+      join(authoredCase, "inputs", "documents", "financial_statement.pdf"),
     );
     const validation = validateCaseSync(authoredCase);
     expect(validation.case).toBeDefined();
@@ -882,14 +955,12 @@ describe("LocalRunner", () => {
           },
         },
       ]);
-      expect(fixtures.documents[0]).toMatchObject({
-        documentId: "doc_001",
-        sourceId: "src_001",
-      });
+      expect(fixtures.documents).toEqual([]);
       expect(existsSync(join(view, "normalized"))).toBe(false);
       expect(existsSync(join(view, "private"))).toBe(false);
     } finally {
       cleanupTempDir(view);
+      cleanupTempDir(authoredCase);
     }
   });
 
