@@ -4,11 +4,13 @@
     "composite": true,
     "tsBuildInfoFile": "./.tsbuildinfo",
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "skipLibCheck": true
   },
   "include": ["src/**/*"],
   "references": [
     { "path": "../protocol" },
-    { "path": "../tool-runtime" }
+    { "path": "../tool-runtime" },
+    { "path": "../case-schema" }
   ]
 }

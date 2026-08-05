@@ -23,5 +23,9 @@
     "typescript": "^5.5.4",
     "vitest": "^2.0.5"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@uwbench/protocol": "workspace:*",
+    "@uwbench/tool-runtime": "workspace:*",
+    "@uwbench/case-schema": "workspace:*"
+  }
 }

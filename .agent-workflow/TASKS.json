@@ -551,6 +551,9 @@
       "packages/runner/src/__tests__/runner.test.ts",
       "apps/cli/src/commands/run.ts"
     ],
+    "scope_exceptions": [
+      "packages/runner/src/index.ts"
+    ],
     "depends_on": [
       "T6",
       "T9",
@@ -559,8 +562,13 @@
       "T13"
     ],
     "estimated_minutes": 120,
-    "status": "pending",
-    "priority": 15
+    "status": "gated_pass",
+    "priority": 15,
+    "assignee": "orchestrator",
+    "started_at": "2026-08-04T17:23:41.413Z",
+    "attempts": 2,
+    "failures": 1,
+    "completed_at": "2026-08-05T02:15:33.500Z"
   },
   {
     "id": "T12",
