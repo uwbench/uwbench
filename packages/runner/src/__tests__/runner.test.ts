@@ -123,7 +123,9 @@ async function startMockAgent(
     | "invalid"
     | "invalid-evidence"
     | "late-complete"
-    | "tool-exceed" = "complete",
+    | "tool-exceed"
+    | "delayed-ack"
+    | "oversized-status" = "complete",
 ): Promise<string> {
   // Use a simple HTTP server for mocking
   const { createServer } = await import("node:http");
@@ -295,6 +297,10 @@ async function startMockAgent(
         }
       }
 
+      if (behavior === "delayed-ack") {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(
         JSON.stringify({
@@ -324,6 +330,13 @@ async function startMockAgent(
 
       if (behavior === "late-complete") {
         await new Promise((resolve) => setTimeout(resolve, 1_100));
+      }
+      if (behavior === "oversized-status") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({ schemaVersion: "1.0", padding: "x".repeat(2_000) }),
+        );
+        return;
       }
 
       const response: Record<string, unknown> = {
@@ -914,6 +927,22 @@ describe("LocalRunner", () => {
     expect(existsSync(result.submissionPath)).toBe(false);
   });
 
+  it("streams and rejects oversized agent responses before JSON parsing", async () => {
+    await stopMockAgent();
+    agentUrl = await startMockAgent("oversized-status");
+    const runner = new LocalRunner({
+      outputBase: join(tmpdir(), `uwbench-stream-limit-${randomUUID()}`),
+    });
+    const result = await runner.run({
+      casePath: testCaseDir,
+      agentUrl,
+      limits: { maxOutputBytes: 100 },
+    });
+    expect(result.status).toBe("failed");
+    expect(result.error?.code).toBe("BUDGET_EXCEEDED");
+    expect(result.error?.message).toContain("output-byte limit");
+  });
+
   it("invalidates a run after an attempted tool-call budget violation", async () => {
     await stopMockAgent();
     agentUrl = await startMockAgent("tool-exceed");
@@ -981,6 +1010,27 @@ describe("LocalRunner", () => {
       (e: any) => e.type === "RUN_CANCELLED",
     );
     expect(cancelledEvents.length).toBe(1);
+  });
+
+  it("reconciles and cancels when run creation acknowledgement is interrupted", async () => {
+    await stopMockAgent();
+    agentUrl = await startMockAgent("delayed-ack");
+    const runner = new LocalRunner({
+      outputBase: join(tmpdir(), `uwbench-cancel-ack-${randomUUID()}`),
+    });
+    const runPromise = runner.run({ casePath: testCaseDir, agentUrl });
+    for (
+      let attempts = 0;
+      mockStartedRunCount === 0 && attempts < 100;
+      attempts++
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    expect(mockStartedRunCount).toBe(1);
+    process.emit("SIGTERM");
+    const result = await runPromise;
+    expect(result.status).toBe("cancelled");
+    expect(mockDeleteCount).toBe(1);
   });
 });
 

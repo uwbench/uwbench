@@ -41,6 +41,11 @@ import {
 } from "@uwbench/case-schema";
 import { ToolGateway, type ToolGatewayEvent } from "@uwbench/tool-runtime";
 import {
+  createNotScoredReport,
+  NotScoredReportSchema,
+  SCORER_CORE_VERSION,
+} from "@uwbench/scorer-core";
+import {
   checkBudgetViolation,
   createInitialBudgetState,
   type Budget,
@@ -71,6 +76,42 @@ async function fetchWithTimeout(
     clearTimeout(timeout);
     externalSignal?.removeEventListener("abort", abortFromExternal);
   }
+}
+
+class ResponseByteLimitError extends Error {
+  constructor(
+    readonly limit: number,
+    readonly current: number,
+  ) {
+    super(`Agent response exceeded ${limit} bytes`);
+    this.name = "ResponseByteLimitError";
+  }
+}
+
+async function readJsonWithLimit(
+  response: Response,
+  maxBytes: number,
+): Promise<unknown> {
+  const declared = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    await response.body?.cancel();
+    throw new ResponseByteLimitError(maxBytes, declared);
+  }
+  if (!response.body) return null;
+  const reader = response.body.getReader();
+  const chunks: Buffer[] = [];
+  let bytes = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytes += value.byteLength;
+    if (bytes > maxBytes) {
+      await reader.cancel();
+      throw new ResponseByteLimitError(maxBytes, bytes);
+    }
+    chunks.push(Buffer.from(value));
+  }
+  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
 
 export interface RunOptions {
@@ -121,17 +162,6 @@ export interface Checksums {
   schemaVersion: "1.0";
   runId: string;
   files: Record<string, string>;
-}
-
-interface NotScoredResult {
-  schemaVersion: "1.0";
-  scorerVersion: "0.1.0";
-  caseId: string;
-  runId: string;
-  status: "not_scored";
-  reason: "phase1_vertical_slice";
-  detail: string;
-  issuedAt: string;
 }
 
 function protocolError(
@@ -403,6 +433,7 @@ export class LocalRunner {
   private deadlineTimer: ReturnType<typeof setTimeout> | undefined;
   private deadlineAtMs = 0;
   private terminalError: ProtocolError | undefined;
+  private pendingRunRequest: RunRequest | undefined;
 
   constructor(options: { outputBase?: string } = {}) {
     this.defaultOutputBase = resolve(
@@ -501,17 +532,14 @@ export class LocalRunner {
   }
 
   private writeScore(): void {
-    const report: NotScoredResult = {
-      schemaVersion: "1.0",
-      scorerVersion: "0.1.0",
+    const report = createNotScoredReport({
+      scorerVersion: SCORER_CORE_VERSION,
       caseId: this.currentCaseId,
       runId: this.currentRunId,
-      status: "not_scored",
       reason: "phase1_vertical_slice",
       detail:
         "Phase 1 records artifacts without calculating a benchmark score.",
-      issuedAt: new Date().toISOString(),
-    };
+    });
     writeFileSync(
       join(this.currentRunDir, "score.json"),
       JSON.stringify(report, null, 2),
@@ -614,7 +642,9 @@ export class LocalRunner {
     if (!response.ok) {
       throw new Error(`Agent health check failed: ${response.status}`);
     }
-    const parsed = HealthResponseSchema.safeParse(await response.json());
+    const parsed = HealthResponseSchema.safeParse(
+      await readJsonWithLimit(response, this.currentLimits.maxOutputBytes),
+    );
     if (!parsed.success) {
       throw new Error(`Agent health response invalid: ${parsed.error.message}`);
     }
@@ -628,17 +658,20 @@ export class LocalRunner {
   private async startAgentRun(
     agentUrl: string,
     runRequest: RunRequest,
+    ignoreRunSignal = false,
   ): Promise<RunResponse> {
     const response = await fetchWithTimeout(`${agentUrl}/v1/runs`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(runRequest),
-      signal: this.pollController.signal,
+      signal: ignoreRunSignal ? null : this.pollController.signal,
     });
     if (!response.ok) {
       throw new Error(`Agent run start failed: ${response.status}`);
     }
-    const parsed = RunResponseSchema.safeParse(await response.json());
+    const parsed = RunResponseSchema.safeParse(
+      await readJsonWithLimit(response, this.currentLimits.maxOutputBytes),
+    );
     if (!parsed.success) {
       throw new Error(`Agent run response invalid: ${parsed.error.message}`);
     }
@@ -648,15 +681,18 @@ export class LocalRunner {
   private async pollAgentRun(
     agentUrl: string,
     agentRunId: string,
+    ignoreRunSignal = false,
   ): Promise<RunStatusResponse> {
     const response = await fetchWithTimeout(
       `${agentUrl}/v1/runs/${encodeURIComponent(agentRunId)}`,
-      { signal: this.pollController.signal },
+      { signal: ignoreRunSignal ? null : this.pollController.signal },
     );
     if (!response.ok) {
       throw new Error(`Agent poll failed: ${response.status}`);
     }
-    const parsed = RunStatusResponseSchema.safeParse(await response.json());
+    const parsed = RunStatusResponseSchema.safeParse(
+      await readJsonWithLimit(response, this.currentLimits.maxOutputBytes),
+    );
     if (!parsed.success) {
       throw new Error(`Agent status response invalid: ${parsed.error.message}`);
     }
@@ -681,13 +717,36 @@ export class LocalRunner {
     if (!response.ok) {
       throw new Error(`Agent cancellation failed: ${response.status}`);
     }
-    const parsed = CancelResponseSchema.safeParse(await response.json());
+    const parsed = CancelResponseSchema.safeParse(
+      await readJsonWithLimit(response, this.currentLimits.maxOutputBytes),
+    );
     if (!parsed.success) {
       throw new Error(
         `Agent cancellation response invalid: ${parsed.error.message}`,
       );
     }
     return parsed.data;
+  }
+
+  private async reconcileAndCancelAgentRun(): Promise<void> {
+    if (!this.agentRunId && this.pendingRunRequest) {
+      const reconciled = await this.startAgentRun(
+        this.currentAgentUrl,
+        this.pendingRunRequest,
+        true,
+      );
+      this.agentRunId = reconciled.agentRunId;
+    }
+    if (!this.agentRunId) return;
+    await this.cancelAgentRun();
+    const terminal = await this.pollAgentRun(
+      this.currentAgentUrl,
+      this.agentRunId,
+      true,
+    );
+    if (!["cancelled", "completed", "failed"].includes(terminal.status)) {
+      throw new Error("Agent run did not reach a terminal state after cancel");
+    }
   }
 
   private async findExistingRun(
@@ -834,6 +893,7 @@ export class LocalRunner {
     this.submissionOutputBytes = 0;
     this.finalizedStatus = null;
     this.terminalError = undefined;
+    this.pendingRunRequest = undefined;
     this.deadlineExceeded = false;
     this.deadlineAtMs = this.runStartTime + limits.wallClockSeconds * 1000;
     mkdirSync(this.currentRunDir, { recursive: true });
@@ -886,6 +946,7 @@ export class LocalRunner {
         },
         limits: this.currentLimits,
       };
+      this.pendingRunRequest = request;
       const started = await this.startAgentRun(this.currentAgentUrl, request);
       this.agentRunId = started.agentRunId;
       this.addEvent("AGENT_RUN_STARTED", "RUNNER", {
@@ -897,7 +958,7 @@ export class LocalRunner {
 
       while (true) {
         if (this.cancelRequested) {
-          await this.cancelAgentRun().catch(() => undefined);
+          await this.reconcileAndCancelAgentRun().catch(() => undefined);
           this.addEvent("RUN_CANCELLED", "RUNNER", {
             reason: "termination signal received",
             agentRunId: this.agentRunId,
@@ -914,7 +975,7 @@ export class LocalRunner {
             current: violation.current,
             message: violation.message,
           });
-          await this.cancelAgentRun().catch(() => undefined);
+          await this.reconcileAndCancelAgentRun().catch(() => undefined);
           const error = protocolError("BUDGET_EXCEEDED", violation.message);
           this.addEvent("AGENT_FAILED", "RUNNER", {
             agentRunId: this.agentRunId,
@@ -936,7 +997,7 @@ export class LocalRunner {
             current: postPollViolation.current,
             message: postPollViolation.message,
           });
-          await this.cancelAgentRun().catch(() => undefined);
+          await this.reconcileAndCancelAgentRun().catch(() => undefined);
           const error = protocolError(
             "BUDGET_EXCEEDED",
             postPollViolation.message,
@@ -1022,7 +1083,7 @@ export class LocalRunner {
       }
     } catch (caught) {
       if (this.cancelRequested) {
-        await this.cancelAgentRun().catch(() => undefined);
+        await this.reconcileAndCancelAgentRun().catch(() => undefined);
         this.addEvent("RUN_CANCELLED", "RUNNER", {
           reason: "termination signal received",
           agentRunId: this.agentRunId,
@@ -1040,7 +1101,24 @@ export class LocalRunner {
           current: this.currentLimits.wallClockSeconds,
           message,
         });
-        await this.cancelAgentRun().catch(() => undefined);
+        await this.reconcileAndCancelAgentRun().catch(() => undefined);
+        const error = protocolError("BUDGET_EXCEEDED", message);
+        this.addEvent("AGENT_FAILED", "RUNNER", {
+          agentRunId: this.agentRunId,
+          error,
+        });
+        await this.finalizeRun("failed", error);
+        return this.buildResult("failed", error);
+      }
+      if (caught instanceof ResponseByteLimitError) {
+        const message = `Agent response exceeded output-byte limit: ${caught.current} > ${caught.limit}`;
+        this.addEvent("LIMIT_WARNING", "RUNNER", {
+          violationType: "maxOutputBytes",
+          limit: caught.limit,
+          current: caught.current,
+          message,
+        });
+        await this.reconcileAndCancelAgentRun().catch(() => undefined);
         const error = protocolError("BUDGET_EXCEEDED", message);
         this.addEvent("AGENT_FAILED", "RUNNER", {
           agentRunId: this.agentRunId,
@@ -1152,14 +1230,14 @@ export async function verifyRun(runDir: string): Promise<VerifyRunResult> {
     errors.push("Missing score.json");
   } else {
     try {
-      score = JSON.parse(readFileSync(scorePath, "utf8")) as {
+      const parsed = NotScoredReportSchema.parse(
+        JSON.parse(readFileSync(scorePath, "utf8")),
+      );
+      score = parsed as {
         status?: string;
         runId?: string;
         caseId?: string;
       };
-      if (score.status !== "not_scored") {
-        errors.push("Phase 1 score.json must have status=not_scored");
-      }
     } catch (error) {
       errors.push(`Score parse error: ${String(error)}`);
     }

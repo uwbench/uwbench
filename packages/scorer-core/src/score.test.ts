@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   ScoreReportSchema,
   NotScoredReportSchema,
-  ScoredReportSchema,
   createNotScoredReport,
   validatePhase1ScoreReport,
   SCORER_CORE_VERSION,
@@ -132,48 +131,6 @@ describe("scorer-core contracts", () => {
     };
 
     const result = NotScoredReportSchema.safeParse(report);
-    expect(result.success).toBe(false);
-  });
-
-  it("ScoredReportSchema validates scored report structure", () => {
-    const report = {
-      schemaVersion: "1.0",
-      scorerVersion: "0.1.0",
-      caseId: "case-00001",
-      runId: "run_123",
-      status: "scored" as const,
-      score: 85,
-      components: {
-        financial: { score: 90, weight: 0.36 },
-        risk: { score: 80, weight: 0.18 },
-      },
-      capsApplied: [],
-      confidenceInterval: { lower: 80, upper: 90, level: 0.95 },
-      issuedAt: new Date().toISOString(),
-    };
-
-    const result = ScoredReportSchema.safeParse(report);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.score).toBe(85);
-      expect(result.data.components).toBeDefined();
-      expect(result.data.confidenceInterval?.level).toBe(0.95);
-    }
-  });
-
-  it("ScoredReportSchema rejects score out of range", () => {
-    const report = {
-      schemaVersion: "1.0",
-      scorerVersion: "0.1.0",
-      caseId: "case-00001",
-      runId: "run_123",
-      status: "scored" as const,
-      score: 150, // out of range
-      components: {},
-      issuedAt: new Date().toISOString(),
-    };
-
-    const result = ScoredReportSchema.safeParse(report);
     expect(result.success).toBe(false);
   });
 });

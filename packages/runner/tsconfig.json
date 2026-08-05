@@ -11,6 +11,7 @@
   "references": [
     { "path": "../protocol" },
     { "path": "../tool-runtime" },
-    { "path": "../case-schema" }
+    { "path": "../case-schema" },
+    { "path": "../scorer-core" }
   ]
 }

@@ -523,6 +523,25 @@ describe("ToolGateway", () => {
 });
 
 describe("case fixture loading", () => {
+  it("fails closed when scenario.yaml is malformed", () => {
+    const caseDirectory = mkdtempSync(join(tmpdir(), "uwbench-bad-scenario-"));
+    mkdirSync(join(caseDirectory, "environment"));
+    writeFileSync(
+      join(caseDirectory, "environment", "scenario.yaml"),
+      "initial_state: START\ntransitions: invalid",
+    );
+    expect(
+      () =>
+        new ToolGateway({
+          port: 0,
+          casePath: caseDirectory,
+          runToken: "bad-scenario-token",
+          maxToolCalls: 1,
+        }),
+    ).toThrow(/transitions array/);
+    rmSync(caseDirectory, { recursive: true, force: true });
+  });
+
   it("loads environment/tool-fixtures.json from the configured case directory", async () => {
     const caseDirectory = mkdtempSync(join(tmpdir(), "uwbench-tool-fixtures-"));
     mkdirSync(join(caseDirectory, "environment"));

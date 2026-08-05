@@ -13,11 +13,11 @@ import { z } from "zod";
 export const ScorerVersionSchema = z.string().regex(/^\d+\.\d+\.\d+$/);
 export type ScorerVersion = z.infer<typeof ScorerVersionSchema>;
 
-export const ScoreStatusSchema = z.enum(["not_scored", "scored"]);
+export const ScoreStatusSchema = z.literal("not_scored");
 export type ScoreStatus = z.infer<typeof ScoreStatusSchema>;
 
 /**
- * Base score report structure — extended by status-specific variants.
+ * Base Phase 1 score report structure.
  * Does NOT include Phase 2 scoring fields (components, raw counts, etc.)
  * to avoid pretending scoring exists before implementation.
  */
@@ -47,26 +47,6 @@ export const NotScoredReportSchema = BaseScoreReportSchema.extend({
 });
 
 export type NotScoredReport = z.infer<typeof NotScoredReportSchema>;
-
-/**
- * Scored result — placeholder for Phase 2+.
- * Phase 1 validators will reject this status since no scorer exists.
- */
-export const ScoredReportSchema = BaseScoreReportSchema.extend({
-  status: z.literal("scored"),
-  score: z.number().min(0).max(100),
-  components: z.record(z.unknown()), // Phase 2: typed component scores
-  capsApplied: z.array(z.string()).optional(), // Phase 2: hard caps triggered
-  confidenceInterval: z
-    .strictObject({
-      lower: z.number().min(0).max(100),
-      upper: z.number().min(0).max(100),
-      level: z.number().min(0).max(1).default(0.95),
-    })
-    .optional(),
-});
-
-export type ScoredReport = z.infer<typeof ScoredReportSchema>;
 
 /** Phase 1's public ScoreReport contract is deliberately not_scored-only. */
 export const ScoreReportSchema = NotScoredReportSchema;

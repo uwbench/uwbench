@@ -26,6 +26,7 @@
   "dependencies": {
     "@uwbench/protocol": "workspace:*",
     "@uwbench/tool-runtime": "workspace:*",
-    "@uwbench/case-schema": "workspace:*"
+    "@uwbench/case-schema": "workspace:*",
+    "@uwbench/scorer-core": "workspace:*"
   }
 }

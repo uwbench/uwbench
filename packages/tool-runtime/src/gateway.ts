@@ -972,18 +972,14 @@ export class ToolGateway {
     }
     let scenarioEngine: ScenarioEngine | undefined;
     if (this.options.casePath) {
-      try {
-        const scenarioPath = join(
-          this.options.casePath,
-          "environment",
-          "scenario.yaml",
-        );
-        if (existsSync(scenarioPath)) {
-          const definition = loadScenario(scenarioPath);
-          scenarioEngine = new ScenarioEngine(definition, false); // hidden transitions disabled for public cases
-        }
-      } catch {
-        // If scenario loading fails, continue without scenario engine
+      const scenarioPath = join(
+        this.options.casePath,
+        "environment",
+        "scenario.yaml",
+      );
+      if (existsSync(scenarioPath)) {
+        const definition = loadScenario(scenarioPath);
+        scenarioEngine = new ScenarioEngine(definition, false); // hidden transitions disabled for public cases
       }
     }
     this.runs.set(token, {
