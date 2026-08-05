@@ -42,6 +42,7 @@ export interface ToolGatewayOptions {
   maxToolCalls?: number;
   maxOutputBytes?: number;
   maxConcurrentToolCalls?: number;
+  deadlineAtMs?: number;
   fixtures?: Partial<CaseFixtureData>;
   onEvent?: ((event: ToolGatewayEvent) => void) | undefined;
   /** Deterministic test hook used to exercise concurrent-call enforcement. */
@@ -95,6 +96,55 @@ export interface CaseFixtureData {
   policies: PolicyFixture[];
   information: Record<string, InformationFixture>;
 }
+
+const DocumentFixtureSchema: z.ZodType<DocumentFixture> = z.strictObject({
+  documentId: z.string().min(1),
+  sourceId: z.string().min(1),
+  title: z.string().min(1),
+  mimeType: z.string().min(1),
+  pageCount: z.number().int().positive(),
+  sizeBytes: z.number().int().nonnegative(),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  content: z.string(),
+  pages: z.array(
+    z.strictObject({
+      pageNumber: z.number().int().positive(),
+      text: z.string(),
+    }),
+  ),
+});
+
+const CaseFixtureDataSchema = z.strictObject({
+  documents: z.array(DocumentFixtureSchema),
+  revealableDocuments: z.array(DocumentFixtureSchema),
+  records: z.array(
+    z.strictObject({
+      recordId: z.string().min(1),
+      sourceId: z.string().min(1),
+      record: z.record(z.string(), z.unknown()),
+    }),
+  ),
+  policies: z.array(
+    z.strictObject({
+      ruleId: z.string().min(1),
+      sourceId: z.string().min(1),
+      title: z.string().min(1),
+      appliesWhen: z.string(),
+      input: z.record(z.string(), z.unknown()),
+      operator: z.string().min(1),
+      threshold: z.unknown(),
+      onFailure: z.string().min(1),
+    }),
+  ),
+  information: z.record(
+    z.string(),
+    z.strictObject({
+      status: z.enum(["AVAILABLE", "ALREADY_PROVIDED", "NEEDS_CLARIFICATION"]),
+      revealedDocumentIds: z.array(z.string()).optional(),
+      clarification: z.string().optional(),
+    }),
+  ),
+});
 
 interface RunState {
   fixtures: CaseFixtureData;
@@ -281,10 +331,9 @@ export class ToolGateway {
       throw new Error("port must be a non-negative integer");
     }
     this.options = options;
-    this.baseFixtures = mergeFixtures(
-      loadCaseFixtures(options.casePath),
-      options.fixtures,
-    );
+    this.baseFixtures = CaseFixtureDataSchema.parse(
+      mergeFixtures(loadCaseFixtures(options.casePath), options.fixtures),
+    ) as CaseFixtureData;
     this.app = express();
     this.app.use(express.json({ limit: "10mb" }));
     this.configureRoutes();
@@ -367,6 +416,49 @@ export class ToolGateway {
       .update(canonicalizeJcs({ name, arguments: toolArguments }))
       .digest("hex")}`;
     const cached = run.callCache.get(callId);
+    run.toolCallCount += 1;
+    this.emit("TOOL_CALL", {
+      callId,
+      name,
+      cached: Boolean(cached),
+      argumentsHash: `sha256:${createHash("sha256")
+        .update(canonicalizeJcs(toolArguments))
+        .digest("hex")}`,
+    });
+
+    if (this.options.deadlineAtMs && Date.now() >= this.options.deadlineAtMs) {
+      const failure = toolFailure(
+        callId,
+        name,
+        "BUDGET_EXCEEDED",
+        "Run wall-clock deadline has passed",
+      );
+      this.emit("TOOL_ERROR", {
+        callId,
+        name,
+        code: "BUDGET_EXCEEDED",
+        budget: "wallClockSeconds",
+      });
+      response.status(429).json(failure);
+      return;
+    }
+
+    if (run.toolCallCount > run.maxToolCalls) {
+      const failure = toolFailure(
+        callId,
+        name,
+        "BUDGET_EXCEEDED",
+        "Per-run attempted tool-call budget exceeded",
+      );
+      this.emit("TOOL_ERROR", {
+        callId,
+        name,
+        code: "BUDGET_EXCEEDED",
+        budget: "maxToolCalls",
+      });
+      response.status(429).json(failure);
+      return;
+    }
     if (cached) {
       if (cached.fingerprint !== fingerprint) {
         const conflict = toolFailure(
@@ -375,6 +467,12 @@ export class ToolGateway {
           "INVALID_ARGUMENTS",
           "callId was already used for a different tool request",
         );
+        this.emit("TOOL_ERROR", {
+          callId,
+          name,
+          code: "INVALID_ARGUMENTS",
+          conflict: true,
+        });
         response.status(409).json(conflict);
         return;
       }
@@ -401,17 +499,6 @@ export class ToolGateway {
       return;
     }
 
-    if (run.toolCallCount >= run.maxToolCalls) {
-      const failure = toolFailure(
-        callId,
-        name,
-        "BUDGET_EXCEEDED",
-        "Per-run tool-call budget exceeded",
-      );
-      response.status(429).json(failure);
-      return;
-    }
-
     if (run.concurrentToolCalls >= run.maxConcurrentToolCalls) {
       const failure = toolFailure(
         callId,
@@ -429,14 +516,6 @@ export class ToolGateway {
       return;
     }
 
-    this.emit("TOOL_CALL", {
-      callId,
-      name,
-      argumentsHash: `sha256:${createHash("sha256")
-        .update(JSON.stringify(toolArguments))
-        .digest("hex")}`,
-    });
-
     const inputSchema = getToolInputSchema(name);
     const parsedArguments = inputSchema?.safeParse(toolArguments);
     if (!parsedArguments?.success) {
@@ -447,7 +526,6 @@ export class ToolGateway {
         parsedArguments?.error.message ?? "Invalid tool arguments",
       );
       run.callCache.set(callId, { fingerprint, result: failure });
-      run.toolCallCount += 1;
       run.outputBytesUsed += Buffer.byteLength(JSON.stringify(failure));
       this.emit("TOOL_ERROR", {
         callId,
@@ -458,7 +536,6 @@ export class ToolGateway {
       return;
     }
 
-    run.toolCallCount += 1;
     run.concurrentToolCalls += 1;
     try {
       if (this.options.executionDelayMs) {
@@ -857,7 +934,9 @@ export class ToolGateway {
       }
     }
     this.runs.set(token, {
-      fixtures: mergeFixtures(this.baseFixtures, fixtures),
+      fixtures: CaseFixtureDataSchema.parse(
+        mergeFixtures(this.baseFixtures, fixtures),
+      ) as CaseFixtureData,
       callCache: new Map(),
       toolCallCount: 0,
       maxToolCalls,

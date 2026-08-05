@@ -30,7 +30,7 @@
       "currency": "USD",
       "scale": 1,
       "period": { "start": "2024-01-01", "end": "2024-12-31" },
-      "evidence": [{ "sourceId": "src_financials_2024", "recordId": "record_financials_2024" }],
+      "evidence": [{ "sourceId": "src_financials_2024" }],
       "confidence": 1.0
     },
     {
@@ -42,7 +42,7 @@
       "currency": "USD",
       "scale": 1,
       "period": { "start": "2024-01-01", "end": "2024-12-31" },
-      "evidence": [{ "sourceId": "src_financials_2024", "recordId": "record_financials_2024" }],
+      "evidence": [{ "sourceId": "src_financials_2024" }],
       "confidence": 1.0
     },
     {
@@ -54,7 +54,7 @@
       "currency": "USD",
       "scale": 1,
       "period": { "start": "2024-01-01", "end": "2024-12-31" },
-      "evidence": [{ "sourceId": "src_financials_2024", "recordId": "record_financials_2024" }],
+      "evidence": [{ "sourceId": "src_financials_2024" }],
       "confidence": 1.0
     },
     {
@@ -66,7 +66,7 @@
       "currency": "USD",
       "scale": 1,
       "period": { "start": "2024-01-01", "end": "2024-12-31" },
-      "evidence": [{ "sourceId": "src_financials_2024", "recordId": "record_financials_2024" }],
+      "evidence": [{ "sourceId": "src_financials_2024" }],
       "confidence": 1.0
     },
     {
@@ -78,7 +78,7 @@
       "currency": "USD",
       "scale": 1,
       "period": { "start": "2024-01-01", "end": "2024-12-31" },
-      "evidence": [{ "sourceId": "src_financials_2024", "recordId": "record_financials_2024" }],
+      "evidence": [{ "sourceId": "src_financials_2024" }],
       "confidence": 1.0
     },
     {
@@ -90,7 +90,7 @@
       "currency": "USD",
       "scale": 1,
       "period": { "start": "2024-01-01", "end": "2024-12-31" },
-      "evidence": [{ "sourceId": "src_financials_2024", "recordId": "record_financials_2024" }],
+      "evidence": [{ "sourceId": "src_financials_2024" }],
       "confidence": 1.0
     },
     {
@@ -102,7 +102,7 @@
       "currency": "USD",
       "scale": 1,
       "period": { "start": "2024-01-01", "end": "2024-12-31" },
-      "evidence": [{ "sourceId": "src_financials_2024", "recordId": "record_financials_2024" }],
+      "evidence": [{ "sourceId": "src_financials_2024" }],
       "confidence": 1.0
     },
     {
@@ -114,7 +114,7 @@
       "currency": "USD",
       "scale": 1,
       "period": { "start": "2024-01-01", "end": "2024-12-31" },
-      "evidence": [{ "sourceId": "src_financials_2024", "recordId": "record_financials_2024" }],
+      "evidence": [{ "sourceId": "src_financials_2024" }],
       "confidence": 1.0
     },
     {
@@ -124,7 +124,7 @@
       "type": "ratio",
       "unit": "multiple",
       "period": { "start": "2024-01-01", "end": "2024-12-31" },
-      "evidence": [{ "sourceId": "src_financials_2024", "recordId": "record_financials_2024" }],
+      "evidence": [{ "sourceId": "src_financials_2024" }],
       "confidence": 1.0
     },
     {
@@ -134,7 +134,7 @@
       "type": "ratio",
       "unit": "multiple",
       "period": { "start": "2024-01-01", "end": "2024-12-31" },
-      "evidence": [{ "sourceId": "src_financials_2024", "recordId": "record_financials_2024" }],
+      "evidence": [{ "sourceId": "src_financials_2024" }],
       "confidence": 1.0
     },
     {
@@ -144,7 +144,7 @@
       "type": "ratio",
       "unit": "multiple",
       "period": { "start": "2024-01-01", "end": "2024-12-31" },
-      "evidence": [{ "sourceId": "src_financials_2024", "recordId": "record_financials_2024" }],
+      "evidence": [{ "sourceId": "src_financials_2024" }],
       "confidence": 1.0
     },
     {
@@ -154,7 +154,7 @@
       "type": "ratio",
       "unit": "percentage",
       "period": { "start": "2024-01-01", "end": "2024-12-31" },
-      "evidence": [{ "sourceId": "src_financials_2024", "recordId": "record_financials_2024" }],
+      "evidence": [{ "sourceId": "src_financials_2024" }],
       "confidence": 1.0
     },
     {
@@ -164,7 +164,7 @@
       "type": "ratio",
       "unit": "multiple",
       "period": { "start": "2024-01-01", "end": "2024-12-31" },
-      "evidence": [{ "sourceId": "src_financials_2024", "recordId": "record_financials_2024" }],
+      "evidence": [{ "sourceId": "src_financials_2024" }],
       "confidence": 1.0
     },
     {
@@ -173,7 +173,7 @@
       "normalizedValue": "LLC",
       "type": "categorical",
       "unit": "none",
-      "evidence": [{ "sourceId": "src_borrower_profile", "recordId": "record_borrower_profile" }],
+      "evidence": [{ "sourceId": "src_borrower_profile" }],
       "confidence": 1.0
     },
     {
@@ -182,7 +182,7 @@
       "normalizedValue": "332710",
       "type": "categorical",
       "unit": "none",
-      "evidence": [{ "sourceId": "src_borrower_profile", "recordId": "record_borrower_profile" }],
+      "evidence": [{ "sourceId": "src_borrower_profile" }],
       "confidence": 1.0
     },
     {
@@ -191,7 +191,7 @@
       "normalizedValue": 12,
       "type": "integer",
       "unit": "years",
-      "evidence": [{ "sourceId": "src_borrower_profile", "recordId": "record_borrower_profile" }],
+      "evidence": [{ "sourceId": "src_borrower_profile" }],
       "confidence": 1.0
     }
   ],

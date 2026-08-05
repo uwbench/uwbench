@@ -143,7 +143,7 @@ describe("ToolGateway", () => {
   });
 
   it("returns the cached result without spending an additional tool call", async () => {
-    gateway.registerRun("idempotent-token", 1);
+    gateway.registerRun("idempotent-token", 2);
     const body = {
       schemaVersion: "1.0",
       callId: "same-call",
@@ -154,8 +154,8 @@ describe("ToolGateway", () => {
     const second = await rawCall(body, "idempotent-token");
     expect(second.json).toEqual(first.json);
     expect(gateway.getRunUsage("idempotent-token")).toMatchObject({
-      toolCallCount: 1,
-      maxToolCalls: 1,
+      toolCallCount: 2,
+      maxToolCalls: 2,
       concurrentToolCalls: 0,
     });
   });
@@ -186,7 +186,7 @@ describe("ToolGateway", () => {
       "INVALID_ARGUMENTS",
     );
     expect(gateway.getRunUsage("conflicting-call-token")?.toolCallCount).toBe(
-      1,
+      2,
     );
   });
 

@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join, dirname, resolve } from "node:path";
 
 export const initAgentCommand = new Command("init-agent")
   .description("Create an example agent server stub")
@@ -12,7 +12,7 @@ export const initAgentCommand = new Command("init-agent")
     "typescript",
   )
   .action(async (outputDir: string, options) => {
-    const targetDir = join(process.cwd(), outputDir);
+    const targetDir = resolve(process.cwd(), outputDir);
 
     if (!existsSync(targetDir)) {
       mkdirSync(targetDir, { recursive: true });
@@ -29,7 +29,7 @@ export const initAgentCommand = new Command("init-agent")
       },
       {
         path: join(targetDir, "src", "agent.ts"),
-        content: getAgentTs(),
+        content: getPortableAgentTs(),
       },
       {
         path: join(targetDir, "src", "server.ts"),
@@ -94,9 +94,7 @@ function getPackageJson(): string {
         eslint: "^9.8.0",
       },
       dependencies: {
-        "@uwbench/protocol": "workspace:*",
         fastify: "^4.28.1",
-        zod: "^3.23.8",
       },
     },
     null,
@@ -107,10 +105,8 @@ function getPackageJson(): string {
 function getTsConfig(): string {
   return JSON.stringify(
     {
-      extends: "../../tsconfig.base.json",
       compilerOptions: {
-        composite: true,
-        tsBuildInfoFile: "./.tsbuildinfo",
+        target: "ES2022",
         outDir: "./dist",
         rootDir: "./src",
         lib: ["ES2022"],
@@ -126,266 +122,114 @@ function getTsConfig(): string {
         sourceMap: true,
       },
       include: ["src/**/*"],
-      references: [{ path: "../../packages/protocol" }],
     },
     null,
     2,
   );
 }
 
-function getAgentTs(): string {
-  // Use a function to avoid template literal escaping issues
-  const lines = [
-    'import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";',
-    "import {",
-    "  HealthResponseSchema,",
-    "  RunResponseSchema,",
-    "  RunStatusResponseSchema,",
-    "  CancelResponseSchema,",
-    "  ProtocolErrorSchema,",
-    "  UnderwritingSubmissionSchema,",
-    "  type RunRequest,",
-    "  type RunResponse,",
-    "  type RunStatusResponse,",
-    "  type CancelResponse,",
-    "  type ProtocolError,",
-    "  type UnderwritingSubmission,",
-    "  type HealthResponse,",
-    '} from "@uwbench/protocol";',
-    'import { randomUUID } from "node:crypto";',
-    "",
-    "/**",
-    " * Example agent implementation.",
-    " * Replace this with your actual underwriting logic.",
-    " */",
-    "export class ExampleAgent {",
-    "  private runs = new Map<",
-    "    string,",
-    '    { request: RunRequest; status: RunStatusResponse["status"]; result?: UnderwritingSubmission; error?: ProtocolError }',
-    "  >();",
-    "",
-    "  /**",
-    "   * Register routes on the Fastify instance",
-    "   */",
-    "  registerRoutes(app: FastifyInstance): void {",
-    '    app.get("/health", this.handleHealth.bind(this));',
-    '    app.post("/v1/runs", this.handleStartRun.bind(this));',
-    '    app.get("/v1/runs/:agentRunId", this.handleGetRun.bind(this));',
-    '    app.delete("/v1/runs/:agentRunId", this.handleCancelRun.bind(this));',
-    "  }",
-    "",
-    "  private async handleHealth(",
-    "    _request: FastifyRequest,",
-    "    reply: FastifyReply,",
-    "  ): Promise<HealthResponse> {",
-    "    const response: HealthResponse = {",
-    '      schemaVersion: "1.0",',
-    '      status: "ok",',
-    '      version: "0.0.1",',
-    "    };",
-    "    const parsed = HealthResponseSchema.safeParse(response);",
-    "    if (!parsed.success) {",
-    '      return reply.code(500).send({ message: "Internal health check failed" });',
-    "    }",
-    "    return reply.send(parsed.data);",
-    "  }",
-    "",
-    "  private async handleStartRun(",
-    "    request: FastifyRequest<{ Body: RunRequest }>,",
-    "    reply: FastifyReply,",
-    "  ): Promise<RunResponse> {",
-    "    const body = request.body;",
-    "",
-    "    // Validate schema version",
-    '    if (body.schemaVersion !== "1.0") {',
-    "      const error: ProtocolError = {",
-    '        schemaVersion: "1.0",',
-    '        code: "INVALID_SCHEMA_VERSION",',
-    "        message: `Unsupported schema version: ${body.schemaVersion}`,",
-    "        requestId: randomUUID(),",
-    "      };",
-    "      return reply.code(400).send(error);",
-    "    }",
-    "",
-    "    // Check idempotency key",
-    "    if (body.idempotencyKey) {",
-    "      for (const [id, run] of this.runs) {",
-    "        if (run.request.idempotencyKey === body.idempotencyKey) {",
-    '          return reply.send({ schemaVersion: "1.0", agentRunId: id, status: "accepted" });',
-    "        }",
-    "      }",
-    "    }",
-    "",
-    "    const agentRunId = `agent_run_${randomUUID().slice(0, 8)}`;",
-    "",
-    "    // Store run with initial status",
-    '    this.runs.set(agentRunId, { request: body, status: "accepted" });',
-    "",
-    "    // Simulate async processing",
-    "    this.processRun(agentRunId, body);",
-    "",
-    '    return reply.send({ schemaVersion: "1.0", agentRunId, status: "accepted" });',
-    "  }",
-    "",
-    "  private async handleGetRun(",
-    "    request: FastifyRequest<{ Params: { agentRunId: string } }>,",
-    "    reply: FastifyReply,",
-    "  ): Promise<RunStatusResponse> {",
-    "    const { agentRunId } = request.params;",
-    "    const run = this.runs.get(agentRunId);",
-    "",
-    "    if (!run) {",
-    "      const error: ProtocolError = {",
-    '        schemaVersion: "1.0",',
-    '        code: "RUN_NOT_FOUND",',
-    "        message: `Run not found: ${agentRunId}`,",
-    "        requestId: randomUUID(),",
-    "      };",
-    "      return reply.code(404).send(error);",
-    "    }",
-    "",
-    "    const response: RunStatusResponse = {",
-    '      schemaVersion: "1.0",',
-    "      agentRunId,",
-    "      status: run.status,",
-    "    };",
-    "",
-    '    if (run.status === "completed" && run.result) {',
-    "      response.result = run.result;",
-    "    }",
-    '    if (run.status === "failed" && run.error) {',
-    "      response.error = run.error;",
-    "    }",
-    "",
-    "    const parsed = RunStatusResponseSchema.safeParse(response);",
-    "    if (!parsed.success) {",
-    "      const error: ProtocolError = {",
-    '        schemaVersion: "1.0",',
-    '        code: "INTERNAL_ERROR",',
-    '        message: "Invalid status response",',
-    "        requestId: randomUUID(),",
-    "      };",
-    "      return reply.code(500).send(error);",
-    "    }",
-    "",
-    "    return reply.send(parsed.data);",
-    "  }",
-    "",
-    "  private async handleCancelRun(",
-    "    request: FastifyRequest<{ Params: { agentRunId: string } }>,",
-    "    reply: FastifyReply,",
-    "  ): Promise<CancelResponse> {",
-    "    const { agentRunId } = request.params;",
-    "    const run = this.runs.get(agentRunId);",
-    "",
-    "    if (!run) {",
-    "      const error: ProtocolError = {",
-    '        schemaVersion: "1.0",',
-    '        code: "RUN_NOT_FOUND",',
-    "        message: `Run not found: ${agentRunId}`,",
-    "        requestId: randomUUID(),",
-    "      };",
-    "      return reply.code(404).send(error);",
-    "    }",
-    "",
-    "    // Check if already terminal",
-    "    if (",
-    '      run.status === "completed" ||',
-    '      run.status === "failed" ||',
-    '      run.status === "cancelled"',
-    "    ) {",
-    "      return reply.code(409).send({",
-    '        schemaVersion: "1.0",',
-    "        cancelled: false,",
-    "        error: {",
-    '          schemaVersion: "1.0",',
-    '          code: "INVALID_RUN_STATE",',
-    "          message: `Cannot cancel run in status: ${run.status}`,",
-    "          requestId: randomUUID(),",
-    "        },",
-    "      });",
-    "    }",
-    "",
-    '    run.status = "cancelled";',
-    "",
-    '    return reply.send({ schemaVersion: "1.0", cancelled: true });',
-    "  }",
-    "",
-    "  /**",
-    "   * Process the run asynchronously.",
-    "   * In a real agent, this would call the tool gateway, execute the underwriting logic,",
-    "   * and eventually update the run status to completed or failed.",
-    "   */",
-    "  private async processRun(agentRunId: string, request: RunRequest): Promise<void> {",
-    "    const run = this.runs.get(agentRunId);",
-    "    if (!run) return;",
-    "",
-    '    run.status = "running";',
-    "",
-    "    try {",
-    "      // Simulate some processing time",
-    "      await new Promise((resolve) => setTimeout(resolve, 1000));",
-    "",
-    "      // Create a minimal valid submission",
-    "      const submission: UnderwritingSubmission = {",
-    '        schemaVersion: "1.0",',
-    "        financialSpread: {",
-    '          revenue: { amount: 1000000, currency: "USD" },',
-    '          period: { start: "2024-01-01", end: "2024-12-31" },',
-    '          currency: "USD",',
-    '          scale: "units",',
-    '          signConvention: "positive_revenue_negative_expense",',
-    "        },",
-    "        normalizedFacts: [],",
-    "        risks: [],",
-    "        discrepancies: [],",
-    "        complianceFindings: [],",
-    "        followUpRequests: [],",
-    "        policyAssessment: {",
-    "          applicableRules: [],",
-    "          evaluations: [],",
-    "        },",
-    "        recommendation: {",
-    '          decision: "INSUFFICIENT_INFORMATION",',
-    "          confidence: 0.5,",
-    "          conditions: [],",
-    "          policyExceptions: [],",
-    "          rationale: [],",
-    "        },",
-    "        memo: {",
-    '          markdown: "Example agent memo - replace with actual underwriting analysis",',
-    "          claims: [],",
-    "        },",
-    "        confidence: {",
-    "          overall: 0.5,",
-    "          byComponent: {},",
-    "        },",
-    "      };",
-    "",
-    "      // Validate submission",
-    "      const parsed = UnderwritingSubmissionSchema.safeParse(submission);",
-    "      if (!parsed.success) {",
-    "        throw new Error(`Invalid submission: ${parsed.error.message}`);",
-    "      }",
-    "",
-    '      run.status = "completed";',
-    "      run.result = parsed.data;",
-    "    } catch (error) {",
-    '      run.status = "failed";',
-    "      run.error = {",
-    '        schemaVersion: "1.0",',
-    '        code: "AGENT_CRASHED",',
-    "        message: error instanceof Error ? error.message : String(error),",
-    "        requestId: randomUUID(),",
-    "      };",
-    "    }",
-    "  }",
-    "}",
-    "",
-    'type RunStatusResponse = import("@uwbench/protocol").RunStatusResponse;',
-    "",
-  ];
-  return lines.join("\n");
+function getPortableAgentTs(): string {
+  return `import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { randomUUID } from "node:crypto";
+
+type RunStatus = "accepted" | "running" | "completed" | "failed" | "cancelled";
+interface RunRequest { schemaVersion: string; idempotencyKey?: string; [key: string]: unknown }
+interface ProtocolError { schemaVersion: "1.0"; code: string; message: string; requestId: string }
+interface StoredRun { request: RunRequest; status: RunStatus; result?: Record<string, unknown>; error?: ProtocolError }
+
+function protocolError(code: string, message: string): ProtocolError {
+  return { schemaVersion: "1.0", code, message, requestId: randomUUID() };
+}
+
+export class ExampleAgent {
+  private readonly runs = new Map<string, StoredRun>();
+
+  registerRoutes(app: FastifyInstance): void {
+    app.get("/health", async (_request, reply) =>
+      reply.send({ schemaVersion: "1.0", status: "ok", version: "0.0.1", protocolVersion: "1.0" }),
+    );
+    app.post("/v1/runs", this.handleStartRun.bind(this));
+    app.get("/v1/runs/:agentRunId", this.handleGetRun.bind(this));
+    app.delete("/v1/runs/:agentRunId", this.handleCancelRun.bind(this));
+  }
+
+  private async handleStartRun(
+    request: FastifyRequest<{ Body: Partial<RunRequest> }>,
+    reply: FastifyReply,
+  ): Promise<unknown> {
+    const body = request.body;
+    if (body.schemaVersion !== "1.0") {
+      return reply.code(400).send(protocolError("INVALID_SCHEMA_VERSION", "Unsupported schema version"));
+    }
+    if (body.idempotencyKey) {
+      for (const [id, run] of this.runs) {
+        if (run.request.idempotencyKey === body.idempotencyKey) {
+          return reply.send({ schemaVersion: "1.0", agentRunId: id, status: "accepted" });
+        }
+      }
+    }
+    const agentRunId = "agent_run_" + randomUUID().slice(0, 8);
+    this.runs.set(agentRunId, { request: body as RunRequest, status: "accepted" });
+    void this.processRun(agentRunId);
+    return reply.send({ schemaVersion: "1.0", agentRunId, status: "accepted" });
+  }
+
+  private async handleGetRun(
+    request: FastifyRequest<{ Params: { agentRunId: string } }>,
+    reply: FastifyReply,
+  ): Promise<unknown> {
+    const { agentRunId } = request.params;
+    const run = this.runs.get(agentRunId);
+    if (!run) return reply.code(404).send(protocolError("RUN_NOT_FOUND", "Run not found: " + agentRunId));
+    if (run.status === "completed") {
+      return reply.send({ schemaVersion: "1.0", agentRunId, status: "completed", result: run.result });
+    }
+    if (run.status === "failed") {
+      return reply.send({ schemaVersion: "1.0", agentRunId, status: "failed", error: run.error });
+    }
+    return reply.send({ schemaVersion: "1.0", agentRunId, status: run.status });
+  }
+
+  private async handleCancelRun(
+    request: FastifyRequest<{ Params: { agentRunId: string } }>,
+    reply: FastifyReply,
+  ): Promise<unknown> {
+    const { agentRunId } = request.params;
+    const run = this.runs.get(agentRunId);
+    if (!run) return reply.code(404).send(protocolError("RUN_NOT_FOUND", "Run not found: " + agentRunId));
+    if (["completed", "failed", "cancelled"].includes(run.status)) {
+      return reply.code(409).send(protocolError("INVALID_RUN_STATE", "Run is already terminal"));
+    }
+    run.status = "cancelled";
+    return reply.send({ schemaVersion: "1.0", agentRunId, cancelled: true });
+  }
+
+  private async processRun(agentRunId: string): Promise<void> {
+    const run = this.runs.get(agentRunId);
+    if (!run) return;
+    run.status = "running";
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    if (this.runs.get(agentRunId)?.status === "cancelled") return;
+    run.result = {
+      schemaVersion: "1.0",
+      financialSpread: {
+        revenue: { amount: 1000000, currency: "USD" },
+        period: { start: "2024-01-01", end: "2024-12-31" },
+        currency: "USD", scale: "units", signConvention: "positive_revenue_negative_expense",
+      },
+      normalizedFacts: [], risks: [], discrepancies: [], complianceFindings: [], followUpRequests: [],
+      policyAssessment: { applicableRules: [], evaluations: [] },
+      recommendation: {
+        decision: "INSUFFICIENT_INFORMATION", confidence: 0.5,
+        conditions: [], policyExceptions: [], rationale: [],
+      },
+      memo: { markdown: "Example agent memo", claims: [] },
+      confidence: { overall: 0.5, byComponent: {} },
+    };
+    run.status = "completed";
+  }
+}
+`;
 }
 
 function getServerTs(): string {
@@ -401,6 +245,9 @@ function getServerTs(): string {
     "): Promise<FastifyInstance> {",
     '  const { fastify } = await import("fastify");',
     "  const app = fastify(options);",
+    "  app.setErrorHandler((_error, _request, reply) => {",
+    '    reply.code(400).send({ schemaVersion: "1.0", code: "INVALID_SUBMISSION", message: "Malformed request", requestId: "request-malformed" });',
+    "  });",
     "",
     "  // Register agent routes",
     "  const agent = new ExampleAgent();",
