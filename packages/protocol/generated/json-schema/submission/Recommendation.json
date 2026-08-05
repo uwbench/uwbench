@@ -33,7 +33,7 @@
         "currency"
       ],
       "additionalProperties": false,
-      "description": "Nonnegative integer monetary amount in major currency units unless an enclosing schema declares a scale"
+      "description": "Nonnegative integer monetary amount in ISO 4217 minor units"
     },
     "proposedTermMonths": {
       "type": "integer",

@@ -133,8 +133,10 @@ export async function runConformanceTests(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(createValidRunRequest()),
     });
-    if (!response.ok) {
-      throw new Error(`Start returned HTTP ${response.status}`);
+    if (response.status !== 202) {
+      throw new Error(
+        `Start must return HTTP 202, received ${response.status}`,
+      );
     }
     const started = RunResponseSchema.safeParse(await response.json());
     if (!started.success) {
@@ -187,8 +189,10 @@ export async function runConformanceTests(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
       });
-      if (!response.ok) {
-        throw new Error(`Start returned HTTP ${response.status}`);
+      if (response.status !== 202) {
+        throw new Error(
+          `Start must return HTTP 202, received ${response.status}`,
+        );
       }
       const parsed = RunResponseSchema.safeParse(await response.json());
       if (!parsed.success) {
@@ -210,8 +214,10 @@ export async function runConformanceTests(
       body: JSON.stringify(createValidRunRequest()),
     });
     const started = RunResponseSchema.safeParse(await response.json());
-    if (!response.ok || !started.success) {
-      throw new Error("Could not create run for cancellation");
+    if (response.status !== 202 || !started.success) {
+      throw new Error(
+        `Could not create run for cancellation: expected HTTP 202, received ${response.status}`,
+      );
     }
     const cancelResponse = await fetchWithTimeout(
       `/v1/runs/${encodeURIComponent(started.data.agentRunId)}`,
@@ -344,8 +350,8 @@ export async function runFakeAgentConformanceTests(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(runRequest),
         });
-        if (!startRes.ok) {
-          throw new Error(`Start run failed: ${startRes.status}`);
+        if (startRes.status !== 202) {
+          throw new Error(`Start run must return 202: ${startRes.status}`);
         }
         const startBody = await startRes.json();
         const startParsed = RunResponseSchema.safeParse(startBody);
@@ -472,7 +478,8 @@ export async function runFakeAgentConformanceTests(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(runRequest),
         });
-        if (!res1.ok) throw new Error(`First request failed: ${res1.status}`);
+        if (res1.status !== 202)
+          throw new Error(`First request must return 202: ${res1.status}`);
         const body1 = await res1.json();
         const parsed1 = RunResponseSchema.safeParse(body1);
         if (!parsed1.success) {
@@ -485,7 +492,8 @@ export async function runFakeAgentConformanceTests(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(runRequest),
         });
-        if (!res2.ok) throw new Error(`Second request failed: ${res2.status}`);
+        if (res2.status !== 202)
+          throw new Error(`Second request must return 202: ${res2.status}`);
         const body2 = await res2.json();
         const parsed2 = RunResponseSchema.safeParse(body2);
         if (!parsed2.success) {
@@ -520,7 +528,8 @@ export async function runFakeAgentConformanceTests(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(runRequest),
         });
-        if (!startRes.ok) throw new Error(`Start failed: ${startRes.status}`);
+        if (startRes.status !== 202)
+          throw new Error(`Start must return 202: ${startRes.status}`);
         const startBody = await startRes.json();
         const startParsed = RunResponseSchema.safeParse(startBody);
         if (!startParsed.success) {
@@ -616,7 +625,8 @@ export async function runFakeAgentConformanceTests(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(runRequest),
         });
-        if (!startRes.ok) throw new Error(`Start failed: ${startRes.status}`);
+        if (startRes.status !== 202)
+          throw new Error(`Start must return 202: ${startRes.status}`);
         const startBody = await startRes.json();
         const startParsed = RunResponseSchema.safeParse(startBody);
         if (!startParsed.success) {
@@ -684,7 +694,8 @@ export async function runFakeAgentConformanceTests(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(runRequest),
         });
-        if (!startRes.ok) throw new Error(`Start failed: ${startRes.status}`);
+        if (startRes.status !== 202)
+          throw new Error(`Start must return 202: ${startRes.status}`);
         const startBody = await startRes.json();
         const startParsed = RunResponseSchema.safeParse(startBody);
         if (!startParsed.success) {
@@ -751,7 +762,8 @@ export async function runFakeAgentConformanceTests(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(runRequest),
           });
-          if (!startRes.ok) throw new Error(`Start failed: ${startRes.status}`);
+          if (startRes.status !== 202)
+            throw new Error(`Start must return 202: ${startRes.status}`);
           const startBody = await startRes.json();
           const startParsed = RunResponseSchema.safeParse(startBody);
           if (!startParsed.success) {
@@ -844,7 +856,8 @@ export async function runFakeAgentConformanceTests(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(runRequest),
         });
-        if (!startRes.ok) throw new Error(`Start failed: ${startRes.status}`);
+        if (startRes.status !== 202)
+          throw new Error(`Start must return 202: ${startRes.status}`);
         const startBody = await startRes.json();
         const startParsed = RunResponseSchema.safeParse(startBody);
         if (!startParsed.success) {
@@ -920,7 +933,8 @@ export async function runFakeAgentConformanceTests(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(runRequest),
         });
-        if (!startRes.ok) throw new Error(`Start failed: ${startRes.status}`);
+        if (startRes.status !== 202)
+          throw new Error(`Start must return 202: ${startRes.status}`);
         const startBody = await startRes.json();
         const startParsed = RunResponseSchema.safeParse(startBody);
         if (!startParsed.success) {
@@ -991,7 +1005,8 @@ export async function runFakeAgentConformanceTests(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(runRequest),
         });
-        if (!startRes.ok) throw new Error(`Start failed: ${startRes.status}`);
+        if (startRes.status !== 202)
+          throw new Error(`Start must return 202: ${startRes.status}`);
         const startBody = await startRes.json();
         const startParsed = RunResponseSchema.safeParse(startBody);
         if (!startParsed.success) {
@@ -1052,7 +1067,8 @@ export async function runFakeAgentConformanceTests(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(runRequest),
         });
-        if (!startRes.ok) throw new Error(`Start failed: ${startRes.status}`);
+        if (startRes.status !== 202)
+          throw new Error(`Start must return 202: ${startRes.status}`);
         const startBody = await startRes.json();
         const startParsed = RunResponseSchema.safeParse(startBody);
         if (!startParsed.success) {
@@ -1107,7 +1123,8 @@ export async function runFakeAgentConformanceTests(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(runRequest),
         });
-        if (!startRes.ok) throw new Error(`Start failed: ${startRes.status}`);
+        if (startRes.status !== 202)
+          throw new Error(`Start must return 202: ${startRes.status}`);
         const startBody = await startRes.json();
         const startParsed = RunResponseSchema.safeParse(startBody);
         if (!startParsed.success) {
@@ -1160,7 +1177,8 @@ export async function runFakeAgentConformanceTests(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(runRequest),
         });
-        if (!startRes.ok) throw new Error(`Start failed: ${startRes.status}`);
+        if (startRes.status !== 202)
+          throw new Error(`Start must return 202: ${startRes.status}`);
         const startBody = await startRes.json();
         const startParsed = RunResponseSchema.safeParse(startBody);
         if (!startParsed.success) {

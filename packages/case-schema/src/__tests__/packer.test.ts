@@ -441,6 +441,29 @@ describe("packCase / unpackCase / verifyArchive", () => {
       );
     });
 
+    it("rejects a manifest-listed ZIP symbolic-link entry", async () => {
+      copyValidCase();
+      const archivePath = join(outputDir, "case-00001.input.uwb");
+      await packCase(validCaseDir, {
+        role: "input",
+        lane: "reasoning_only",
+        outputPath: archivePath,
+      });
+
+      const zip = new AdmZip(archivePath);
+      const entry = zip.getEntry("case.yaml")!;
+      entry.attr = (0o120777 * 0x10000) >>> 0;
+      zip.writeZip(archivePath);
+
+      const result = verifyArchive(archivePath);
+      expect(result.valid).toBe(false);
+      expect(
+        result.errors.some((error) =>
+          error.includes("Non-regular ZIP entry type for case.yaml"),
+        ),
+      ).toBe(true);
+    });
+
     it("rejects checksum-valid input entries outside the declared lane", async () => {
       copyValidCase();
       const archivePath = join(outputDir, "case-00001.input.uwb");

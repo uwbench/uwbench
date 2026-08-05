@@ -181,7 +181,7 @@ export class FakeAgent {
           if (existingRunId) {
             const existingRun = this.runs.get(existingRunId);
             if (existingRun) {
-              return res.json({
+              return res.status(202).json({
                 schemaVersion: "1.0",
                 agentRunId: existingRunId,
                 status: "accepted" as const,
@@ -210,7 +210,7 @@ export class FakeAgent {
         // Start async processing based on behavior
         this.processRun(agentRunId);
 
-        return res.json({
+        return res.status(202).json({
           schemaVersion: "1.0",
           agentRunId,
           status: "accepted" as const,

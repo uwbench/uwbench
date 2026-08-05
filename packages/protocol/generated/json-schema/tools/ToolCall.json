@@ -598,7 +598,7 @@
         "currency"
       ],
       "additionalProperties": false,
-      "description": "Integer monetary amount in major currency units unless an enclosing schema declares a scale"
+      "description": "Integer monetary amount in ISO 4217 minor units"
     },
     "__schema4": {
       "type": "integer",
@@ -802,7 +802,7 @@
         "currency"
       ],
       "additionalProperties": false,
-      "description": "Nonnegative integer monetary amount in major currency units unless an enclosing schema declares a scale"
+      "description": "Nonnegative integer monetary amount in ISO 4217 minor units"
     },
     "__schema7": {
       "type": "integer",

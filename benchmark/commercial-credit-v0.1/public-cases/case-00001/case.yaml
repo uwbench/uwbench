@@ -6,7 +6,7 @@ jurisdiction: "US"
 as_of_date: "2024-12-31"
 currency: "USD"
 requested_product: "term_loan"
-requested_amount: 1000000
+requested_amount: 100000000
 supported_lanes:
   - reasoning_only
 features:

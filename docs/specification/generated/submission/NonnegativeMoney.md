@@ -2,7 +2,7 @@
 
 **Category:** submission
 
-**Description:** Nonnegative integer monetary amount in major currency units unless an enclosing schema declares a scale
+**Description:** Nonnegative integer monetary amount in ISO 4217 minor units
 
 ## JSON Schema
 
@@ -10,7 +10,7 @@ See [NonnegativeMoney.json](../../../../packages/protocol/generated/json-schema/
 
 **Type:** `object`
 
-**Description:** Nonnegative integer monetary amount in major currency units unless an enclosing schema declares a scale
+**Description:** Nonnegative integer monetary amount in ISO 4217 minor units
 
 ## Properties
 

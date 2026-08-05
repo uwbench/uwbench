@@ -164,14 +164,14 @@ export class ExampleAgent {
     if (body.idempotencyKey) {
       for (const [id, run] of this.runs) {
         if (run.request.idempotencyKey === body.idempotencyKey) {
-          return reply.send({ schemaVersion: "1.0", agentRunId: id, status: "accepted" });
+          return reply.code(202).send({ schemaVersion: "1.0", agentRunId: id, status: "accepted" });
         }
       }
     }
     const agentRunId = "agent_run_" + randomUUID().slice(0, 8);
     this.runs.set(agentRunId, { request: body as RunRequest, status: "accepted" });
     void this.processRun(agentRunId);
-    return reply.send({ schemaVersion: "1.0", agentRunId, status: "accepted" });
+    return reply.code(202).send({ schemaVersion: "1.0", agentRunId, status: "accepted" });
   }
 
   private async handleGetRun(

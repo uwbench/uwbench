@@ -16,7 +16,7 @@ See [Recommendation.json](../../json-schema/submission/Recommendation.json) for 
 |------|------|----------|-------------|-------------|
 | `decision` | string | ✓ |  | enum: [APPROVE, APPROVE_WITH_CONDITIONS, REFER, DECLINE, INSUFFICIENT_INFORMATION] |
 | `confidence` | number | ✓ |  | minimum: 0<br>maximum: 1 |
-| `proposedAmount` | object |  | Nonnegative integer monetary amount in major currency units unless an enclosing schema declares a scale |  |
+| `proposedAmount` | object |  | Nonnegative integer monetary amount in ISO 4217 minor units |  |
 | `proposedTermMonths` | integer |  |  | maximum: 9007199254740991<br>exclusiveMinimum: 0 |
 | `conditions` | array<`object`> | ✓ |  |  |
 | `policyExceptions` | array<`object`> | ✓ |  |  |

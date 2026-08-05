@@ -98,6 +98,7 @@ export class ScenarioEngine {
   private readonly definition: ScenarioDefinition;
   private currentState: string;
   private readonly requestedConcepts = new Set<string>();
+  private readonly providedConcepts = new Set<string>();
   private readonly hiddenTransitionsEnabled: boolean;
 
   /**
@@ -176,6 +177,19 @@ export class ScenarioEngine {
     revealDocuments?: string[];
     clarification?: string;
   } {
+    const alreadyProvided = requestedConcepts.filter((concept) =>
+      this.providedConcepts.has(concept),
+    );
+    if (alreadyProvided.length === requestedConcepts.length) {
+      return { status: "ALREADY_PROVIDED" };
+    }
+    if (alreadyProvided.length > 0) {
+      return {
+        status: "NEEDS_CLARIFICATION",
+        clarification: `Already provided: ${alreadyProvided.join(", ")}. Request only concepts that have not yet been provided.`,
+      };
+    }
+
     // Track all requested concepts for duplicate detection
     for (const concept of requestedConcepts) {
       this.requestedConcepts.add(concept);
@@ -203,7 +217,10 @@ export class ScenarioEngine {
       if (!transition)
         return this.buildResponse({ status: "NEEDS_CLARIFICATION" });
       this.currentState = transition.to;
-      return this.buildResponse(transition.response);
+      return this.recordProvided(
+        requestedConcepts,
+        this.buildResponse(transition.response),
+      );
     }
 
     // Check for partial matches where all requested concepts are subsets of a single transition
@@ -217,7 +234,10 @@ export class ScenarioEngine {
       if (!transition)
         return this.buildResponse({ status: "NEEDS_CLARIFICATION" });
       this.currentState = transition.to;
-      return this.buildResponse(transition.response);
+      return this.recordProvided(
+        requestedConcepts,
+        this.buildResponse(transition.response),
+      );
     }
 
     // Ambiguous: multiple transitions match, or partial overlap
@@ -256,6 +276,19 @@ export class ScenarioEngine {
   reset(): void {
     this.currentState = this.definition.initial_state;
     this.requestedConcepts.clear();
+    this.providedConcepts.clear();
+  }
+
+  private recordProvided(
+    requestedConcepts: string[],
+    response: ReturnType<ScenarioEngine["buildResponse"]>,
+  ): ReturnType<ScenarioEngine["buildResponse"]> {
+    if (["AVAILABLE", "ALREADY_PROVIDED"].includes(response.status)) {
+      for (const concept of requestedConcepts) {
+        this.providedConcepts.add(concept);
+      }
+    }
+    return response;
   }
 
   private buildResponse(response: ScenarioTransitionResponse): {

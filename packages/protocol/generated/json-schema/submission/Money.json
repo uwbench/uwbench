@@ -15,7 +15,7 @@
     "currency"
   ],
   "additionalProperties": false,
-  "description": "Integer monetary amount in major currency units unless an enclosing schema declares a scale",
+  "description": "Integer monetary amount in ISO 4217 minor units",
   "$defs": {
     "__schema0": {
       "type": "integer",

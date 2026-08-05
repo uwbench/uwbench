@@ -278,6 +278,14 @@ transitions:
       expect(engine.getRequestedConcepts()).toContain("financial_statements");
     });
 
+    it("generally returns ALREADY_PROVIDED after an available reveal", () => {
+      const engine = new ScenarioEngine(multiStepScenario);
+      expect(engine.processRequest(["tax_returns"]).status).toBe("AVAILABLE");
+      expect(engine.processRequest(["tax_returns"])).toEqual({
+        status: "ALREADY_PROVIDED",
+      });
+    });
+
     it("resets to initial state", () => {
       const engine = new ScenarioEngine(multiStepScenario);
       engine.processRequest(["tax_returns"]);

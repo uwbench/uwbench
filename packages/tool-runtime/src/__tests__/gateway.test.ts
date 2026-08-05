@@ -728,6 +728,15 @@ describe("case fixture loading", () => {
         question: "Provide tax returns",
       });
       expect(request.ok).toBe(true);
+      const duplicate = await invoke(
+        "reveal-duplicate",
+        "case.request_information",
+        {
+          requested_concepts: ["tax_returns"],
+          question: "Provide tax returns again",
+        },
+      );
+      expect(JSON.stringify(duplicate)).toContain("ALREADY_PROVIDED");
       const read = await invoke("read-revealed", "case.read_document", {
         documentId: "doc_tax",
       });

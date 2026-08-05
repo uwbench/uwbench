@@ -2,7 +2,7 @@
 
 **Category:** submission
 
-**Description:** Integer monetary amount in major currency units unless an enclosing schema declares a scale
+**Description:** Integer monetary amount in ISO 4217 minor units
 
 ## JSON Schema
 
@@ -10,7 +10,7 @@ See [Money.json](../../json-schema/submission/Money.json) for the canonical JSON
 
 **Type:** `object`
 
-**Description:** Integer monetary amount in major currency units unless an enclosing schema declares a scale
+**Description:** Integer monetary amount in ISO 4217 minor units
 
 ## Properties
 

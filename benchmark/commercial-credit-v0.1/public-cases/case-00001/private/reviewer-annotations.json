@@ -33,7 +33,7 @@
       "recommendation": {
         "decision": "REFER",
         "confidence": 0.8,
-        "proposedAmount": 1000000,
+        "proposedAmount": 100000000,
         "proposedTermMonths": 60,
         "conditions": [
           "Key person life insurance assigned to lender",
@@ -82,7 +82,7 @@
       "recommendation": {
         "decision": "APPROVE_WITH_CONDITIONS",
         "confidence": 0.75,
-        "proposedAmount": 1000000,
+        "proposedAmount": 100000000,
         "proposedTermMonths": 60,
         "conditions": [
           "Key person insurance ($1.5M minimum)",
@@ -131,7 +131,7 @@
       "recommendation": {
         "decision": "REFER",
         "confidence": 0.85,
-        "proposedAmount": 1000000,
+        "proposedAmount": 100000000,
         "proposedTermMonths": 60,
         "conditions": [
           "Key person insurance + disability coverage",

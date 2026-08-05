@@ -117,7 +117,7 @@ export class RealDeterministicAgent {
       if (existingId && this.runs.has(existingId)) {
         sendJson(
           response,
-          200,
+          202,
           RunResponseSchema.parse({
             schemaVersion: "1.0",
             agentRunId: existingId,
@@ -141,7 +141,7 @@ export class RealDeterministicAgent {
       void this.processRun(run);
       sendJson(
         response,
-        200,
+        202,
         RunResponseSchema.parse({
           schemaVersion: "1.0",
           agentRunId,

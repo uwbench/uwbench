@@ -114,6 +114,7 @@ let mockAgentServer: (() => void) | null = null;
 let mockAgentUrl = "";
 let mockDeleteCount = 0;
 let mockStartedRunCount = 0;
+let mockToolCallStarted = false;
 
 async function startMockAgent(
   behavior:
@@ -128,7 +129,8 @@ async function startMockAgent(
     | "oversized-status"
     | "cancel-error"
     | "cancel-timeout"
-    | "cancel-nonterminal" = "complete",
+    | "cancel-nonterminal"
+    | "inflight-artifact" = "complete",
 ): Promise<string> {
   // Use a simple HTTP server for mocking
   const { createServer } = await import("node:http");
@@ -147,6 +149,7 @@ async function startMockAgent(
   let runCounter = 0;
   mockDeleteCount = 0;
   mockStartedRunCount = 0;
+  mockToolCallStarted = false;
 
   const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? "", `http://127.0.0.1:${port}`);
@@ -187,7 +190,7 @@ async function startMockAgent(
       if (request.idempotencyKey) {
         for (const [id, run] of runs) {
           if ((run as any).idempotencyKey === request.idempotencyKey) {
-            res.writeHead(200, { "Content-Type": "application/json" });
+            res.writeHead(202, { "Content-Type": "application/json" });
             res.end(
               JSON.stringify({
                 schemaVersion: "1.0",
@@ -300,11 +303,36 @@ async function startMockAgent(
         }
       }
 
+      if (behavior === "inflight-artifact") {
+        const gateway = request.toolGateway as {
+          url: string;
+          bearerToken: string;
+        };
+        mockToolCallStarted = true;
+        void fetch(gateway.url, {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${gateway.bearerToken}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            schemaVersion: "1.0",
+            callId: "inflight-artifact",
+            name: "submission.save_artifact",
+            arguments: {
+              artifactId: "inflight-memo",
+              content: "persisted before terminal event",
+              contentType: "text/plain",
+            },
+          }),
+        });
+      }
+
       if (behavior === "delayed-ack") {
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
-      res.writeHead(200, { "Content-Type": "application/json" });
+      res.writeHead(202, { "Content-Type": "application/json" });
       res.end(
         JSON.stringify({
           schemaVersion: "1.0",
@@ -1103,6 +1131,36 @@ describe("LocalRunner", () => {
     const result = await runPromise;
     expect(result.status).toBe("cancelled");
     expect(mockDeleteCount).toBe(1);
+  });
+
+  it("drains an in-flight artifact before appending the cancellation event", async () => {
+    await stopMockAgent();
+    agentUrl = await startMockAgent("inflight-artifact");
+    const runner = new LocalRunner({
+      outputBase: join(tmpdir(), `uwbench-inflight-cancel-${randomUUID()}`),
+      toolExecutionDelayMs: 200,
+    });
+    const runPromise = runner.run({ casePath: testCaseDir, agentUrl });
+    for (
+      let attempts = 0;
+      (!mockToolCallStarted || mockStartedRunCount === 0) && attempts < 100;
+      attempts++
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    process.emit("SIGTERM");
+
+    const result = await runPromise;
+    expect(result.status).toBe("cancelled");
+    const events = readFileSync(result.eventsPath, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    expect(events.at(-1)?.type).toBe("RUN_CANCELLED");
+    expect(events.some((event) => event.type === "ARTIFACT_SAVED")).toBe(true);
+    expect(existsSync(join(result.runDir, "artifacts"))).toBe(true);
+    expect((await verifyRun(result.runDir)).valid).toBe(true);
   });
 
   it.each([

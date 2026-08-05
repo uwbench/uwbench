@@ -188,18 +188,14 @@ export const MoneySchema = z
     amount: z.number().int(),
     currency: Iso4217CurrencySchema,
   })
-  .describe(
-    "Integer monetary amount in major currency units unless an enclosing schema declares a scale",
-  );
+  .describe("Integer monetary amount in ISO 4217 minor units");
 
 export const NonnegativeMoneySchema = z
   .strictObject({
     amount: z.number().int().nonnegative(),
     currency: Iso4217CurrencySchema,
   })
-  .describe(
-    "Nonnegative integer monetary amount in major currency units unless an enclosing schema declares a scale",
-  );
+  .describe("Nonnegative integer monetary amount in ISO 4217 minor units");
 
 export const FinancialSpreadSchema = z.strictObject({
   revenue: MoneySchema,

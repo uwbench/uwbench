@@ -28,7 +28,7 @@ export const CaseSchema = z.strictObject({
     .number()
     .int()
     .positive()
-    .describe("Requested amount in major units of the case currency"),
+    .describe("Requested amount in ISO 4217 minor units of the case currency"),
   supported_lanes: z.array(SupportedLaneSchema).min(1),
   features: CaseFeaturesSchema,
   budgets: CaseBudgetsSchema,

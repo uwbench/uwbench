@@ -539,6 +539,13 @@ function validateArchiveContents(
 
   for (const zipEntry of zip.getEntries()) {
     const path = zipEntry.entryName;
+    const unixMode = (zipEntry.attr >>> 16) & 0xffff;
+    const entryType = unixMode & 0o170000;
+    if (entryType !== 0 && entryType !== 0o100000) {
+      errors.push(
+        `Non-regular ZIP entry type for ${path}: mode ${unixMode.toString(8)}`,
+      );
+    }
     if (actualPaths.has(path)) {
       errors.push(`Duplicate ZIP entry: ${path}`);
       continue;
