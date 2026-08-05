@@ -685,6 +685,20 @@ describe("LocalRunner", () => {
     expect(second.runId).not.toBe(first.runId);
   });
 
+  it("does not reuse a run after trusted runtime fixtures change", async () => {
+    const outputBase = join(tmpdir(), `uwbench-fixture-id-${randomUUID()}`);
+    const runner = new LocalRunner({ outputBase });
+    const first = await runner.run({ casePath: testCaseDir, agentUrl });
+    const fixturePath = join(testCaseDir, "environment", "tool-fixtures.json");
+    const fixture = JSON.parse(readFileSync(fixturePath, "utf8"));
+    fixture.information = {
+      changed: { status: "NEEDS_CLARIFICATION", clarification: "changed" },
+    };
+    writeFileSync(fixturePath, JSON.stringify(fixture));
+    const second = await runner.run({ casePath: testCaseDir, agentUrl });
+    expect(second.runId).not.toBe(first.runId);
+  });
+
   it("does not overwrite an explicit run directory with incompatible inputs", async () => {
     const outputDir = join(tmpdir(), `uwbench-explicit-id-${randomUUID()}`);
     const runner = new LocalRunner();
@@ -784,6 +798,23 @@ describe("LocalRunner", () => {
 
     const manifest = JSON.parse(readFileSync(result.manifestPath, "utf8"));
     expect(manifest.status).toBe("failed");
+  });
+
+  it("restores the terminal error when reusing a failed run", async () => {
+    await stopMockAgent();
+    agentUrl = await startMockAgent("fail");
+    const outputBase = join(tmpdir(), `uwbench-failed-reuse-${randomUUID()}`);
+    const first = await new LocalRunner({ outputBase }).run({
+      casePath: testCaseDir,
+      agentUrl,
+    });
+    const second = await new LocalRunner({ outputBase }).run({
+      casePath: testCaseDir,
+      agentUrl,
+    });
+    expect(second.runId).toBe(first.runId);
+    expect(second.status).toBe("failed");
+    expect(second.error).toEqual(first.error);
   });
 
   it("rejects a schema-invalid completed submission", async () => {

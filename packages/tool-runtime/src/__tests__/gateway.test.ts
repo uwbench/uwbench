@@ -304,7 +304,7 @@ describe("ToolGateway", () => {
       expect(JSON.stringify(result)).not.toContain("/inputs/");
     }
 
-    expect(gateway.getArtifact(TOKEN, "memo")).toEqual({
+    expect(gateway.getArtifact(TOKEN, "memo")).toMatchObject({
       content: "# Credit memo",
       contentType: "text/markdown",
       sourceId: "artifact:memo",
@@ -393,6 +393,47 @@ describe("ToolGateway", () => {
       expect(
         limited.getRunUsage("output-limited")?.outputBytesUsed,
       ).toBeGreaterThan(1);
+    } finally {
+      await limited.stop();
+    }
+  });
+
+  it("charges artifact content before storing it", async () => {
+    const limited = new ToolGateway({
+      port: 0,
+      runToken: "artifact-limited",
+      maxToolCalls: 2,
+      maxOutputBytes: 100,
+    });
+    try {
+      await limited.start();
+      const response = await fetch(
+        `http://127.0.0.1:${limited.port}/v1/tools/call`,
+        {
+          method: "POST",
+          headers: {
+            authorization: "Bearer artifact-limited",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            schemaVersion: "1.0",
+            callId: "oversized-artifact",
+            name: "submission.save_artifact",
+            arguments: {
+              artifactId: "too-large",
+              content: "x".repeat(200),
+              contentType: "text/plain",
+            },
+          }),
+        },
+      );
+      expect(response.status).toBe(429);
+      expect(
+        limited.getArtifact("artifact-limited", "too-large"),
+      ).toBeUndefined();
+      expect(limited.getRunUsage("artifact-limited")?.outputBytesUsed).toBe(
+        200,
+      );
     } finally {
       await limited.stop();
     }

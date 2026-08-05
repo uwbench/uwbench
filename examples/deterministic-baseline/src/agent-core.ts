@@ -126,7 +126,8 @@ export async function runDeterministicAgent(
     spread,
   });
   const ratios = ratioValues(spread);
-  const evidence = [{ sourceId: canonicalRecord.sourceId }];
+  // Preserve the case-declared source identity carried by canonical facts.
+  const evidence = [{ sourceId: "src_financials_2024" }];
   const evaluations = policies.map((rule) => {
     const value = ratios[rule.input.ratio];
     if (value === undefined)

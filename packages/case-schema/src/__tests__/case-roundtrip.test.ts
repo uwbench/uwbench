@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { packCase, unpackCase, verifyArchive } from "../packer.js";
+import { validateCaseSync } from "../validator.js";
 import {
   mkdtempSync,
   rmSync,
@@ -352,6 +353,12 @@ describe("Case round-trip integration: lane privacy boundaries and pack-unpack-v
         verifyHashes: true,
       });
       expect(unpackResult.success).toBe(true);
+      expect(
+        validateCaseSync(unpackDir, {
+          mode: "input_archive",
+          lane: "raw_documents",
+        }).success,
+      ).toBe(true);
 
       // Verify unpacked case has expected files for raw_documents lane
       expect(existsSync(join(unpackDir, "case.yaml"))).toBe(true);
@@ -399,6 +406,12 @@ describe("Case round-trip integration: lane privacy boundaries and pack-unpack-v
         verifyHashes: true,
       });
       expect(unpackResult.success).toBe(true);
+      expect(
+        validateCaseSync(unpackDir, {
+          mode: "input_archive",
+          lane: "normalized_data",
+        }).success,
+      ).toBe(true);
 
       // Verify unpacked case has expected files for normalized_data lane
       expect(existsSync(join(unpackDir, "case.yaml"))).toBe(true);
@@ -446,6 +459,12 @@ describe("Case round-trip integration: lane privacy boundaries and pack-unpack-v
         verifyHashes: true,
       });
       expect(unpackResult.success).toBe(true);
+      expect(
+        validateCaseSync(unpackDir, {
+          mode: "input_archive",
+          lane: "reasoning_only",
+        }).success,
+      ).toBe(true);
 
       // Verify unpacked case has expected files for reasoning_only lane
       expect(existsSync(join(unpackDir, "case.yaml"))).toBe(true);
@@ -493,6 +512,9 @@ describe("Case round-trip integration: lane privacy boundaries and pack-unpack-v
         verifyHashes: true,
       });
       expect(unpackResult.success).toBe(true);
+      expect(
+        validateCaseSync(unpackDir, { mode: "reference_archive" }).success,
+      ).toBe(true);
 
       // Verify all private files were unpacked
       const expectedPrivateFiles = [

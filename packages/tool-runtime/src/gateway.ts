@@ -157,7 +157,14 @@ interface RunState {
   maxConcurrentToolCalls: number;
   artifacts: Map<
     string,
-    { content: string; contentType: string; sourceId: string }
+    {
+      content: string;
+      contentType: string;
+      sourceId: string;
+      artifactPath: string;
+      sha256: string;
+      sizeBytes: number;
+    }
   >;
   scenarioEngine?: ScenarioEngine | undefined;
 }
@@ -536,6 +543,30 @@ export class ToolGateway {
       return;
     }
 
+    if (name === "submission.save_artifact") {
+      const { content } = parsedArguments.data as { content: string };
+      const artifactBytes = Buffer.byteLength(content);
+      run.outputBytesUsed += artifactBytes;
+      if (run.outputBytesUsed > run.maxOutputBytes) {
+        const failure = toolFailure(
+          callId,
+          name,
+          "BUDGET_EXCEEDED",
+          "Saved artifact content exceeds the per-run output-byte budget",
+        );
+        run.callCache.set(callId, { fingerprint, result: failure });
+        this.emit("TOOL_ERROR", {
+          callId,
+          name,
+          code: "BUDGET_EXCEEDED",
+          budget: "maxOutputBytes",
+          artifactBytes,
+        });
+        response.status(429).json(failure);
+        return;
+      }
+    }
+
     run.concurrentToolCalls += 1;
     try {
       if (this.options.executionDelayMs) {
@@ -547,6 +578,10 @@ export class ToolGateway {
       const resultBytes = Buffer.byteLength(JSON.stringify(result));
       run.outputBytesUsed += resultBytes;
       if (run.outputBytesUsed > run.maxOutputBytes) {
+        if (name === "submission.save_artifact") {
+          const { artifactId } = parsedArguments.data as { artifactId: string };
+          run.artifacts.delete(artifactId);
+        }
         result = toolFailure(
           callId,
           name,
@@ -559,7 +594,14 @@ export class ToolGateway {
         this.emit("TOOL_RESULT", { callId, name, resultBytes });
         if (name === "submission.save_artifact") {
           const { artifactId } = parsedArguments.data as { artifactId: string };
-          this.emit("ARTIFACT_SAVED", { callId, artifactId });
+          const artifact = run.artifacts.get(artifactId)!;
+          this.emit("ARTIFACT_SAVED", {
+            callId,
+            artifactId,
+            artifactPath: artifact.artifactPath,
+            sha256: artifact.sha256,
+            sizeBytes: artifact.sizeBytes,
+          });
         }
       } else {
         const failure = ToolFailureResultSchema.parse(result);
@@ -895,7 +937,18 @@ export class ToolGateway {
       contentType: string;
     };
     const sourceId = `artifact:${artifactId}`;
-    run.artifacts.set(artifactId, { content, contentType, sourceId });
+    const digest = createHash("sha256").update(content).digest("hex");
+    const artifactPath = `artifacts/${createHash("sha256")
+      .update(artifactId)
+      .digest("hex")}.artifact`;
+    run.artifacts.set(artifactId, {
+      content,
+      contentType,
+      sourceId,
+      artifactPath,
+      sha256: `sha256:${digest}`,
+      sizeBytes: Buffer.byteLength(content),
+    });
     return toolSuccess(callId, "submission.save_artifact", {
       artifactId,
       sourceId,
@@ -979,8 +1032,34 @@ export class ToolGateway {
   getArtifact(
     token: string,
     artifactId: string,
-  ): { content: string; contentType: string; sourceId: string } | undefined {
+  ):
+    | {
+        content: string;
+        contentType: string;
+        sourceId: string;
+        artifactPath: string;
+        sha256: string;
+        sizeBytes: number;
+      }
+    | undefined {
     return this.runs.get(token)?.artifacts.get(artifactId);
+  }
+
+  getArtifacts(token: string): {
+    artifactId: string;
+    content: string;
+    artifactPath: string;
+    sha256: string;
+  }[] {
+    const artifacts = this.runs.get(token)?.artifacts;
+    return artifacts
+      ? [...artifacts.entries()].map(([artifactId, artifact]) => ({
+          artifactId,
+          content: artifact.content,
+          artifactPath: artifact.artifactPath,
+          sha256: artifact.sha256,
+        }))
+      : [];
   }
 
   validateSubmissionEvidence(

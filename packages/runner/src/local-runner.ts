@@ -12,14 +12,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import {
-  basename,
-  dirname,
-  isAbsolute,
-  join,
-  relative,
-  resolve,
-} from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import {
   CancelResponseSchema,
   HealthResponseSchema,
@@ -121,6 +114,7 @@ export interface RunManifest {
   eventCount: number;
   submissionHash?: string;
   configurationHash: string;
+  error?: ProtocolError;
 }
 
 export interface Checksums {
@@ -174,6 +168,9 @@ function caseInputFingerprint(casePath: string, lane: SupportedLane): string {
   for (const projectedPath of getLaneProjection(lane)) {
     collect(join(casePath, projectedPath));
   }
+  // Trusted fixtures affect runtime revelations even though they are never
+  // exposed in participant archives.
+  collect(join(casePath, "environment", "tool-fixtures.json"));
   const hash = createHash("sha256");
   for (const file of files.sort()) {
     hash.update(relative(casePath, file));
@@ -306,14 +303,17 @@ function buildLaneToolFixtures(
         const file = join(documentsRoot, entry.name);
         const bytes = readFileSync(file);
         const content = bytes.toString("utf8");
-        const documentId = `document:${entry.name}`;
+        const declared = caseData.sources.filter(
+          (source) => source.kind === "document",
+        )[documents.length];
+        const documentId = declared?.documentId ?? `document:${entry.name}`;
         documents.push({
           documentId,
-          sourceId: documentId,
-          title: entry.name,
-          mimeType: entry.name.endsWith(".pdf")
-            ? "application/pdf"
-            : "text/plain",
+          sourceId: declared?.sourceId ?? documentId,
+          title: declared?.title ?? entry.name,
+          mimeType:
+            declared?.mimeType ??
+            (entry.name.endsWith(".pdf") ? "application/pdf" : "text/plain"),
           pageCount: 1,
           sizeBytes: bytes.length,
           sha256: createHash("sha256").update(bytes).digest("hex"),
@@ -334,6 +334,13 @@ function buildLaneToolFixtures(
               sourceId: "normalized:canonical-input",
               record: canonical,
             },
+            ...caseData.sources
+              .filter((source) => source.kind === "record")
+              .map((source) => ({
+                recordId: source.recordId,
+                sourceId: source.sourceId,
+                record: canonical,
+              })),
           ]
         : [],
     policies,
@@ -395,6 +402,7 @@ export class LocalRunner {
   private deadlineExceeded = false;
   private deadlineTimer: ReturnType<typeof setTimeout> | undefined;
   private deadlineAtMs = 0;
+  private terminalError: ProtocolError | undefined;
 
   constructor(options: { outputBase?: string } = {}) {
     this.defaultOutputBase = resolve(
@@ -485,6 +493,7 @@ export class LocalRunner {
     if (this.submission) {
       manifest.submissionHash = sha256(JSON.stringify(this.submission));
     }
+    if (this.terminalError) manifest.error = this.terminalError;
     writeFileSync(
       join(this.currentRunDir, "run-manifest.json"),
       JSON.stringify(manifest, null, 2),
@@ -520,6 +529,14 @@ export class LocalRunner {
       const path = join(this.currentRunDir, file);
       if (existsSync(path)) files[file] = sha256(readFileSync(path));
     }
+    const artifactsDir = join(this.currentRunDir, "artifacts");
+    if (existsSync(artifactsDir)) {
+      for (const entry of readdirSync(artifactsDir, { withFileTypes: true })) {
+        if (!entry.isFile()) continue;
+        const file = `artifacts/${entry.name}`;
+        files[file] = sha256(readFileSync(join(this.currentRunDir, file)));
+      }
+    }
     const checksums: Checksums = {
       schemaVersion: "1.0",
       runId: this.currentRunId,
@@ -531,9 +548,19 @@ export class LocalRunner {
     );
   }
 
-  private async finalizeRun(status: RunStatus): Promise<void> {
+  private async finalizeRun(
+    status: RunStatus,
+    error?: ProtocolError,
+  ): Promise<void> {
     if (this.finalizedStatus) return;
     this.finalizedStatus = status;
+    this.terminalError = error;
+    for (const artifact of this.toolGateway?.getArtifacts(this.gatewayToken) ??
+      []) {
+      const path = join(this.currentRunDir, artifact.artifactPath);
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, artifact.content);
+    }
     await this.stopToolGateway();
     if (this.submission) {
       writeFileSync(
@@ -720,7 +747,7 @@ export class LocalRunner {
           manifest.runId,
           runDir,
           manifest.status,
-          undefined,
+          manifest.error,
         );
       }
     }
@@ -806,6 +833,7 @@ export class LocalRunner {
     this.submission = null;
     this.submissionOutputBytes = 0;
     this.finalizedStatus = null;
+    this.terminalError = undefined;
     this.deadlineExceeded = false;
     this.deadlineAtMs = this.runStartTime + limits.wallClockSeconds * 1000;
     mkdirSync(this.currentRunDir, { recursive: true });
@@ -892,7 +920,7 @@ export class LocalRunner {
             agentRunId: this.agentRunId,
             error,
           });
-          await this.finalizeRun("failed");
+          await this.finalizeRun("failed", error);
           return this.buildResult("failed", error);
         }
 
@@ -917,7 +945,7 @@ export class LocalRunner {
             agentRunId: this.agentRunId,
             error,
           });
-          await this.finalizeRun("failed");
+          await this.finalizeRun("failed", error);
           return this.buildResult("failed", error);
         }
         if (status.status === "completed") {
@@ -934,7 +962,7 @@ export class LocalRunner {
               agentRunId: this.agentRunId,
               error,
             });
-            await this.finalizeRun("failed");
+            await this.finalizeRun("failed", error);
             return this.buildResult("failed", error);
           }
           const serialized = JSON.stringify(status.result);
@@ -957,7 +985,7 @@ export class LocalRunner {
               outputViolation.message,
             );
             this.addEvent("AGENT_FAILED", "RUNNER", { error });
-            await this.finalizeRun("failed");
+            await this.finalizeRun("failed", error);
             return this.buildResult("failed", error);
           }
           this.submission = status.result;
@@ -977,7 +1005,7 @@ export class LocalRunner {
             agentRunId: this.agentRunId,
             error: status.error,
           });
-          await this.finalizeRun("failed");
+          await this.finalizeRun("failed", status.error);
           return this.buildResult("failed", status.error);
         }
         if (status.status === "cancelled") {
@@ -1018,7 +1046,7 @@ export class LocalRunner {
           agentRunId: this.agentRunId,
           error,
         });
-        await this.finalizeRun("failed");
+        await this.finalizeRun("failed", error);
         return this.buildResult("failed", error);
       }
       const error = protocolError(
@@ -1029,7 +1057,7 @@ export class LocalRunner {
         agentRunId: this.agentRunId,
         error,
       });
-      await this.finalizeRun("failed");
+      await this.finalizeRun("failed", error);
       return this.buildResult("failed", error);
     } finally {
       if (this.deadlineTimer) clearTimeout(this.deadlineTimer);
@@ -1151,8 +1179,8 @@ export async function verifyRun(runDir: string): Promise<VerifyRunResult> {
         const path = resolve(runDir, file);
         if (
           isAbsolute(file) ||
-          basename(file) !== file ||
-          relative(resolve(runDir), path).startsWith("..")
+          relative(resolve(runDir), path).startsWith("..") ||
+          relative(resolve(runDir), path) === ".."
         ) {
           errors.push(`Unsafe checksum path: ${file}`);
           checksumsValid = false;
@@ -1284,6 +1312,21 @@ export async function verifyRun(runDir: string): Promise<VerifyRunResult> {
           break;
         }
         previousIndex = index;
+      }
+    }
+    for (const event of events.filter(
+      (candidate) => candidate.type === "ARTIFACT_SAVED",
+    )) {
+      const artifactPath = event.payload["artifactPath"];
+      const digest = event.payload["sha256"];
+      if (
+        typeof artifactPath !== "string" ||
+        typeof digest !== "string" ||
+        !checksums?.files[artifactPath] ||
+        checksums.files[artifactPath] !== digest
+      ) {
+        errors.push("ARTIFACT_SAVED does not identify a checksummed artifact");
+        eventsValid = false;
       }
     }
   }
