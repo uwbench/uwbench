@@ -76,7 +76,7 @@ describe("Case round-trip integration: lane privacy boundaries and pack-unpack-v
 
       // Verify input documents/records/policy ARE present
       expect(paths.some((p) => p.startsWith("inputs/documents/"))).toBe(true);
-      expect(paths.some((p) => p.startsWith("inputs/records/"))).toBe(false);
+      expect(paths.some((p) => p.startsWith("inputs/records/"))).toBe(true);
       expect(paths.some((p) => p.startsWith("inputs/policy/"))).toBe(true);
 
       // Verify manifest lane is correct
@@ -373,7 +373,7 @@ describe("Case round-trip integration: lane privacy boundaries and pack-unpack-v
         existsSync(join(unpackDir, "inputs/documents/financial_statement.pdf")),
       ).toBe(true);
       expect(existsSync(join(unpackDir, "inputs/records/financials.csv"))).toBe(
-        false,
+        true,
       );
       expect(
         existsSync(join(unpackDir, "inputs/policy/credit_policy.txt")),
@@ -922,6 +922,7 @@ describe("Case round-trip integration: lane privacy boundaries and pack-unpack-v
       expect(inputPaths[0]).toEqual([
         "inputs/documents/financial_statement.pdf",
         "inputs/policy/credit_policy.txt",
+        "inputs/records/financials.csv",
       ]);
       expect(inputPaths[1]).toEqual(["inputs/policy/credit_policy.txt"]);
       expect(inputPaths[2]).toEqual([]);

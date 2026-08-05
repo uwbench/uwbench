@@ -143,7 +143,7 @@ export const CaseGetStructuredRecordSchema = z.strictObject({
 
 // case.request_information
 export const CaseRequestInformationInputSchema = z.strictObject({
-  concept: z.string().min(1),
+  requested_concepts: z.array(z.string().min(1)).min(1),
   question: z.string().min(1),
   context: z.string().optional(),
 });

@@ -187,7 +187,7 @@ describe("packCase / unpackCase / verifyArchive", () => {
         [...raw!].some((path) => path.startsWith("inputs/documents/")),
       ).toBe(true);
       expect([...raw!].some((path) => path.startsWith("inputs/records/"))).toBe(
-        false,
+        true,
       );
       expect(raw!.has("normalized/canonical-input.json")).toBe(false);
       expect(normalized!.has("normalized/canonical-input.json")).toBe(true);

@@ -34,8 +34,13 @@ pnpm exec uwbench --help >/dev/null
 for command in init-agent validate-agent validate-case run suite; do
   pnpm exec uwbench "${command}" --help >/dev/null
 done
+pnpm exec uwbench run --help | grep --quiet "run --suite <track>"
+git diff --binary -- packages/protocol/generated docs/specification/generated \
+  >"${SMOKE_TEMP}/generated-before.patch"
 pnpm generate >/dev/null
-git diff --exit-code -- packages/protocol/generated docs/specification/generated
+git diff --binary -- packages/protocol/generated docs/specification/generated \
+  >"${SMOKE_TEMP}/generated-after.patch"
+cmp "${SMOKE_TEMP}/generated-before.patch" "${SMOKE_TEMP}/generated-after.patch"
 node --input-type=module -e '
   import { existsSync, readFileSync } from "node:fs";
   import { createRequire } from "node:module";
@@ -172,6 +177,20 @@ const documentReads = events.filter(
 );
 if (documentReads.length !== 2) {
   throw new Error(`expected two revealed-document reads, got ${documentReads.length}`);
+}
+for (const call of documentReads) {
+  if (!call.payload.arguments?.documentId) {
+    throw new Error("tool-call audit event is missing semantic arguments");
+  }
+  const result = events.find(
+    (event) => event.type === "TOOL_RESULT" && event.payload.callId === call.payload.callId,
+  );
+  if (!result?.payload.result?.documentId || !result.payload.result.contentSha256) {
+    throw new Error("tool-result audit event is missing privacy-safe semantic output");
+  }
+  if ("content" in result.payload.result) {
+    throw new Error("tool-result audit event contains unredacted document content");
+  }
 }
 const artifactEvent = events.find((event) => event.type === "ARTIFACT_SAVED");
 if (!artifactEvent || !checksums.files[artifactEvent.payload.artifactPath]) {

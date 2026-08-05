@@ -322,6 +322,31 @@ function statusForFailure(result: ToolResult): number {
   }
 }
 
+function privacySafeAuditValue(value: unknown, field?: string): unknown {
+  if (value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) {
+    return value.map((item) => privacySafeAuditValue(item));
+  }
+  const record = value as Record<string, unknown>;
+  if (field === "record") {
+    return { fields: Object.keys(record).sort() };
+  }
+  const audited: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(record)) {
+    if (["bearerToken", "authorization"].includes(key)) continue;
+    if (
+      ["content", "text", "snippet"].includes(key) &&
+      typeof item === "string"
+    ) {
+      audited[`${key}Sha256`] = createHash("sha256").update(item).digest("hex");
+      audited[`${key}Bytes`] = Buffer.byteLength(item);
+      continue;
+    }
+    audited[key] = privacySafeAuditValue(item, key);
+  }
+  return audited;
+}
+
 export class ToolGateway {
   private readonly app: Express;
   private readonly options: ToolGatewayOptions;
@@ -444,6 +469,7 @@ export class ToolGateway {
       name,
       cached: Boolean(cached),
       inFlight: Boolean(inFlight),
+      arguments: privacySafeAuditValue(toolArguments),
       argumentsHash: `sha256:${createHash("sha256")
         .update(canonicalizeJcs(toolArguments))
         .digest("hex")}`,
@@ -634,7 +660,14 @@ export class ToolGateway {
         }
         run.callCache.set(callId, { fingerprint, result });
         if (result.ok) {
-          this.emit("TOOL_RESULT", { callId, name, resultBytes });
+          this.emit("TOOL_RESULT", {
+            callId,
+            name,
+            resultBytes,
+            result: privacySafeAuditValue(
+              (result as { result: unknown }).result,
+            ),
+          });
           if (name === "submission.save_artifact") {
             const { artifactId } = toolArguments as { artifactId: string };
             const artifact = run.artifacts.get(artifactId)!;
@@ -841,11 +874,13 @@ export class ToolGateway {
     toolArguments: unknown,
     run: RunState,
   ): ToolResult {
-    const { concept } = toolArguments as { concept: string };
+    const { requested_concepts: requestedConcepts } = toolArguments as {
+      requested_concepts: string[];
+    };
 
     // Use scenario engine if available
     if (run.scenarioEngine) {
-      const result = run.scenarioEngine.processRequest([concept]);
+      const result = run.scenarioEngine.processRequest(requestedConcepts);
       if (result.status === "AVAILABLE" && result.revealDocuments) {
         const revealed = result.revealDocuments.map((documentId) =>
           run.fixtures.revealableDocuments.find(
@@ -882,11 +917,39 @@ export class ToolGateway {
     }
 
     // Fall back to fixture-based lookup
-    const fixture = run.fixtures.information[concept] ?? {
-      status: "NEEDS_CLARIFICATION" as const,
-      clarification: `No exact fixture matches concept '${concept}'`,
-    };
-    return toolSuccess(callId, "case.request_information", fixture);
+    const fixtures = requestedConcepts.map(
+      (concept) => run.fixtures.information[concept],
+    );
+    if (fixtures.some((fixture) => !fixture)) {
+      const missing = requestedConcepts.filter(
+        (_concept, index) => !fixtures[index],
+      );
+      return toolSuccess(callId, "case.request_information", {
+        status: "NEEDS_CLARIFICATION",
+        clarification: `No exact fixture matches concepts: ${missing.join(", ")}`,
+      });
+    }
+    const resolved = fixtures as InformationFixture[];
+    const clarification = resolved.find(
+      (fixture) => fixture.status === "NEEDS_CLARIFICATION",
+    )?.clarification;
+    if (clarification) {
+      return toolSuccess(callId, "case.request_information", {
+        status: "NEEDS_CLARIFICATION",
+        clarification,
+      });
+    }
+    const revealedDocumentIds = [
+      ...new Set(
+        resolved.flatMap((fixture) => fixture.revealedDocumentIds ?? []),
+      ),
+    ];
+    return toolSuccess(callId, "case.request_information", {
+      status: resolved.some((fixture) => fixture.status === "AVAILABLE")
+        ? "AVAILABLE"
+        : "ALREADY_PROVIDED",
+      ...(revealedDocumentIds.length > 0 ? { revealedDocumentIds } : {}),
+    });
   }
 
   private searchPolicy(

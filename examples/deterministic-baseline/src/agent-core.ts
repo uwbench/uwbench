@@ -104,7 +104,10 @@ export async function runDeterministicAgent(
         toolGatewayUrl,
         bearerToken,
         "case.request_information",
-        { concept, question: `Provide the available ${concept} information.` },
+        {
+          requested_concepts: [concept],
+          question: `Provide the available ${concept} information.`,
+        },
       );
       const documents =
         (result["revealedDocumentIds"] as string[] | undefined) ?? [];

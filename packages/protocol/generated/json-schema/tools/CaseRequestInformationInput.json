@@ -3,9 +3,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
-    "concept": {
-      "type": "string",
-      "minLength": 1
+    "requested_concepts": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema0"
+      }
     },
     "question": {
       "type": "string",
@@ -16,8 +19,14 @@
     }
   },
   "required": [
-    "concept",
+    "requested_concepts",
     "question"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
 }

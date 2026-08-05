@@ -14,9 +14,13 @@ See [CaseRequestInformationInput.json](../../json-schema/tools/CaseRequestInform
 
 | Name | Type | Required | Description | Constraints |
 |------|------|----------|-------------|-------------|
-| `concept` | string | ✓ |  | minLength: 1 |
+| `requested_concepts` | array<`__schema0`> | ✓ |  |  |
 | `question` | string | ✓ |  | minLength: 1 |
 | `context` | string |  |  |  |
+
+## Definitions
+
+### __schema0
 
 ---
 *Generated from Zod schema. Do not edit directly.*

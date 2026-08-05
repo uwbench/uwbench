@@ -7,7 +7,7 @@ import {
   readFileSync,
   readdirSync,
 } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { createHash, randomUUID } from "node:crypto";
 import { validateCaseSync } from "@uwbench/case-schema";
@@ -774,11 +774,15 @@ describe("LocalRunner", () => {
     }
   });
 
-  it("compiles raw-document tools without exposing normalized records", () => {
+  it("exposes raw documents and JSON records without normalized data", () => {
     const rawCase = createTempCase({ supported_lanes: ["raw_documents"] });
     writeFileSync(
       join(rawCase, "inputs", "documents", "statement.txt"),
       "Revenue 1000000",
+    );
+    writeFileSync(
+      join(rawCase, "inputs", "records", "financials.json"),
+      JSON.stringify({ revenue: 1_000_000 }),
     );
     const validation = validateCaseSync(rawCase);
     expect(validation.case).toBeDefined();
@@ -795,12 +799,69 @@ describe("LocalRunner", () => {
         title: "statement.txt",
         content: "Revenue 1000000",
       });
-      expect(fixtures.records).toEqual([]);
+      expect(fixtures.records).toEqual([
+        {
+          recordId: "record:financials.json",
+          sourceId: "record:financials.json",
+          record: { revenue: 1_000_000 },
+        },
+      ]);
+      expect(
+        existsSync(join(view, "inputs", "records", "financials.json")),
+      ).toBe(true);
       expect(existsSync(join(view, "normalized"))).toBe(false);
       expect(existsSync(join(view, "private"))).toBe(false);
     } finally {
       cleanupTempDir(view);
       cleanupTempDir(rawCase);
+    }
+  });
+
+  it("maps raw record files to declared sources by stable identity", () => {
+    const authoredCase = resolve(
+      __dirname,
+      "..",
+      "..",
+      "..",
+      "case-schema",
+      "__fixtures__",
+      "roundtrip",
+      "full-case",
+    );
+    const validation = validateCaseSync(authoredCase);
+    expect(validation.case).toBeDefined();
+    const view = createParticipantView(
+      authoredCase,
+      "raw_documents",
+      validation.case!,
+    );
+    try {
+      const fixtures = JSON.parse(
+        readFileSync(join(view, "environment", "tool-fixtures.json"), "utf8"),
+      );
+      expect(fixtures.records).toEqual([
+        {
+          recordId: "rec_001",
+          sourceId: "src_002",
+          record: {
+            rows: [
+              {
+                revenue: 5_000_000,
+                expenses: 3_000_000,
+                net_income: 2_000_000,
+              },
+            ],
+          },
+        },
+      ]);
+      expect(fixtures.documents[0]).toMatchObject({
+        documentId: "doc_001",
+        sourceId: "src_001",
+      });
+      expect(existsSync(join(view, "normalized"))).toBe(false);
+      expect(existsSync(join(view, "private"))).toBe(false);
+    } finally {
+      cleanupTempDir(view);
     }
   });
 

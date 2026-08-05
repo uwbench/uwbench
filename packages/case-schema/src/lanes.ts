@@ -10,6 +10,7 @@ export const LANE_PROJECTIONS: Record<ArchiveLane, readonly string[]> = {
     "task.md",
     "environment/scenario.yaml",
     "inputs/documents",
+    "inputs/records",
     "inputs/policy",
   ],
   normalized_data: [

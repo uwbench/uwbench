@@ -341,7 +341,7 @@ describe("Case Tool Schemas", () => {
   describe("CaseRequestInformationSchema", () => {
     it("accepts valid input", () => {
       const input = {
-        concept: "revenue_verification",
+        requested_concepts: ["revenue_verification"],
         question: "What was the revenue for 2023?",
         context: "Need to verify reported revenue",
       };
@@ -351,7 +351,7 @@ describe("Case Tool Schemas", () => {
 
     it("accepts input without context", () => {
       const input = {
-        concept: "revenue_verification",
+        requested_concepts: ["revenue_verification"],
         question: "What was the revenue for 2023?",
       };
       const result = CaseRequestInformationSchema.shape.input.safeParse(input);

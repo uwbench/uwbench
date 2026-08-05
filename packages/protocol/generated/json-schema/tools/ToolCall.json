@@ -204,9 +204,12 @@
         "arguments": {
           "type": "object",
           "properties": {
-            "concept": {
-              "type": "string",
-              "minLength": 1
+            "requested_concepts": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema1"
+              }
             },
             "question": {
               "type": "string",
@@ -217,7 +220,7 @@
             }
           },
           "required": [
-            "concept",
+            "requested_concepts",
             "question"
           ],
           "additionalProperties": false
@@ -372,7 +375,7 @@
           "type": "object",
           "properties": {
             "spread": {
-              "$ref": "#/$defs/__schema1"
+              "$ref": "#/$defs/__schema2"
             }
           },
           "required": [
@@ -407,7 +410,7 @@
           "type": "object",
           "properties": {
             "spread": {
-              "$ref": "#/$defs/__schema1"
+              "$ref": "#/$defs/__schema2"
             }
           },
           "required": [
@@ -476,49 +479,53 @@
       "const": "1.0"
     },
     "__schema1": {
+      "type": "string",
+      "minLength": 1
+    },
+    "__schema2": {
       "type": "object",
       "properties": {
         "revenue": {
-          "$ref": "#/$defs/__schema2"
+          "$ref": "#/$defs/__schema3"
         },
         "cogs": {
-          "$ref": "#/$defs/__schema2"
+          "$ref": "#/$defs/__schema3"
         },
         "grossProfit": {
-          "$ref": "#/$defs/__schema2"
+          "$ref": "#/$defs/__schema3"
         },
         "operatingExpenses": {
-          "$ref": "#/$defs/__schema2"
+          "$ref": "#/$defs/__schema3"
         },
         "ebitda": {
-          "$ref": "#/$defs/__schema2"
+          "$ref": "#/$defs/__schema3"
         },
         "interestExpense": {
-          "$ref": "#/$defs/__schema2"
+          "$ref": "#/$defs/__schema3"
         },
         "debtService": {
-          "$ref": "#/$defs/__schema4"
+          "$ref": "#/$defs/__schema5"
         },
         "totalDebt": {
-          "$ref": "#/$defs/__schema4"
+          "$ref": "#/$defs/__schema5"
         },
         "cash": {
-          "$ref": "#/$defs/__schema4"
+          "$ref": "#/$defs/__schema5"
         },
         "totalAssets": {
-          "$ref": "#/$defs/__schema4"
+          "$ref": "#/$defs/__schema5"
         },
         "totalLiabilities": {
-          "$ref": "#/$defs/__schema4"
+          "$ref": "#/$defs/__schema5"
         },
         "equity": {
-          "$ref": "#/$defs/__schema2"
+          "$ref": "#/$defs/__schema3"
         },
         "taxes": {
-          "$ref": "#/$defs/__schema2"
+          "$ref": "#/$defs/__schema3"
         },
         "netIncome": {
-          "$ref": "#/$defs/__schema2"
+          "$ref": "#/$defs/__schema3"
         },
         "period": {
           "type": "object",
@@ -541,7 +548,7 @@
           "additionalProperties": false
         },
         "currency": {
-          "$ref": "#/$defs/__schema3"
+          "$ref": "#/$defs/__schema4"
         },
         "scale": {
           "type": "string",
@@ -570,7 +577,7 @@
       ],
       "additionalProperties": false
     },
-    "__schema2": {
+    "__schema3": {
       "type": "object",
       "properties": {
         "amount": {
@@ -579,7 +586,7 @@
           "maximum": 9007199254740991
         },
         "currency": {
-          "$ref": "#/$defs/__schema3"
+          "$ref": "#/$defs/__schema4"
         }
       },
       "required": [
@@ -588,7 +595,7 @@
       ],
       "additionalProperties": false
     },
-    "__schema3": {
+    "__schema4": {
       "type": "string",
       "enum": [
         "AED",
@@ -770,7 +777,7 @@
         "ZWG"
       ]
     },
-    "__schema4": {
+    "__schema5": {
       "type": "object",
       "properties": {
         "amount": {
@@ -779,7 +786,7 @@
           "maximum": 9007199254740991
         },
         "currency": {
-          "$ref": "#/$defs/__schema3"
+          "$ref": "#/$defs/__schema4"
         }
       },
       "required": [

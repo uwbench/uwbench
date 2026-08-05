@@ -12,7 +12,15 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import {
+  basename,
+  dirname,
+  extname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+} from "node:path";
 import {
   CancelResponseSchema,
   HealthResponseSchema,
@@ -270,6 +278,79 @@ function copyIfPresent(source: string, destination: string): void {
   }
 }
 
+function normalizedSourceKey(value: string): string {
+  return value
+    .toLocaleLowerCase()
+    .replace(/^(?:src|record|document|doc)[-_]/, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function sourceForInputFile<K extends "document" | "record">(
+  caseData: Case,
+  kind: K,
+  fileName: string,
+): Extract<Case["sources"][number], { kind: K }> | undefined {
+  const stem = basename(fileName, extname(fileName));
+  const fileKey = normalizedSourceKey(stem);
+  const matches = caseData.sources.filter((source) => {
+    if (source.kind !== kind) return false;
+    const identifiers = [
+      source.sourceId,
+      source.title,
+      source.kind === "document" ? source.documentId : source.recordId,
+    ];
+    return identifiers.some((identifier) => {
+      const sourceKey = normalizedSourceKey(identifier);
+      return (
+        sourceKey === fileKey ||
+        sourceKey.endsWith(fileKey) ||
+        fileKey.endsWith(sourceKey)
+      );
+    });
+  }) as Extract<Case["sources"][number], { kind: K }>[];
+  if (matches.length > 1) {
+    throw new Error(
+      `Input file ${fileName} ambiguously matches multiple ${kind} sources`,
+    );
+  }
+  return matches[0];
+}
+
+function parseRawRecord(
+  fileName: string,
+  bytes: Buffer,
+): Record<string, unknown> {
+  const extension = extname(fileName).toLocaleLowerCase();
+  const content = bytes.toString("utf8");
+  if (extension === ".json") {
+    const parsed = JSON.parse(content) as unknown;
+    return parsed !== null &&
+      typeof parsed === "object" &&
+      !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : { value: parsed };
+  }
+  if (extension === ".csv") {
+    const [headerLine = "", ...lines] = content.trim().split(/\r?\n/);
+    const headers = headerLine.split(",").map((header) => header.trim());
+    return {
+      rows: lines.filter(Boolean).map((line) =>
+        Object.fromEntries(
+          line.split(",").map((value, index) => {
+            const trimmed = value.trim();
+            const numeric = Number(trimmed);
+            return [
+              headers[index] ?? `column_${index + 1}`,
+              trimmed !== "" && Number.isFinite(numeric) ? numeric : trimmed,
+            ];
+          }),
+        ),
+      ),
+    };
+  }
+  return { content };
+}
+
 /**
  * Create the only filesystem view made available to runtime tools. Private
  * references and lanes not selected for this run are never copied into it.
@@ -333,9 +414,7 @@ function buildLaneToolFixtures(
         const file = join(documentsRoot, entry.name);
         const bytes = readFileSync(file);
         const content = bytes.toString("utf8");
-        const declared = caseData.sources.filter(
-          (source) => source.kind === "document",
-        )[documents.length];
+        const declared = sourceForInputFile(caseData, "document", entry.name);
         const documentId = declared?.documentId ?? `document:${entry.name}`;
         documents.push({
           documentId,
@@ -353,26 +432,47 @@ function buildLaneToolFixtures(
       }
     }
   }
+  const rawRecords: unknown[] = [];
+  if (lane === "raw_documents") {
+    const recordsRoot = join(casePath, "inputs", "records");
+    if (existsSync(recordsRoot)) {
+      for (const entry of readdirSync(recordsRoot, {
+        withFileTypes: true,
+      }).sort((left, right) => left.name.localeCompare(right.name))) {
+        if (!entry.isFile() || entry.name.startsWith(".")) continue;
+        const bytes = readFileSync(join(recordsRoot, entry.name));
+        const declared = sourceForInputFile(caseData, "record", entry.name);
+        const syntheticId = `record:${entry.name}`;
+        rawRecords.push({
+          recordId: declared?.recordId ?? syntheticId,
+          sourceId: declared?.sourceId ?? syntheticId,
+          record: parseRawRecord(entry.name, bytes),
+        });
+      }
+    }
+  }
   return {
     documents,
     revealableDocuments: trusted.revealableDocuments ?? [],
     records:
-      canonical && lane !== "raw_documents"
-        ? [
-            {
-              recordId: "record_canonical_input",
-              sourceId: "normalized:canonical-input",
-              record: canonical,
-            },
-            ...caseData.sources
-              .filter((source) => source.kind === "record")
-              .map((source) => ({
-                recordId: source.recordId,
-                sourceId: source.sourceId,
+      lane === "raw_documents"
+        ? rawRecords
+        : canonical
+          ? [
+              {
+                recordId: "record_canonical_input",
+                sourceId: "normalized:canonical-input",
                 record: canonical,
-              })),
-          ]
-        : [],
+              },
+              ...caseData.sources
+                .filter((source) => source.kind === "record")
+                .map((source) => ({
+                  recordId: source.recordId,
+                  sourceId: source.sourceId,
+                  record: canonical,
+                })),
+            ]
+          : [],
     policies,
     information: trusted.information ?? {},
   };

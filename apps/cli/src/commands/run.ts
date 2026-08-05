@@ -30,6 +30,10 @@ export const runCommand = new Command("run")
     "--json",
     "Output result as JSON only (suppresses informational messages)",
   )
+  .addHelpText(
+    "after",
+    "\nSuite alias:\n  uwbench run --suite <track> --agent <url> [suite options]\n  (equivalent to: uwbench suite --suite <track> --agent <url>)",
+  )
   .action(
     async (options: {
       case: string;

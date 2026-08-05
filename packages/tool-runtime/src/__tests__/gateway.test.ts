@@ -326,7 +326,10 @@ describe("ToolGateway", () => {
       ["case.get_structured_record", { recordId: "record_001" }],
       [
         "case.request_information",
-        { concept: "tax_returns", question: "Provide tax returns" },
+        {
+          requested_concepts: ["tax_returns"],
+          question: "Provide tax returns",
+        },
       ],
       ["policy.search", { query: "debt-service" }],
       ["policy.get_rule", { ruleId: "rule_001" }],
@@ -570,6 +573,15 @@ describe("ToolGateway", () => {
       ]);
       expect(JSON.stringify(events)).not.toContain("audit-token");
       expect(JSON.stringify(events)).not.toContain("memo content");
+      expect(events[0]?.payload["arguments"]).toMatchObject({
+        artifactId: "memo",
+        contentType: "text/plain",
+        contentBytes: 12,
+      });
+      expect(events[1]?.payload["result"]).toMatchObject({
+        artifactId: "memo",
+        sourceId: "artifact:memo",
+      });
     } finally {
       await audited.stop();
     }
@@ -710,7 +722,7 @@ describe("case fixture loading", () => {
         return ToolResultSchema.parse(await response.json());
       };
       const request = await invoke("reveal", "case.request_information", {
-        concept: "tax_returns",
+        requested_concepts: ["tax_returns"],
         question: "Provide tax returns",
       });
       expect(request.ok).toBe(true);
@@ -721,6 +733,81 @@ describe("case fixture loading", () => {
       expect(JSON.stringify(read)).toContain("tax return content");
     } finally {
       await revealedGateway.stop();
+      rmSync(caseDirectory, { recursive: true, force: true });
+    }
+  });
+
+  it("routes multi-concept and ambiguous information requests through the scenario", async () => {
+    const caseDirectory = mkdtempSync(join(tmpdir(), "uwbench-multi-request-"));
+    mkdirSync(join(caseDirectory, "environment"));
+    writeFileSync(
+      join(caseDirectory, "environment", "scenario.yaml"),
+      [
+        "initial_state: START",
+        "transitions:",
+        "  - from: START",
+        "    when:",
+        "      tool: case.request_information",
+        "      requested_concepts: [ambiguous, option_a]",
+        "    response: { status: AVAILABLE }",
+        "    to: OPTION_A",
+        "  - from: START",
+        "    when:",
+        "      tool: case.request_information",
+        "      requested_concepts: [ambiguous, option_b]",
+        "    response: { status: AVAILABLE }",
+        "    to: OPTION_B",
+        "  - from: START",
+        "    when:",
+        "      tool: case.request_information",
+        "      requested_concepts: [financials, ownership]",
+        "    response: { status: AVAILABLE }",
+        "    to: COMPLETE",
+      ].join("\n"),
+    );
+    const scenarioGateway = new ToolGateway({
+      port: 0,
+      casePath: caseDirectory,
+      runToken: "multi-request-token",
+      maxToolCalls: 2,
+    });
+    try {
+      await scenarioGateway.start();
+      const invoke = async (callId: string, requestedConcepts: string[]) => {
+        const response = await fetch(
+          `http://127.0.0.1:${scenarioGateway.port}/v1/tools/call`,
+          {
+            method: "POST",
+            headers: {
+              authorization: "Bearer multi-request-token",
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({
+              schemaVersion: "1.0",
+              callId,
+              name: "case.request_information",
+              arguments: {
+                requested_concepts: requestedConcepts,
+                question: "Provide the requested information",
+              },
+            }),
+          },
+        );
+        return ToolResultSchema.parse(await response.json());
+      };
+
+      const ambiguous = await invoke("ambiguous", ["ambiguous"]);
+      expect(
+        ambiguous.ok &&
+          (ambiguous as { result: { status: string } }).result.status,
+      ).toBe("NEEDS_CLARIFICATION");
+      const multiple = await invoke("multiple", ["financials", "ownership"]);
+      expect(
+        multiple.ok &&
+          (multiple as { result: { status: string } }).result.status,
+      ).toBe("AVAILABLE");
+    } finally {
+      await scenarioGateway.stop();
       rmSync(caseDirectory, { recursive: true, force: true });
     }
   });

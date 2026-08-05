@@ -486,7 +486,10 @@ describe("Zod and generated JSON Schema parity", () => {
       ["case.get_structured_record", { recordId: "record_1" }],
       [
         "case.request_information",
-        { concept: "tax_returns", question: "Provide 2025 tax returns" },
+        {
+          requested_concepts: ["tax_returns"],
+          question: "Provide 2025 tax returns",
+        },
       ],
       ["policy.search", { query: "DSCR" }],
       ["policy.get_rule", { ruleId: "DSCR_MINIMUM" }],
