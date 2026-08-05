@@ -4,7 +4,8 @@ async function main(): Promise<void> {
   const port = parseInt(process.env["PORT"] ?? "9090", 10);
   const behavior =
     (process.env["BEHAVIOR"] as AgentConfig["behavior"]) ?? "complete";
-  const agent = new DeterministicAgent({ port, behavior });
+  const real = process.env["REAL"] === "true";
+  const agent = new DeterministicAgent({ port, behavior, real });
 
   const shutdown = async (): Promise<void> => {
     await agent.stop();
@@ -15,7 +16,7 @@ async function main(): Promise<void> {
 
   await agent.start();
   console.log(
-    `[deterministic-baseline] Listening on http://localhost:${port} (${behavior})`,
+    `[deterministic-baseline] Listening on http://localhost:${port} (${real ? "real" : behavior})`,
   );
 }
 

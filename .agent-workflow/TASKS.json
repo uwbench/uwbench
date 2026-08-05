@@ -703,7 +703,12 @@
       "scripts/smoke-reasoning-only.sh"
     ],
     "scope_exceptions": [
-      "apps/cli/src/commands/run.ts"
+      "apps/cli/src/**",
+      "examples/deterministic-baseline/src/**",
+      "package.json",
+      "packages/runner/src/**",
+      "packages/tool-runtime/src/**",
+      "scripts/verify-run.mjs"
     ],
     "depends_on": [
       "T9",
@@ -714,9 +719,11 @@
     "status": "gated_pass",
     "priority": 19,
     "assignee": "orchestrator",
-    "started_at": "2026-08-05T06:00:38.037Z",
-    "attempts": 4,
-    "failures": 3,
-    "completed_at": "2026-08-05T06:03:47.271Z"
+    "started_at": "2026-08-05T09:17:29.326Z",
+    "attempts": 8,
+    "failures": 6,
+    "review_failures": 1,
+    "failure_limit": 9,
+    "completed_at": "2026-08-05T15:41:06.060Z"
   }
 ]

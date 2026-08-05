@@ -68,14 +68,8 @@ export const ScoredReportSchema = BaseScoreReportSchema.extend({
 
 export type ScoredReport = z.infer<typeof ScoredReportSchema>;
 
-/**
- * Discriminated union of all possible score report states.
- * Phase 1: only NotScoredReport is valid.
- */
-export const ScoreReportSchema = z.discriminatedUnion("status", [
-  NotScoredReportSchema,
-  ScoredReportSchema,
-]);
+/** Phase 1's public ScoreReport contract is deliberately not_scored-only. */
+export const ScoreReportSchema = NotScoredReportSchema;
 
 export type ScoreReport = z.infer<typeof ScoreReportSchema>;
 
@@ -84,8 +78,8 @@ export type ScoreReport = z.infer<typeof ScoreReportSchema>;
  */
 export function validatePhase1ScoreReport(
   report: unknown,
-): z.SafeParseReturnType<ScoreReport, ScoreReport> {
-  return ScoreReportSchema.safeParse(report);
+): z.SafeParseReturnType<NotScoredReport, NotScoredReport> {
+  return NotScoredReportSchema.safeParse(report);
 }
 
 /**

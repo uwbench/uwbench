@@ -25,6 +25,7 @@ const REPO_ROOT = resolve(WORKFLOW_DIR, "..");
 const TASKS_FILE = join(WORKFLOW_DIR, "TASKS.json");
 const HISTORY_FILE = join(WORKFLOW_DIR, "STATE.ndjson");
 const LOCK_FILE = join(WORKFLOW_DIR, ".orchestrator.lock");
+const CHECKPOINT_REMEDIATION_ATTEMPTS = 3;
 const VALID_STATUSES = new Set([
   "pending",
   "in_progress",
@@ -180,6 +181,28 @@ function readyTasks(tasks) {
     );
 }
 
+function cumulativeCheckpointFeedback(task) {
+  if (!(task.review_failures > 0)) return "";
+  const reviewPath = join(
+    WORKFLOW_DIR,
+    "artifacts",
+    "checkpoints",
+    task.id,
+    "review.json",
+  );
+  if (!existsSync(reviewPath)) return "";
+  try {
+    const review = JSON.parse(readFileSync(reviewPath, "utf8"));
+    if (review.verdict !== "FAIL") return "";
+    const requiredChanges = Array.isArray(review.requiredChanges)
+      ? review.requiredChanges.map((change) => `- ${change}`).join("\n")
+      : "- Re-read the saved checkpoint review and address every unmet criterion.";
+    return `## Cumulative checkpoint feedback (must remain in scope)\n${review.summary ?? "The cumulative checkpoint failed."}\n\nRequired changes:\n${requiredChanges}`;
+  } catch {
+    return "";
+  }
+}
+
 function taskPrompt(task, tasks) {
   const dependencies = task.depends_on.length
     ? task.depends_on
@@ -189,9 +212,13 @@ function taskPrompt(task, tasks) {
       })
       .join("\n")
     : "- None";
-  const priorFeedback = task.review_notes
-    ? `\n## Prior gate or checkpoint feedback\n${task.review_notes}\n`
-    : "";
+  const feedback = [
+    cumulativeCheckpointFeedback(task),
+    task.review_notes
+      ? `## Latest implementation or gate feedback\n${task.review_notes}`
+      : "",
+  ].filter(Boolean).join("\n\n");
+  const priorFeedback = feedback ? `\n${feedback}\n` : "";
   const scopeExceptions = task.scope_exceptions?.length
     ? `\n## Allowed repair scope\nThese paths may be changed only when necessary to satisfy this task or its cumulative gate:\n${task.scope_exceptions.map((path) => `- \`${path}\``).join("\n")}\n`
     : "";
@@ -378,11 +405,16 @@ function commandReopen(taskId, reason) {
     task.completed_at = undefined;
     task.review_notes = reason.trim();
     task.review_failures = (task.review_failures ?? 0) + 1;
+    task.failure_limit = Math.max(
+      task.failure_limit ?? CHECKPOINT_REMEDIATION_ATTEMPTS,
+      (task.failures ?? 0) + CHECKPOINT_REMEDIATION_ATTEMPTS,
+    );
     saveTasks(tasks, {
       command: "reopen",
       taskId: task.id,
       attempt: task.attempts,
       reviewFailures: task.review_failures,
+      failureLimit: task.failure_limit,
       reason: reason.trim(),
     });
     console.log(`Reopened ${task.id} with checkpoint feedback.`);

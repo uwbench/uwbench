@@ -1,3 +1,4 @@
+import { RealDeterministicAgent } from "./real-agent.js";
 import { FakeAgent, type FakeAgentConfig } from "@uwbench/testkit";
 
 export interface AgentConfig {
@@ -18,28 +19,43 @@ export interface AgentConfig {
   oversizedOutput?: FakeAgentConfig["oversizedOutput"];
   invalidSubmission?: FakeAgentConfig["invalidSubmission"];
   error?: FakeAgentConfig["error"];
+  /** Use the real deterministic agent that processes case data via tool gateway */
+  real?: boolean;
 }
 
 export class DeterministicAgent {
-  private fakeAgent: FakeAgent;
+  private fakeAgent: FakeAgent | null = null;
+  private realAgent: RealDeterministicAgent | null = null;
 
   constructor(config: AgentConfig) {
-    this.fakeAgent = new FakeAgent({
-      baseUrl: `http://localhost:${config.port}`,
-      behavior: config.behavior ?? "complete",
-      submission: config.submission,
-      timeoutMs: config.timeoutMs,
-      oversizedOutput: config.oversizedOutput,
-      invalidSubmission: config.invalidSubmission,
-      error: config.error,
-    });
+    if (config.real) {
+      this.realAgent = new RealDeterministicAgent({ port: config.port });
+    } else {
+      this.fakeAgent = new FakeAgent({
+        baseUrl: `http://localhost:${config.port}`,
+        behavior: config.behavior ?? "complete",
+        submission: config.submission,
+        timeoutMs: config.timeoutMs,
+        oversizedOutput: config.oversizedOutput,
+        invalidSubmission: config.invalidSubmission,
+        error: config.error,
+      });
+    }
   }
 
   async start(): Promise<void> {
-    await this.fakeAgent.start();
+    if (this.realAgent) {
+      await this.realAgent.start();
+    } else if (this.fakeAgent) {
+      await this.fakeAgent.start();
+    }
   }
 
   async stop(): Promise<void> {
-    await this.fakeAgent.stop();
+    if (this.realAgent) {
+      await this.realAgent.stop();
+    } else if (this.fakeAgent) {
+      await this.fakeAgent.stop();
+    }
   }
 }

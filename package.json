@@ -21,6 +21,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "build": "tsc --build",
+    "smoke": "bash scripts/smoke-reasoning-only.sh",
     "generate": "pnpm --filter @uwbench/protocol generate",
     "changeset": "changeset",
     "changeset:check": "changeset status",
