@@ -662,14 +662,22 @@
       "apps/cli/src/commands/*.ts",
       "apps/cli/package.json"
     ],
+    "scope_exceptions": [
+      "apps/cli/src/commands.ts"
+    ],
     "depends_on": [
       "T11",
       "T12",
       "T13"
     ],
     "estimated_minutes": 90,
-    "status": "pending",
-    "priority": 18
+    "status": "gated_pass",
+    "priority": 18,
+    "assignee": "orchestrator",
+    "started_at": "2026-08-05T02:28:28.581Z",
+    "attempts": 2,
+    "failures": 1,
+    "completed_at": "2026-08-05T02:48:38.004Z"
   },
   {
     "id": "T15",

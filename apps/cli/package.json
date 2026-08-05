@@ -22,6 +22,10 @@
     "@types/node": "^20.14.10"
   },
   "dependencies": {
-    "commander": "^12.1.0"
+    "commander": "^12.1.0",
+    "@uwbench/protocol": "workspace:*",
+    "@uwbench/case-schema": "workspace:*",
+    "@uwbench/testkit": "workspace:*",
+    "@uwbench/runner": "workspace:*"
   }
 }

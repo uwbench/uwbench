@@ -1,4 +1,4 @@
-import { program } from "./commands.js";
+import { program } from "./commands/index.js";
 
 program.parseAsync(process.argv).catch((err) => {
   console.error(err);

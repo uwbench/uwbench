@@ -53,6 +53,18 @@ importers:
 
   apps/cli:
     dependencies:
+      '@uwbench/case-schema':
+        specifier: workspace:*
+        version: link:../../packages/case-schema
+      '@uwbench/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
+      '@uwbench/runner':
+        specifier: workspace:*
+        version: link:../../packages/runner
+      '@uwbench/testkit':
+        specifier: workspace:*
+        version: link:../../packages/testkit
       commander:
         specifier: ^12.1.0
         version: 12.1.0
