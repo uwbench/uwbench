@@ -9,10 +9,10 @@ import express, {
 } from "express";
 import {
   TOOL_NAMES,
+  ToolCallSchema,
   ToolFailureResultSchema,
   ToolResultSchema,
   canonicalizeJcs,
-  getToolInputSchema,
   isValidToolName,
   validateToolOutput,
   type EvidenceReference,
@@ -25,15 +25,6 @@ import {
 import { z } from "zod";
 import { calculate, calculateRatios, validateSpread } from "./tools/finance.js";
 import { ScenarioEngine, loadScenario } from "./scenario.js";
-
-const ToolCallEnvelopeSchema = z
-  .strictObject({
-    schemaVersion: z.literal("1.0"),
-    callId: z.string().min(1),
-    name: z.string().min(1),
-    arguments: z.unknown(),
-  })
-  .strict();
 
 export interface ToolGatewayOptions {
   port: number;
@@ -149,6 +140,10 @@ const CaseFixtureDataSchema = z.strictObject({
 interface RunState {
   fixtures: CaseFixtureData;
   callCache: Map<string, { fingerprint: string; result: ToolResult }>;
+  inFlightCalls: Map<
+    string,
+    { fingerprint: string; result: Promise<ToolResult> }
+  >;
   toolCallCount: number;
   maxToolCalls: number;
   outputBytesUsed: number;
@@ -404,30 +399,50 @@ export class ToolGateway {
       return;
     }
 
-    const envelope = ToolCallEnvelopeSchema.safeParse(request.body);
+    const envelope = ToolCallSchema.safeParse(request.body);
     if (!envelope.success) {
+      const requestedName =
+        request.body &&
+        typeof request.body === "object" &&
+        "name" in request.body &&
+        typeof request.body.name === "string"
+          ? request.body.name
+          : undefined;
+      const unknownTool =
+        requestedName !== undefined && !isValidToolName(requestedName);
       response
         .status(400)
-        .json(gatewayError("INVALID_CALL", envelope.error.message));
+        .json(
+          gatewayError(
+            unknownTool ? "UNKNOWN_TOOL" : "INVALID_CALL",
+            unknownTool
+              ? `Unknown tool: ${requestedName}`
+              : envelope.error.message,
+          ),
+        );
       return;
     }
-    const { callId, name, arguments: toolArguments } = envelope.data;
-    if (!isValidToolName(name)) {
-      response
-        .status(400)
-        .json(gatewayError("UNKNOWN_TOOL", `Unknown tool: ${name}`));
-      return;
-    }
+    const {
+      callId,
+      name,
+      arguments: toolArguments,
+    } = envelope.data as {
+      callId: string;
+      name: ToolName;
+      arguments: unknown;
+    };
 
     const fingerprint = `sha256:${createHash("sha256")
       .update(canonicalizeJcs({ name, arguments: toolArguments }))
       .digest("hex")}`;
     const cached = run.callCache.get(callId);
+    const inFlight = run.inFlightCalls.get(callId);
     run.toolCallCount += 1;
     this.emit("TOOL_CALL", {
       callId,
       name,
       cached: Boolean(cached),
+      inFlight: Boolean(inFlight),
       argumentsHash: `sha256:${createHash("sha256")
         .update(canonicalizeJcs(toolArguments))
         .digest("hex")}`,
@@ -506,6 +521,49 @@ export class ToolGateway {
       return;
     }
 
+    if (inFlight) {
+      if (inFlight.fingerprint !== fingerprint) {
+        const conflict = toolFailure(
+          callId,
+          name,
+          "INVALID_ARGUMENTS",
+          "callId is already executing a different tool request",
+        );
+        this.emit("TOOL_ERROR", {
+          callId,
+          name,
+          code: "INVALID_ARGUMENTS",
+          conflict: true,
+          inFlight: true,
+        });
+        response.status(409).json(conflict);
+        return;
+      }
+
+      const result = await inFlight.result;
+      const resultBytes = Buffer.byteLength(JSON.stringify(result));
+      run.outputBytesUsed += resultBytes;
+      if (run.outputBytesUsed > run.maxOutputBytes) {
+        const failure = toolFailure(
+          callId,
+          name,
+          "BUDGET_EXCEEDED",
+          "Per-run tool output-byte budget exceeded by idempotent response",
+        );
+        this.emit("TOOL_ERROR", {
+          callId,
+          name,
+          code: "BUDGET_EXCEEDED",
+          budget: "maxOutputBytes",
+          inFlight: true,
+        });
+        response.status(429).json(failure);
+        return;
+      }
+      response.status(statusForFailure(result)).json(result);
+      return;
+    }
+
     if (run.concurrentToolCalls >= run.maxConcurrentToolCalls) {
       const failure = toolFailure(
         callId,
@@ -523,28 +581,8 @@ export class ToolGateway {
       return;
     }
 
-    const inputSchema = getToolInputSchema(name);
-    const parsedArguments = inputSchema?.safeParse(toolArguments);
-    if (!parsedArguments?.success) {
-      const failure = toolFailure(
-        callId,
-        name,
-        "INVALID_ARGUMENTS",
-        parsedArguments?.error.message ?? "Invalid tool arguments",
-      );
-      run.callCache.set(callId, { fingerprint, result: failure });
-      run.outputBytesUsed += Buffer.byteLength(JSON.stringify(failure));
-      this.emit("TOOL_ERROR", {
-        callId,
-        name,
-        code: "INVALID_ARGUMENTS",
-      });
-      response.status(400).json(failure);
-      return;
-    }
-
     if (name === "submission.save_artifact") {
-      const { content } = parsedArguments.data as { content: string };
+      const { content } = toolArguments as { content: string };
       const artifactBytes = Buffer.byteLength(content);
       run.outputBytesUsed += artifactBytes;
       if (run.outputBytesUsed > run.maxOutputBytes) {
@@ -568,54 +606,60 @@ export class ToolGateway {
     }
 
     run.concurrentToolCalls += 1;
-    try {
-      if (this.options.executionDelayMs) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, this.options.executionDelayMs),
-        );
-      }
-      let result = await this.execute(callId, name, parsedArguments.data, run);
-      const resultBytes = Buffer.byteLength(JSON.stringify(result));
-      run.outputBytesUsed += resultBytes;
-      if (run.outputBytesUsed > run.maxOutputBytes) {
-        if (name === "submission.save_artifact") {
-          const { artifactId } = parsedArguments.data as { artifactId: string };
-          run.artifacts.delete(artifactId);
+    const execution = (async (): Promise<ToolResult> => {
+      try {
+        if (this.options.executionDelayMs) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, this.options.executionDelayMs),
+          );
         }
-        result = toolFailure(
-          callId,
-          name,
-          "BUDGET_EXCEEDED",
-          "Per-run tool output-byte budget exceeded",
-        );
-      }
-      run.callCache.set(callId, { fingerprint, result });
-      if (result.ok) {
-        this.emit("TOOL_RESULT", { callId, name, resultBytes });
-        if (name === "submission.save_artifact") {
-          const { artifactId } = parsedArguments.data as { artifactId: string };
-          const artifact = run.artifacts.get(artifactId)!;
-          this.emit("ARTIFACT_SAVED", {
+        let result = await this.execute(callId, name, toolArguments, run);
+        const resultBytes = Buffer.byteLength(JSON.stringify(result));
+        run.outputBytesUsed += resultBytes;
+        if (run.outputBytesUsed > run.maxOutputBytes) {
+          if (name === "submission.save_artifact") {
+            const { artifactId } = toolArguments as { artifactId: string };
+            run.artifacts.delete(artifactId);
+          }
+          result = toolFailure(
             callId,
-            artifactId,
-            artifactPath: artifact.artifactPath,
-            sha256: artifact.sha256,
-            sizeBytes: artifact.sizeBytes,
+            name,
+            "BUDGET_EXCEEDED",
+            "Per-run tool output-byte budget exceeded",
+          );
+        }
+        run.callCache.set(callId, { fingerprint, result });
+        if (result.ok) {
+          this.emit("TOOL_RESULT", { callId, name, resultBytes });
+          if (name === "submission.save_artifact") {
+            const { artifactId } = toolArguments as { artifactId: string };
+            const artifact = run.artifacts.get(artifactId)!;
+            this.emit("ARTIFACT_SAVED", {
+              callId,
+              artifactId,
+              artifactPath: artifact.artifactPath,
+              sha256: artifact.sha256,
+              sizeBytes: artifact.sizeBytes,
+            });
+          }
+        } else {
+          const failure = ToolFailureResultSchema.parse(result);
+          this.emit("TOOL_ERROR", {
+            callId,
+            name,
+            code: failure.error.code,
+            resultBytes,
           });
         }
-      } else {
-        const failure = ToolFailureResultSchema.parse(result);
-        this.emit("TOOL_ERROR", {
-          callId,
-          name,
-          code: failure.error.code,
-          resultBytes,
-        });
+        return result;
+      } finally {
+        run.concurrentToolCalls -= 1;
+        run.inFlightCalls.delete(callId);
       }
-      response.status(statusForFailure(result)).json(result);
-    } finally {
-      run.concurrentToolCalls -= 1;
-    }
+    })();
+    run.inFlightCalls.set(callId, { fingerprint, result: execution });
+    const result = await execution;
+    response.status(statusForFailure(result)).json(result);
   }
 
   private emit(
@@ -987,6 +1031,7 @@ export class ToolGateway {
         mergeFixtures(this.baseFixtures, fixtures),
       ) as CaseFixtureData,
       callCache: new Map(),
+      inFlightCalls: new Map(),
       toolCallCount: 0,
       maxToolCalls,
       outputBytesUsed: 0,

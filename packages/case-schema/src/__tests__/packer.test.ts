@@ -17,6 +17,7 @@ import {
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import AdmZip from "adm-zip";
+import { createHash } from "node:crypto";
 
 describe("packCase / unpackCase / verifyArchive", () => {
   let tempDir: string;
@@ -418,6 +419,63 @@ describe("packCase / unpackCase / verifyArchive", () => {
       const result = verifyArchive(archivePath);
       expect(result.valid).toBe(false);
       expect(result.errors.some((e) => e.includes("Missing entry"))).toBe(true);
+    });
+
+    it("rejects ZIP entries that are not declared by the manifest", async () => {
+      copyValidCase();
+      const archivePath = join(outputDir, "case-00001.input.uwb");
+      await packCase(validCaseDir, {
+        role: "input",
+        lane: "reasoning_only",
+        outputPath: archivePath,
+      });
+
+      const zip = new AdmZip(archivePath);
+      zip.addFile("private/undeclared-secret.json", Buffer.from("{}"));
+      zip.writeZip(archivePath);
+
+      const result = verifyArchive(archivePath);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain(
+        "Unlisted entry in archive: private/undeclared-secret.json",
+      );
+    });
+
+    it("rejects checksum-valid input entries outside the declared lane", async () => {
+      copyValidCase();
+      const archivePath = join(outputDir, "case-00001.input.uwb");
+      await packCase(validCaseDir, {
+        role: "input",
+        lane: "reasoning_only",
+        outputPath: archivePath,
+      });
+
+      const zip = new AdmZip(archivePath);
+      const manifestEntry = zip.getEntry("manifest.json")!;
+      const manifest = JSON.parse(manifestEntry.getData().toString("utf-8"));
+      const content = Buffer.from("not visible in reasoning_only");
+      manifest.entries.push({
+        path: "inputs/documents/hidden.txt",
+        role: "document",
+        lane: "reasoning_only",
+        sha256: createHash("sha256").update(content).digest("hex"),
+        size: content.length,
+        mediaType: "text/plain",
+      });
+      manifest.totalEntries += 1;
+      manifest.totalSize += content.length;
+      zip.updateFile(
+        manifestEntry,
+        Buffer.from(JSON.stringify(manifest, null, 0)),
+      );
+      zip.addFile("inputs/documents/hidden.txt", content);
+      zip.writeZip(archivePath);
+
+      const result = verifyArchive(archivePath);
+      expect(result.valid).toBe(false);
+      expect(
+        result.errors.some((error) => error.includes("outside reasoning_only")),
+      ).toBe(true);
     });
   });
 

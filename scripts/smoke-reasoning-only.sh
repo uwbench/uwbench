@@ -31,8 +31,34 @@ pnpm build >/dev/null
 pnpm generate >/dev/null
 git diff --exit-code -- packages/protocol/generated docs/specification/generated
 node --input-type=module -e '
-  import { readFileSync } from "node:fs";
+  import { existsSync, readFileSync } from "node:fs";
+  import { createRequire } from "node:module";
+  import { resolve } from "node:path";
   import { NormalizedFactSchema } from "./packages/protocol/dist/index.js";
+  const require = createRequire(resolve("packages/case-schema/package.json"));
+  const { parse } = require("yaml");
+  const benchmarkRoot = "./benchmark/commercial-credit-v0.1";
+  const benchmark = parse(readFileSync(`${benchmarkRoot}/benchmark.yaml`, "utf8"));
+  const caseIndex = JSON.parse(readFileSync(
+    `${benchmarkRoot}/${benchmark.case_index}`,
+    "utf8",
+  ));
+  if (benchmark.schema_version !== "1.0" || benchmark.benchmark_id !== caseIndex.benchmarkId) {
+    throw new Error("benchmark metadata and public case index disagree");
+  }
+  if (benchmark.version !== caseIndex.benchmarkVersion || caseIndex.cases.length === 0) {
+    throw new Error("public case index has no cases or the wrong benchmark version");
+  }
+  for (const schemaPath of Object.values(benchmark.schemas)) {
+    if (!existsSync(resolve(benchmarkRoot, schemaPath))) {
+      throw new Error(`missing declared benchmark schema: ${schemaPath}`);
+    }
+  }
+  for (const item of caseIndex.cases) {
+    if (!existsSync(resolve(benchmarkRoot, item.path, "case.yaml"))) {
+      throw new Error(`public case index points to a missing case: ${item.caseId}`);
+    }
+  }
   const canonical = JSON.parse(readFileSync(
     "./benchmark/commercial-credit-v0.1/public-cases/case-00001/normalized/canonical-input.json",
     "utf8",

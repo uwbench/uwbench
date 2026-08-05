@@ -709,6 +709,7 @@
       "packages/case-schema/src/**",
       "packages/runner/src/**",
       "packages/tool-runtime/src/**",
+      "benchmark/commercial-credit-v0.1/**",
       "scripts/verify-run.mjs"
     ],
     "depends_on": [
@@ -720,11 +721,11 @@
     "status": "gated_pass",
     "priority": 19,
     "assignee": "orchestrator",
-    "started_at": "2026-08-05T16:41:00.495Z",
-    "attempts": 13,
+    "started_at": "2026-08-05T16:48:33.791Z",
+    "attempts": 14,
     "failures": 6,
-    "review_failures": 6,
+    "review_failures": 7,
     "failure_limit": 9,
-    "completed_at": "2026-08-05T16:45:42.571Z"
+    "completed_at": "2026-08-05T16:55:21.381Z"
   }
 ]

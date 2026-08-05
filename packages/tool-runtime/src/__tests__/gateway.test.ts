@@ -131,15 +131,14 @@ describe("ToolGateway", () => {
     expect(unknown.response.status).toBe(400);
     expect((unknown.json as GatewayError).code).toBe("UNKNOWN_TOOL");
 
-    const invalidArguments = await call(
-      "invalid-arguments",
-      "case.read_document",
-      { query: "wrong shape" },
-    );
-    expect(invalidArguments.ok).toBe(false);
-    if (!invalidArguments.ok) {
-      expect(failureCode(invalidArguments)).toBe("INVALID_ARGUMENTS");
-    }
+    const invalidArguments = await rawCall({
+      schemaVersion: "1.0",
+      callId: "invalid-arguments",
+      name: "case.read_document",
+      arguments: { query: "wrong shape" },
+    });
+    expect(invalidArguments.response.status).toBe(400);
+    expect((invalidArguments.json as GatewayError).code).toBe("INVALID_CALL");
   });
 
   it("returns the cached result without spending an additional tool call", async () => {
@@ -158,6 +157,55 @@ describe("ToolGateway", () => {
       maxToolCalls: 2,
       concurrentToolCalls: 0,
     });
+  });
+
+  it("coalesces concurrent retries with the same callId atomically", async () => {
+    const events: { type: string; payload: Record<string, unknown> }[] = [];
+    const delayedGateway = new ToolGateway({
+      port: 0,
+      executionDelayMs: 50,
+      onEvent: (event) => events.push(event),
+    });
+    await delayedGateway.start();
+    try {
+      delayedGateway.registerRun("concurrent-idempotent-token", 2);
+      const body = {
+        schemaVersion: "1.0",
+        callId: "concurrent-same-call",
+        name: "case.list_documents",
+        arguments: {},
+      };
+      const invoke = async () => {
+        const response = await fetch(
+          `http://127.0.0.1:${delayedGateway.port}/v1/tools/call`,
+          {
+            method: "POST",
+            headers: {
+              authorization: "Bearer concurrent-idempotent-token",
+              "content-type": "application/json",
+            },
+            body: JSON.stringify(body),
+          },
+        );
+        return { status: response.status, body: await response.json() };
+      };
+
+      const [first, retry] = await Promise.all([invoke(), invoke()]);
+      expect(first.status).toBe(200);
+      expect(retry).toEqual(first);
+      expect(
+        events.filter(
+          (event) =>
+            event.type === "TOOL_RESULT" &&
+            event.payload["callId"] === "concurrent-same-call",
+        ),
+      ).toHaveLength(1);
+      expect(
+        delayedGateway.getRunUsage("concurrent-idempotent-token"),
+      ).toMatchObject({ toolCallCount: 2, concurrentToolCalls: 0 });
+    } finally {
+      await delayedGateway.stop();
+    }
   });
 
   it("rejects conflicting reuse of a callId", async () => {
