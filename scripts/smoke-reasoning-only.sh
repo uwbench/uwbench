@@ -28,6 +28,12 @@ cd "${PROJECT_ROOT}"
 echo "UWBench Phase 1 reasoning_only smoke"
 
 pnpm build >/dev/null
+test -x ./apps/cli/dist/index.js
+./apps/cli/dist/index.js --help >/dev/null
+pnpm exec uwbench --help >/dev/null
+for command in init-agent validate-agent validate-case run suite; do
+  pnpm exec uwbench "${command}" --help >/dev/null
+done
 pnpm generate >/dev/null
 git diff --exit-code -- packages/protocol/generated docs/specification/generated
 node --input-type=module -e '

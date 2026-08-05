@@ -704,6 +704,7 @@
     ],
     "scope_exceptions": [
       "apps/cli/src/**",
+      "apps/cli/bin/**",
       "examples/deterministic-baseline/src/**",
       "package.json",
       "packages/case-schema/src/**",
@@ -721,11 +722,11 @@
     "status": "gated_pass",
     "priority": 19,
     "assignee": "orchestrator",
-    "started_at": "2026-08-05T16:48:33.791Z",
-    "attempts": 14,
+    "started_at": "2026-08-05T16:59:36.879Z",
+    "attempts": 15,
     "failures": 6,
-    "review_failures": 7,
+    "review_failures": 8,
     "failure_limit": 9,
-    "completed_at": "2026-08-05T16:55:21.381Z"
+    "completed_at": "2026-08-05T17:06:04.785Z"
   }
 ]

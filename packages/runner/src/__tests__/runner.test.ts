@@ -125,7 +125,10 @@ async function startMockAgent(
     | "late-complete"
     | "tool-exceed"
     | "delayed-ack"
-    | "oversized-status" = "complete",
+    | "oversized-status"
+    | "cancel-error"
+    | "cancel-timeout"
+    | "cancel-nonterminal" = "complete",
 ): Promise<string> {
   // Use a simple HTTP server for mocking
   const { createServer } = await import("node:http");
@@ -354,6 +357,14 @@ async function startMockAgent(
 
     if (url.pathname.startsWith("/v1/runs/") && req.method === "DELETE") {
       mockDeleteCount += 1;
+      if (behavior === "cancel-error") {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "cancellation unavailable" }));
+        return;
+      }
+      if (behavior === "cancel-timeout") {
+        await new Promise((resolve) => setTimeout(resolve, 1_500));
+      }
       const agentRunId = url.pathname.split("/")[3] ?? "";
       const run = runs.get(agentRunId);
       if (!run) {
@@ -380,7 +391,7 @@ async function startMockAgent(
         );
         return;
       }
-      run.status = "cancelled";
+      if (behavior !== "cancel-nonterminal") run.status = "cancelled";
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(
         JSON.stringify({ schemaVersion: "1.0", agentRunId, cancelled: true }),
@@ -1032,6 +1043,50 @@ describe("LocalRunner", () => {
     expect(result.status).toBe("cancelled");
     expect(mockDeleteCount).toBe(1);
   });
+
+  it.each([
+    ["a DELETE error", "cancel-error", undefined],
+    ["a non-terminal post-cancel status", "cancel-nonterminal", undefined],
+    ["a cancellation timeout", "cancel-timeout", { wallClockSeconds: 1 }],
+  ] as const)(
+    "fails closed when remote cancellation has %s",
+    async (_description, behavior, limits) => {
+      await stopMockAgent();
+      agentUrl = await startMockAgent(behavior);
+      const runner = new LocalRunner({
+        outputBase: join(
+          tmpdir(),
+          `uwbench-cancel-failure-${behavior}-${randomUUID()}`,
+        ),
+      });
+      const runPromise = runner.run({
+        casePath: testCaseDir,
+        agentUrl,
+        ...(limits ? { limits } : {}),
+      });
+      for (
+        let attempts = 0;
+        mockStartedRunCount === 0 && attempts < 100;
+        attempts++
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      process.emit("SIGTERM");
+
+      const result = await runPromise;
+      expect(result.status).toBe("failed");
+      expect(result.error?.code).toBe("AGENT_CRASHED");
+      expect(result.error?.message).toContain(
+        "Remote cancellation could not be confirmed",
+      );
+      expect(readFileSync(result.eventsPath, "utf8")).not.toContain(
+        '"type":"RUN_CANCELLED"',
+      );
+      expect(JSON.parse(readFileSync(result.manifestPath, "utf8")).status).toBe(
+        "failed",
+      );
+    },
+  );
 });
 
 describe("verifyRun", () => {

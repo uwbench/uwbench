@@ -18,10 +18,10 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --build",
-    "uwbench": "node apps/cli/dist/index.js",
+    "uwbench": "uwbench",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "build": "tsc --build",
+    "build": "tsc --build && chmod +x apps/cli/dist/index.js",
     "smoke": "bash scripts/smoke-reasoning-only.sh",
     "generate": "pnpm --filter @uwbench/protocol generate",
     "changeset": "changeset",
@@ -29,6 +29,9 @@
     "version": "changeset version",
     "release": "changeset publish",
     "prepare": "husky install || true"
+  },
+  "dependencies": {
+    "@uwbench/cli": "workspace:*"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.7",
