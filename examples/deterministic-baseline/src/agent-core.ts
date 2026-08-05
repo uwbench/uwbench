@@ -99,15 +99,24 @@ export async function runDeterministicAgent(
   )) as unknown as RecordResult;
   const policies = await loadPolicies(toolGatewayUrl, bearerToken);
   const followUps = await Promise.all(
-    ["tax_returns", "aging_receivables"].map(async (concept) => ({
-      concept,
-      result: await callTool(
+    ["tax_returns", "aging_receivables"].map(async (concept) => {
+      const result = await callTool(
         toolGatewayUrl,
         bearerToken,
         "case.request_information",
         { concept, question: `Provide the available ${concept} information.` },
-      ),
-    })),
+      );
+      const documents =
+        (result["revealedDocumentIds"] as string[] | undefined) ?? [];
+      const retrievedDocuments = await Promise.all(
+        documents.map((documentId) =>
+          callTool(toolGatewayUrl, bearerToken, "case.read_document", {
+            documentId,
+          }),
+        ),
+      );
+      return { concept, result, retrievedDocuments };
+    }),
   );
 
   const spread = FinancialSpreadSchema.parse(
@@ -196,19 +205,21 @@ export async function runDeterministicAgent(
     ],
     discrepancies: [],
     complianceFindings: [],
-    followUpRequests: followUps.map(({ concept, result }) => {
-      const documents =
-        (result["revealedDocumentIds"] as string[] | undefined) ??
-        (result["revealedDocuments"] as string[] | undefined) ??
-        [];
-      return {
-        requestId: `req_${concept}`,
-        concept,
-        status: "FULFILLED" as const,
-        response: `The ${concept} information was requested through the case tool.`,
-        revealedDocuments: documents,
-      };
-    }),
+    followUpRequests: followUps.map(
+      ({ concept, result, retrievedDocuments }) => {
+        const documents =
+          (result["revealedDocumentIds"] as string[] | undefined) ??
+          (result["revealedDocuments"] as string[] | undefined) ??
+          [];
+        return {
+          requestId: `req_${concept}`,
+          concept,
+          status: "FULFILLED" as const,
+          response: `The ${concept} information was retrieved (${retrievedDocuments.length} document).`,
+          revealedDocuments: documents,
+        };
+      },
+    ),
     policyAssessment: {
       applicableRules: policies.map((rule) => rule.ruleId),
       evaluations,

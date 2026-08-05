@@ -720,11 +720,11 @@
     "status": "gated_pass",
     "priority": 19,
     "assignee": "orchestrator",
-    "started_at": "2026-08-05T15:46:13.255Z",
-    "attempts": 9,
+    "started_at": "2026-08-05T16:01:00.940Z",
+    "attempts": 10,
     "failures": 6,
-    "review_failures": 2,
+    "review_failures": 3,
     "failure_limit": 9,
-    "completed_at": "2026-08-05T15:58:02.818Z"
+    "completed_at": "2026-08-05T16:09:22.210Z"
   }
 ]
