@@ -18,6 +18,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --build",
+    "uwbench": "node apps/cli/dist/index.js",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "build": "tsc --build",

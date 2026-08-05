@@ -165,6 +165,13 @@ export const DEFAULT_CASE_DATA: CaseFixtureData = {
   },
 };
 
+const EMPTY_CASE_DATA: CaseFixtureData = {
+  documents: [],
+  records: [],
+  policies: [],
+  information: {},
+};
+
 function mergeFixtures(
   base: CaseFixtureData,
   override?: Partial<CaseFixtureData>,
@@ -180,11 +187,11 @@ function mergeFixtures(
 function loadCaseFixtures(casePath?: string): CaseFixtureData {
   if (!casePath) return DEFAULT_CASE_DATA;
   const fixturePath = join(casePath, "environment", "tool-fixtures.json");
-  if (!existsSync(fixturePath)) return DEFAULT_CASE_DATA;
+  if (!existsSync(fixturePath)) return EMPTY_CASE_DATA;
   const parsed = JSON.parse(
     readFileSync(fixturePath, "utf8"),
   ) as Partial<CaseFixtureData>;
-  return mergeFixtures(DEFAULT_CASE_DATA, parsed);
+  return mergeFixtures(EMPTY_CASE_DATA, parsed);
 }
 
 function requestId(): string {

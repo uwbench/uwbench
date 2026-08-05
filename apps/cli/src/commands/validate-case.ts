@@ -12,7 +12,8 @@ export const validateCaseCommand = new Command("validate-case")
   .option("--json", "Output results as JSON")
   .option("--verbose", "Show detailed diagnostics")
   .action(async (casePath: string, options) => {
-    console.log(`Validating case at ${casePath}...`);
+    const isJson = options.json === true;
+    if (!isJson) console.log(`Validating case at ${casePath}...`);
 
     try {
       let result: ValidationResult;
@@ -22,7 +23,7 @@ export const validateCaseCommand = new Command("validate-case")
         result = await validateCase(casePath);
       }
 
-      if (options.json) {
+      if (isJson) {
         console.log(
           JSON.stringify(
             {
@@ -46,17 +47,22 @@ export const validateCaseCommand = new Command("validate-case")
       }
 
       if (!result.success) {
-        console.error("\n❌ Case validation FAILED");
-        process.exit(1);
+        if (!isJson) console.error("\n❌ Case validation FAILED");
+        process.exitCode = 1;
       } else {
-        console.log("\n✅ Case validation PASSED");
-        process.exit(0);
+        if (!isJson) console.log("\n✅ Case validation PASSED");
+        process.exitCode = 0;
       }
     } catch (error) {
-      console.error(
-        `Failed to validate case: ${error instanceof Error ? error.message : String(error)}`,
-      );
-      process.exit(1);
+      const message = error instanceof Error ? error.message : String(error);
+      if (isJson) {
+        console.log(
+          JSON.stringify({ success: false, error: message }, null, 2),
+        );
+      } else {
+        console.error(`Failed to validate case: ${message}`);
+      }
+      process.exitCode = 1;
     }
   });
 

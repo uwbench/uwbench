@@ -30,6 +30,7 @@
     "@types/yazl": "^3.3.1"
   },
   "dependencies": {
+    "@uwbench/protocol": "workspace:*",
     "zod": "^3.23.8",
     "yaml": "^2.5.1",
     "adm-zip": "^0.5.16",

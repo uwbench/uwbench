@@ -20,6 +20,7 @@ import {
 } from "./types.js";
 import { validateCaseSync } from "./validator.js";
 import { type Case } from "./case.js";
+import { getLaneProjection } from "./lanes.js";
 
 /**
  * Fixed timestamp for deterministic archive creation (2025-01-01T00:00:00.000Z)
@@ -45,7 +46,6 @@ const MEDIA_TYPES: Record<string, string> = {
 const INPUT_ARCHIVE_ROLES: Record<string, ArchiveManifestEntry["role"]> = {
   "case.yaml": "case",
   "task.md": "task",
-  "environment/tool-fixtures.json": "tool_fixture",
   "environment/scenario.yaml": "scenario",
   "normalized/canonical-input.json": "normalized",
 };
@@ -165,42 +165,20 @@ function collectInputFiles(
     role: ArchiveManifestEntry["role"];
   }[] = [];
 
-  // Always include core files
-  const coreFiles = [
-    { relPath: "case.yaml", role: "case" as const },
-    { relPath: "task.md", role: "task" as const },
-    {
-      relPath: "environment/tool-fixtures.json",
-      role: "tool_fixture" as const,
-    },
-    { relPath: "environment/scenario.yaml", role: "scenario" as const },
-  ];
-
-  for (const { relPath, role } of coreFiles) {
+  for (const relPath of getLaneProjection(lane)) {
     const absPath = join(caseRoot, relPath);
-    if (existsSync(absPath)) {
-      files.push({ relPath, absPath, role });
-    }
-  }
-
-  // Include input documents/records/policy (all lanes)
-  const inputDirs = ["inputs/documents", "inputs/records", "inputs/policy"];
-  for (const inputDir of inputDirs) {
-    const absDir = join(caseRoot, inputDir);
-    if (existsSync(absDir)) {
-      collectFilesRecursive(absDir, caseRoot, files);
-    }
-  }
-
-  // Lane-specific files
-  if (lane === "normalized_data" || lane === "reasoning_only") {
-    const normalizedPath = join(caseRoot, "normalized/canonical-input.json");
-    if (existsSync(normalizedPath)) {
-      files.push({
-        relPath: "normalized/canonical-input.json",
-        absPath: normalizedPath,
-        role: "normalized",
-      });
+    if (!existsSync(absPath)) continue;
+    if (lstatSync(absPath).isDirectory()) {
+      collectFilesRecursive(absPath, caseRoot, files);
+    } else {
+      const role = getInputFileRole(relPath);
+      if (role) {
+        files.push({
+          relPath,
+          absPath,
+          role,
+        });
+      }
     }
   }
 

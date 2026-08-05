@@ -8,9 +8,12 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { validateCaseSync } from "@uwbench/case-schema";
+import { computeHash, type EventWithoutHash } from "@uwbench/protocol";
 import {
   LocalRunner,
+  createParticipantView,
   verifyRun,
   type Budget,
   createInitialBudgetState,
@@ -96,10 +99,20 @@ function cleanupTempDir(dir: string): void {
   }
 }
 
+function refreshChecksum(runDir: string, file: string): void {
+  const checksumsPath = join(runDir, "checksums.json");
+  const checksums = JSON.parse(readFileSync(checksumsPath, "utf8"));
+  checksums.files[file] = `sha256:${createHash("sha256")
+    .update(readFileSync(join(runDir, file)))
+    .digest("hex")}`;
+  writeFileSync(checksumsPath, JSON.stringify(checksums, null, 2));
+}
+
 // Mock agent server
 let mockAgentServer: (() => void) | null = null;
 let mockAgentUrl = "";
 let mockDeleteCount = 0;
+let mockStartedRunCount = 0;
 
 async function startMockAgent(
   behavior: "complete" | "fail" | "running" | "invalid" = "complete",
@@ -120,6 +133,7 @@ async function startMockAgent(
   const runs = new Map<string, MockRun>();
   let runCounter = 0;
   mockDeleteCount = 0;
+  mockStartedRunCount = 0;
 
   const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? "", `http://127.0.0.1:${port}`);
@@ -174,6 +188,7 @@ async function startMockAgent(
       }
 
       runCounter++;
+      mockStartedRunCount++;
       const agentRunId = `agent_run_${runCounter}`;
 
       if (behavior === "complete" || behavior === "invalid") {
@@ -580,7 +595,7 @@ describe("LocalRunner", () => {
   );
 
   it(
-    "should be idempotent for duplicate runs",
+    "should be idempotent for an ordinary duplicate configuration",
     async () => {
       const outputBase = join(
         tmpdir(),
@@ -590,15 +605,13 @@ describe("LocalRunner", () => {
       const result1 = await runner1.run({
         casePath: testCaseDir,
         agentUrl,
-        runId: "idempotent-run",
         skipHealthCheck: false,
       });
 
       const runner2 = new LocalRunner({ outputBase });
       const result2 = await runner2.run({
         casePath: testCaseDir,
-        agentUrl,
-        runId: "idempotent-run",
+        agentUrl: `${agentUrl}/`,
         skipHealthCheck: false,
       });
 
@@ -608,6 +621,31 @@ describe("LocalRunner", () => {
     },
     testTimeout,
   );
+
+  it("stages only the authoritative reasoning-only lane projection", () => {
+    const validation = validateCaseSync(testCaseDir);
+    expect(validation.case).toBeDefined();
+    const view = createParticipantView(
+      testCaseDir,
+      "reasoning_only",
+      validation.case!,
+    );
+    try {
+      expect(existsSync(join(view, "normalized", "canonical-input.json"))).toBe(
+        true,
+      );
+      expect(existsSync(join(view, "inputs"))).toBe(false);
+      expect(existsSync(join(view, "private"))).toBe(false);
+      const fixtures = JSON.parse(
+        readFileSync(join(view, "environment", "tool-fixtures.json"), "utf8"),
+      );
+      expect(fixtures.records).toHaveLength(1);
+      expect(fixtures.records[0].recordId).toBe("record_canonical_input");
+      expect(JSON.stringify(fixtures)).not.toContain("record_financials_2024");
+    } finally {
+      cleanupTempDir(view);
+    }
+  });
 
   it("should handle agent failure", async () => {
     await stopMockAgent();
@@ -712,9 +750,16 @@ describe("LocalRunner", () => {
       skipHealthCheck: false,
     });
 
-    // Give it a moment to start
+    // Wait until the remote run exists so cancellation must clean it up.
     const sigtermListenersBefore = process.listenerCount("SIGTERM");
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    for (
+      let attempts = 0;
+      mockStartedRunCount === 0 && attempts < 100;
+      attempts++
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    expect(mockStartedRunCount).toBe(1);
 
     // Simulate SIGTERM
     process.emit("SIGTERM");
@@ -782,5 +827,60 @@ describe("verifyRun", () => {
     expect(verification.errors).toContain("Missing checksums.json");
 
     cleanupTempDir(emptyDir);
+  });
+
+  it("rejects a hash-valid event stream containing schema-invalid fields", async () => {
+    const runner = new LocalRunner({
+      outputBase: join(tmpdir(), `uwbench-verify-schema-${randomUUID()}`),
+    });
+    const result = await runner.run({ casePath: testCaseDir, agentUrl });
+    const events = readFileSync(result.eventsPath, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    events[0].unexpected = true;
+    for (let index = 0; index < events.length; index += 1) {
+      events[index].previousHash =
+        index === 0 ? "sha256:genesis" : events[index - 1].hash;
+      const { hash: _hash, ...withoutHash } = events[index];
+      events[index].hash = computeHash(withoutHash as EventWithoutHash);
+    }
+    writeFileSync(
+      result.eventsPath,
+      `${events.map((event) => JSON.stringify(event)).join("\n")}\n`,
+    );
+    refreshChecksum(result.runDir, "events.ndjson");
+    const verification = await verifyRun(result.runDir);
+    expect(verification.valid).toBe(false);
+    expect(verification.errors.join(" ")).toContain("schema validation failed");
+  });
+
+  it("rejects cross-artifact event counts even with refreshed checksums", async () => {
+    const runner = new LocalRunner({
+      outputBase: join(tmpdir(), `uwbench-verify-count-${randomUUID()}`),
+    });
+    const result = await runner.run({ casePath: testCaseDir, agentUrl });
+    const manifest = JSON.parse(readFileSync(result.manifestPath, "utf8"));
+    manifest.eventCount += 1;
+    writeFileSync(result.manifestPath, JSON.stringify(manifest, null, 2));
+    refreshChecksum(result.runDir, "run-manifest.json");
+    const verification = await verifyRun(result.runDir);
+    expect(verification.valid).toBe(false);
+    expect(verification.errors.join(" ")).toContain("eventCount");
+  });
+
+  it("rejects unsafe checksum paths without reading outside the run", async () => {
+    const runner = new LocalRunner({
+      outputBase: join(tmpdir(), `uwbench-verify-path-${randomUUID()}`),
+    });
+    const result = await runner.run({ casePath: testCaseDir, agentUrl });
+    const checksums = JSON.parse(readFileSync(result.checksumsPath, "utf8"));
+    checksums.files["../outside.json"] = `sha256:${"0".repeat(64)}`;
+    writeFileSync(result.checksumsPath, JSON.stringify(checksums, null, 2));
+    const verification = await verifyRun(result.runDir);
+    expect(verification.valid).toBe(false);
+    expect(verification.errors).toContain(
+      "Unsafe checksum path: ../outside.json",
+    );
   });
 });

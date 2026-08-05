@@ -8,5 +8,5 @@
     "skipLibCheck": true
   },
   "include": ["src/**/*"],
-  "references": []
+  "references": [{ "path": "../protocol" }]
 }

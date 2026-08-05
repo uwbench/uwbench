@@ -70,12 +70,12 @@ describe("Case round-trip integration: lane privacy boundaries and pack-unpack-v
       const paths = manifest.entries.map((e) => e.path);
       expect(paths).toContain("case.yaml");
       expect(paths).toContain("task.md");
-      expect(paths).toContain("environment/tool-fixtures.json");
+      expect(paths).not.toContain("environment/tool-fixtures.json");
       expect(paths).toContain("environment/scenario.yaml");
 
       // Verify input documents/records/policy ARE present
       expect(paths.some((p) => p.startsWith("inputs/documents/"))).toBe(true);
-      expect(paths.some((p) => p.startsWith("inputs/records/"))).toBe(true);
+      expect(paths.some((p) => p.startsWith("inputs/records/"))).toBe(false);
       expect(paths.some((p) => p.startsWith("inputs/policy/"))).toBe(true);
 
       // Verify manifest lane is correct
@@ -109,14 +109,14 @@ describe("Case round-trip integration: lane privacy boundaries and pack-unpack-v
       );
       expect(privateEntries).toHaveLength(0);
 
-      // Verify core files and inputs ARE present
+      // Verify only normalized data and policy inputs are present.
       const paths = manifest.entries.map((e) => e.path);
       expect(paths).toContain("case.yaml");
       expect(paths).toContain("task.md");
-      expect(paths).toContain("environment/tool-fixtures.json");
+      expect(paths).not.toContain("environment/tool-fixtures.json");
       expect(paths).toContain("environment/scenario.yaml");
-      expect(paths.some((p) => p.startsWith("inputs/documents/"))).toBe(true);
-      expect(paths.some((p) => p.startsWith("inputs/records/"))).toBe(true);
+      expect(paths.some((p) => p.startsWith("inputs/documents/"))).toBe(false);
+      expect(paths.some((p) => p.startsWith("inputs/records/"))).toBe(false);
       expect(paths.some((p) => p.startsWith("inputs/policy/"))).toBe(true);
 
       // Verify manifest lane is correct
@@ -150,22 +150,20 @@ describe("Case round-trip integration: lane privacy boundaries and pack-unpack-v
       );
       expect(privateEntries).toHaveLength(0);
 
-      // Verify core files and inputs ARE present
+      // Verify reasoning-only receives no raw input or policy files.
       const paths = manifest.entries.map((e) => e.path);
       expect(paths).toContain("case.yaml");
       expect(paths).toContain("task.md");
-      expect(paths).toContain("environment/tool-fixtures.json");
+      expect(paths).not.toContain("environment/tool-fixtures.json");
       expect(paths).toContain("environment/scenario.yaml");
-      expect(paths.some((p) => p.startsWith("inputs/documents/"))).toBe(true);
-      expect(paths.some((p) => p.startsWith("inputs/records/"))).toBe(true);
-      expect(paths.some((p) => p.startsWith("inputs/policy/"))).toBe(true);
+      expect(paths.some((p) => p.startsWith("inputs/"))).toBe(false);
 
       // Verify manifest lane is correct
       expect(manifest.lane).toBe("reasoning_only");
       expect(manifest.role).toBe("input");
     });
 
-    it("all three lanes share identical core files and input documents", async () => {
+    it("all three lanes share core metadata while isolating lane inputs", async () => {
       copyRoundtripCase();
 
       const archives = await Promise.all([
@@ -188,13 +186,8 @@ describe("Case round-trip integration: lane privacy boundaries and pack-unpack-v
 
       expect(archives.every((a) => a.success)).toBe(true);
 
-      // Compare core files and input documents/records/policy across all lanes
-      const corePaths = [
-        "case.yaml",
-        "task.md",
-        "environment/tool-fixtures.json",
-        "environment/scenario.yaml",
-      ];
+      // Only lane-independent metadata is shared across all lanes.
+      const corePaths = ["case.yaml", "task.md", "environment/scenario.yaml"];
 
       for (const laneResult of archives) {
         const manifest = laneResult.manifest!;
@@ -208,11 +201,22 @@ describe("Case round-trip integration: lane privacy boundaries and pack-unpack-v
           // We verify by checking the file content in the archive is the same
         }
 
-        // Input documents/records/policy should be identical
-        expect(paths.some((p) => p.startsWith("inputs/documents/"))).toBe(true);
-        expect(paths.some((p) => p.startsWith("inputs/records/"))).toBe(true);
-        expect(paths.some((p) => p.startsWith("inputs/policy/"))).toBe(true);
+        expect(paths).not.toContain("environment/tool-fixtures.json");
       }
+
+      const [raw, normalized, reasoning] = archives.map((result) =>
+        result.manifest!.entries.map((entry) => entry.path),
+      );
+      expect(raw!.some((path) => path.startsWith("inputs/documents/"))).toBe(
+        true,
+      );
+      expect(raw!.some((path) => path.startsWith("inputs/policy/"))).toBe(true);
+      expect(normalized).toContain("normalized/canonical-input.json");
+      expect(
+        normalized!.some((path) => path.startsWith("inputs/policy/")),
+      ).toBe(true);
+      expect(reasoning).toContain("normalized/canonical-input.json");
+      expect(reasoning!.some((path) => path.startsWith("inputs/"))).toBe(false);
     });
   });
 
@@ -354,7 +358,7 @@ describe("Case round-trip integration: lane privacy boundaries and pack-unpack-v
       expect(existsSync(join(unpackDir, "task.md"))).toBe(true);
       expect(
         existsSync(join(unpackDir, "environment/tool-fixtures.json")),
-      ).toBe(true);
+      ).toBe(false);
       expect(existsSync(join(unpackDir, "environment/scenario.yaml"))).toBe(
         true,
       );
@@ -362,7 +366,7 @@ describe("Case round-trip integration: lane privacy boundaries and pack-unpack-v
         existsSync(join(unpackDir, "inputs/documents/financial_statement.pdf")),
       ).toBe(true);
       expect(existsSync(join(unpackDir, "inputs/records/financials.csv"))).toBe(
-        true,
+        false,
       );
       expect(
         existsSync(join(unpackDir, "inputs/policy/credit_policy.txt")),
@@ -401,15 +405,15 @@ describe("Case round-trip integration: lane privacy boundaries and pack-unpack-v
       expect(existsSync(join(unpackDir, "task.md"))).toBe(true);
       expect(
         existsSync(join(unpackDir, "environment/tool-fixtures.json")),
-      ).toBe(true);
+      ).toBe(false);
       expect(existsSync(join(unpackDir, "environment/scenario.yaml"))).toBe(
         true,
       );
       expect(
         existsSync(join(unpackDir, "inputs/documents/financial_statement.pdf")),
-      ).toBe(true);
+      ).toBe(false);
       expect(existsSync(join(unpackDir, "inputs/records/financials.csv"))).toBe(
-        true,
+        false,
       );
       expect(
         existsSync(join(unpackDir, "inputs/policy/credit_policy.txt")),
@@ -448,19 +452,19 @@ describe("Case round-trip integration: lane privacy boundaries and pack-unpack-v
       expect(existsSync(join(unpackDir, "task.md"))).toBe(true);
       expect(
         existsSync(join(unpackDir, "environment/tool-fixtures.json")),
-      ).toBe(true);
+      ).toBe(false);
       expect(existsSync(join(unpackDir, "environment/scenario.yaml"))).toBe(
         true,
       );
       expect(
         existsSync(join(unpackDir, "inputs/documents/financial_statement.pdf")),
-      ).toBe(true);
+      ).toBe(false);
       expect(existsSync(join(unpackDir, "inputs/records/financials.csv"))).toBe(
-        true,
+        false,
       );
       expect(
         existsSync(join(unpackDir, "inputs/policy/credit_policy.txt")),
-      ).toBe(true);
+      ).toBe(false);
 
       // reasoning_only lane SHOULD have normalized file
       expect(
@@ -859,7 +863,7 @@ describe("Case round-trip integration: lane privacy boundaries and pack-unpack-v
       }
     });
 
-    it("input archives contain identical input documents/records/policy regardless of lane", async () => {
+    it("input archives expose only the files assigned to each lane", async () => {
       copyRoundtripCase();
 
       const lanes = [
@@ -887,32 +891,18 @@ describe("Case round-trip integration: lane privacy boundaries and pack-unpack-v
       );
       expect(successfulResults.length).toBe(results.length);
 
-      // Collect all input document paths from first lane
-      const firstResult = successfulResults[0]!;
-      const inputDocPaths = firstResult.manifest.entries
-        .filter((e) => e.path.startsWith("inputs/"))
-        .map((e) => e.path)
-        .sort();
-
-      // Verify same paths exist in all lanes with same hashes
-      for (const laneResult of successfulResults) {
-        const lanePaths = laneResult.manifest.entries
-          .filter((e) => e.path.startsWith("inputs/"))
-          .map((e) => e.path)
-          .sort();
-        expect(lanePaths).toEqual(inputDocPaths);
-
-        // Verify hashes match
-        for (const path of inputDocPaths) {
-          const hash1 = firstResult.manifest.entries.find(
-            (e) => e.path === path,
-          )?.sha256;
-          const hash2 = laneResult.manifest.entries.find(
-            (e) => e.path === path,
-          )?.sha256;
-          expect(hash1).toBe(hash2);
-        }
-      }
+      const inputPaths = successfulResults.map((result) =>
+        result.manifest.entries
+          .filter((entry) => entry.path.startsWith("inputs/"))
+          .map((entry) => entry.path)
+          .sort(),
+      );
+      expect(inputPaths[0]).toEqual([
+        "inputs/documents/financial_statement.pdf",
+        "inputs/policy/credit_policy.txt",
+      ]);
+      expect(inputPaths[1]).toEqual(["inputs/policy/credit_policy.txt"]);
+      expect(inputPaths[2]).toEqual([]);
     });
   });
 

@@ -706,6 +706,7 @@
       "apps/cli/src/**",
       "examples/deterministic-baseline/src/**",
       "package.json",
+      "packages/case-schema/src/**",
       "packages/runner/src/**",
       "packages/tool-runtime/src/**",
       "scripts/verify-run.mjs"
@@ -719,11 +720,11 @@
     "status": "gated_pass",
     "priority": 19,
     "assignee": "orchestrator",
-    "started_at": "2026-08-05T09:17:29.326Z",
-    "attempts": 8,
+    "started_at": "2026-08-05T15:46:13.255Z",
+    "attempts": 9,
     "failures": 6,
-    "review_failures": 1,
+    "review_failures": 2,
     "failure_limit": 9,
-    "completed_at": "2026-08-05T15:41:06.060Z"
+    "completed_at": "2026-08-05T15:58:02.818Z"
   }
 ]

@@ -5,18 +5,27 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+} from "node:path";
 import {
   CancelResponseSchema,
   HealthResponseSchema,
   RunResponseSchema,
   RunStatusResponseSchema,
+  UnderwritingSubmissionSchema,
   computeHash,
-  verifyChain,
+  readEventsNDJSON,
   writeEventsNDJSON,
   type CancelResponse,
   type Event,
@@ -32,6 +41,7 @@ import {
 } from "@uwbench/protocol";
 import {
   validateCaseSync,
+  getLaneProjection,
   type Case,
   type SupportedLane,
 } from "@uwbench/case-schema";
@@ -109,6 +119,7 @@ export interface RunManifest {
   usage: BudgetState;
   eventCount: number;
   submissionHash?: string;
+  configurationHash: string;
 }
 
 export interface Checksums {
@@ -207,29 +218,66 @@ function copyIfPresent(source: string, destination: string): void {
  * Create the only filesystem view made available to runtime tools. Private
  * references and lanes not selected for this run are never copied into it.
  */
-function createParticipantView(casePath: string, lane: SupportedLane): string {
+function buildDerivedToolFixtures(casePath: string, caseData: Case): unknown {
+  const canonical = JSON.parse(
+    readFileSync(join(casePath, "normalized", "canonical-input.json"), "utf8"),
+  ) as Record<string, unknown>;
+  const operatorMap: Record<string, string> = {
+    gte: ">=",
+    lte: "<=",
+    gt: ">",
+    lt: "<",
+    eq: "==",
+    neq: "!=",
+  };
+  const policies = caseData.policyTests.map((test) => {
+    const condition = test.appliesWhen[0];
+    const sourceId = test.evidence?.[0]?.sourceId ?? `policy:${test.ruleId}`;
+    const source = caseData.sources.find(
+      (candidate) =>
+        candidate.kind === "policy" && candidate.sourceId === sourceId,
+    );
+    return {
+      ruleId: test.ruleId,
+      sourceId,
+      title: source?.title ?? test.ruleId,
+      appliesWhen: `${caseData.requested_product} requested`,
+      input: { ratio: condition?.input.key ?? "unknown" },
+      operator:
+        operatorMap[condition?.operator ?? ""] ?? condition?.operator ?? "==",
+      threshold: condition?.threshold ?? null,
+      onFailure: test.onFailure,
+    };
+  });
+  return {
+    documents: [],
+    records: [
+      {
+        recordId: "record_canonical_input",
+        sourceId: "normalized:canonical-input",
+        record: canonical,
+      },
+    ],
+    policies,
+    information: {},
+  };
+}
+
+export function createParticipantView(
+  casePath: string,
+  lane: SupportedLane,
+  caseData: Case,
+): string {
   const view = mkdtempSync(join(tmpdir(), `uwbench-${lane}-`));
-  copyIfPresent(join(casePath, "environment"), join(view, "environment"));
-  switch (lane) {
-    case "raw_documents":
-      copyIfPresent(
-        join(casePath, "inputs", "documents"),
-        join(view, "inputs", "documents"),
-      );
-      copyIfPresent(
-        join(casePath, "inputs", "policy"),
-        join(view, "inputs", "policy"),
-      );
-      break;
-    case "normalized_data":
-      copyIfPresent(join(casePath, "normalized"), join(view, "normalized"));
-      copyIfPresent(
-        join(casePath, "inputs", "policy"),
-        join(view, "inputs", "policy"),
-      );
-      break;
-    case "reasoning_only":
-      break;
+  for (const entry of getLaneProjection(lane)) {
+    copyIfPresent(join(casePath, entry), join(view, entry));
+  }
+  if (lane === "normalized_data" || lane === "reasoning_only") {
+    mkdirSync(join(view, "environment"), { recursive: true });
+    writeFileSync(
+      join(view, "environment", "tool-fixtures.json"),
+      JSON.stringify(buildDerivedToolFixtures(casePath, caseData), null, 2),
+    );
   }
   writeFileSync(join(view, "lane.json"), JSON.stringify({ lane }));
   return view;
@@ -250,6 +298,7 @@ export class LocalRunner {
   private currentBenchmarkVersion = "";
   private currentObjective = "";
   private currentRequiredOutputs: string[] = [];
+  private currentConfigurationHash = "";
   private currentLimits: Budget = {
     wallClockSeconds: 900,
     maxToolCalls: 100,
@@ -346,6 +395,7 @@ export class LocalRunner {
       limits: this.currentLimits,
       usage: this.budgetState,
       eventCount: this.events.length,
+      configurationHash: this.currentConfigurationHash,
     };
     if (completedAt) manifest.completedAt = completedAt;
     if (this.submission) {
@@ -416,8 +466,15 @@ export class LocalRunner {
     this.writeChecksums();
   }
 
-  private async startToolGateway(casePath: string): Promise<void> {
-    this.participantView = createParticipantView(casePath, this.currentLane);
+  private async startToolGateway(
+    casePath: string,
+    caseData: Case,
+  ): Promise<void> {
+    this.participantView = createParticipantView(
+      casePath,
+      this.currentLane,
+      caseData,
+    );
     this.gatewayToken = `run-token-${randomUUID()}`;
     this.toolGateway = new ToolGateway({
       port: 0,
@@ -522,10 +579,7 @@ export class LocalRunner {
   }
 
   private findExistingRun(
-    caseData: Case,
-    agentUrl: string,
-    lane: SupportedLane,
-    limits: Budget,
+    configurationHash: string,
     providedRunId?: string,
     outputDir?: string,
   ): RunResult | null {
@@ -533,6 +587,15 @@ export class LocalRunner {
     if (outputDir) candidates.push(resolve(outputDir));
     if (providedRunId)
       candidates.push(join(this.defaultOutputBase, providedRunId));
+    if (!providedRunId && !outputDir) {
+      for (const entry of readdirSync(this.defaultOutputBase, {
+        withFileTypes: true,
+      })) {
+        if (entry.isDirectory()) {
+          candidates.push(join(this.defaultOutputBase, entry.name));
+        }
+      }
+    }
     for (const runDir of candidates) {
       const manifestPath = join(runDir, "run-manifest.json");
       if (!existsSync(manifestPath)) continue;
@@ -541,12 +604,7 @@ export class LocalRunner {
           readFileSync(manifestPath, "utf8"),
         ) as RunManifest;
         if (
-          manifest.caseId === caseData.case_id &&
-          manifest.agentUrl === agentUrl &&
-          manifest.lane === lane &&
-          manifest.benchmark === caseData.track &&
-          manifest.benchmarkVersion === caseData.benchmark_version &&
-          JSON.stringify(manifest.limits) === JSON.stringify(limits) &&
+          manifest.configurationHash === configurationHash &&
           (!providedRunId || manifest.runId === providedRunId)
         ) {
           return this.resultFor(
@@ -580,6 +638,7 @@ export class LocalRunner {
       );
     }
     const taskMarkdown = readFileSync(join(casePath, "task.md"), "utf8");
+    const normalizedAgentUrl = options.agentUrl.replace(/\/$/, "");
     const limits: Budget = {
       wallClockSeconds:
         options.limits?.wallClockSeconds ??
@@ -598,11 +657,18 @@ export class LocalRunner {
       }
     }
 
+    const configurationHash = sha256(
+      JSON.stringify({
+        caseId: caseData.case_id,
+        agentUrl: normalizedAgentUrl,
+        lane,
+        benchmark: caseData.track,
+        benchmarkVersion: caseData.benchmark_version,
+        limits,
+      }),
+    );
     const existing = this.findExistingRun(
-      caseData,
-      options.agentUrl,
-      lane,
-      limits,
+      configurationHash,
       options.runId,
       options.outputDir,
     );
@@ -614,12 +680,13 @@ export class LocalRunner {
       options.outputDir ?? join(this.defaultOutputBase, this.currentRunId),
     );
     this.currentCaseId = caseData.case_id;
-    this.currentAgentUrl = options.agentUrl.replace(/\/$/, "");
+    this.currentAgentUrl = normalizedAgentUrl;
     this.currentLane = lane;
     this.currentBenchmark = caseData.track;
     this.currentBenchmarkVersion = caseData.benchmark_version;
     this.currentObjective = objectiveFromTask(taskMarkdown);
     this.currentRequiredOutputs = requiredOutputsFromTask(taskMarkdown);
+    this.currentConfigurationHash = configurationHash;
     this.currentLimits = limits;
     this.runStartTime = Date.now();
     this.events = [];
@@ -651,7 +718,7 @@ export class LocalRunner {
     this.writeManifest("running");
 
     try {
-      await this.startToolGateway(casePath);
+      await this.startToolGateway(casePath, caseData);
       this.addEvent("AGENT_READY", "RUNNER", {
         toolGatewayUrl: `http://127.0.0.1:${this.gatewayPort}/v1/tools/call`,
         authentication: "run-scoped bearer token issued (redacted)",
@@ -838,6 +905,9 @@ export interface VerifyRunResult {
 export async function verifyRun(runDir: string): Promise<VerifyRunResult> {
   const errors: string[] = [];
   let manifest: RunManifest | undefined;
+  let events: Event[] = [];
+  let score: { status?: string; runId?: string; caseId?: string } | undefined;
+  let checksums: Checksums | undefined;
   let eventsValid = false;
   let checksumsValid = false;
   const manifestPath = join(runDir, "run-manifest.json");
@@ -849,6 +919,13 @@ export async function verifyRun(runDir: string): Promise<VerifyRunResult> {
       if (manifest.scoreStatus !== "not_scored") {
         errors.push("Manifest must record scoreStatus=not_scored in Phase 1");
       }
+      if (!["completed", "failed", "cancelled"].includes(manifest.status)) {
+        errors.push(
+          `Manifest has non-terminal or invalid status: ${manifest.status}`,
+        );
+      }
+      if (!manifest.completedAt)
+        errors.push("Terminal manifest is missing completedAt");
     } catch (error) {
       errors.push(`Manifest parse error: ${String(error)}`);
     }
@@ -859,12 +936,10 @@ export async function verifyRun(runDir: string): Promise<VerifyRunResult> {
     errors.push("Missing events.ndjson");
   } else {
     try {
-      const content = readFileSync(eventsPath, "utf8").trim();
-      const events = content
-        ? content.split("\n").map((line) => JSON.parse(line) as Event)
-        : [];
-      eventsValid = verifyChain(events);
-      if (!eventsValid) errors.push("Event hash chain verification failed");
+      const content = readFileSync(eventsPath, "utf8");
+      if (!content.trim()) throw new Error("Event log is empty");
+      events = readEventsNDJSON(content);
+      eventsValid = true;
     } catch (error) {
       errors.push(`Events parse/verify error: ${String(error)}`);
     }
@@ -875,8 +950,10 @@ export async function verifyRun(runDir: string): Promise<VerifyRunResult> {
     errors.push("Missing score.json");
   } else {
     try {
-      const score = JSON.parse(readFileSync(scorePath, "utf8")) as {
+      score = JSON.parse(readFileSync(scorePath, "utf8")) as {
         status?: string;
+        runId?: string;
+        caseId?: string;
       };
       if (score.status !== "not_scored") {
         errors.push("Phase 1 score.json must have status=not_scored");
@@ -891,12 +968,22 @@ export async function verifyRun(runDir: string): Promise<VerifyRunResult> {
     errors.push("Missing checksums.json");
   } else {
     try {
-      const checksums = JSON.parse(
-        readFileSync(checksumsPath, "utf8"),
-      ) as Checksums;
+      checksums = JSON.parse(readFileSync(checksumsPath, "utf8")) as Checksums;
       checksumsValid = true;
+      if (checksums.schemaVersion !== "1.0" || !checksums.files) {
+        throw new Error("Invalid checksums.json structure");
+      }
       for (const [file, expected] of Object.entries(checksums.files)) {
-        const path = join(runDir, file);
+        const path = resolve(runDir, file);
+        if (
+          isAbsolute(file) ||
+          basename(file) !== file ||
+          relative(resolve(runDir), path).startsWith("..")
+        ) {
+          errors.push(`Unsafe checksum path: ${file}`);
+          checksumsValid = false;
+          continue;
+        }
         if (!existsSync(path)) {
           errors.push(`Checksummed file is missing: ${file}`);
           checksumsValid = false;
@@ -922,6 +1009,71 @@ export async function verifyRun(runDir: string): Promise<VerifyRunResult> {
       }
     } catch (error) {
       errors.push(`Checksums parse/verify error: ${String(error)}`);
+    }
+  }
+
+  if (manifest && eventsValid) {
+    if (manifest.eventCount !== events.length) {
+      errors.push(
+        `Manifest eventCount ${manifest.eventCount} does not match ${events.length} events`,
+      );
+      eventsValid = false;
+    }
+    const first = events[0];
+    if (
+      !first ||
+      first.runId !== manifest.runId ||
+      first.caseId !== manifest.caseId
+    ) {
+      errors.push("Manifest identity does not match the event stream");
+      eventsValid = false;
+    }
+    const terminalType = events.at(-1)?.type;
+    const expectedTerminal: Partial<Record<RunStatus, EventType>> = {
+      completed: "RUN_COMPLETED",
+      failed: "AGENT_FAILED",
+      cancelled: "RUN_CANCELLED",
+    };
+    if (expectedTerminal[manifest.status] !== terminalType) {
+      errors.push(
+        `Terminal event ${String(terminalType)} does not match manifest status ${manifest.status}`,
+      );
+      eventsValid = false;
+    }
+  }
+
+  if (manifest && score) {
+    if (score.runId !== manifest.runId || score.caseId !== manifest.caseId) {
+      errors.push("score.json identity does not match the manifest");
+    }
+  }
+  if (manifest && checksums) {
+    if (checksums.runId !== manifest.runId) {
+      errors.push("checksums.json runId does not match the manifest");
+      checksumsValid = false;
+    }
+    if (manifest.status === "completed") {
+      if (!checksums.files["submission.json"]) {
+        errors.push("Completed run is missing the submission.json checksum");
+        checksumsValid = false;
+      }
+      const submissionPath = join(runDir, "submission.json");
+      if (!existsSync(submissionPath)) {
+        errors.push("Completed run is missing submission.json");
+      } else {
+        try {
+          const submission = UnderwritingSubmissionSchema.parse(
+            JSON.parse(readFileSync(submissionPath, "utf8")),
+          );
+          if (manifest.submissionHash !== sha256(JSON.stringify(submission))) {
+            errors.push(
+              "Manifest submissionHash does not match submission.json",
+            );
+          }
+        } catch (error) {
+          errors.push(`Submission parse/validation error: ${String(error)}`);
+        }
+      }
     }
   }
 

@@ -160,24 +160,49 @@ describe("packCase / unpackCase / verifyArchive", () => {
       const paths = result.manifest!.entries.map((e) => e.path);
       expect(paths).toContain("case.yaml");
       expect(paths).toContain("task.md");
-      expect(paths).toContain("environment/tool-fixtures.json");
       expect(paths).toContain("environment/scenario.yaml");
+      expect(paths).toContain("normalized/canonical-input.json");
+      expect(paths).not.toContain("environment/tool-fixtures.json");
     });
 
-    it("includes input documents, records, and policy files", async () => {
+    it("enforces disjoint participant-visible lane projections", async () => {
       copyValidCase();
-      const archivePath = join(outputDir, "case-00001.input.uwb");
-
-      const result = await packCase(validCaseDir, {
-        role: "input",
-        lane: "reasoning_only",
-        outputPath: archivePath,
-      });
-
-      const paths = result.manifest!.entries.map((e) => e.path);
-      expect(paths.some((p) => p.startsWith("inputs/documents/"))).toBe(true);
-      expect(paths.some((p) => p.startsWith("inputs/records/"))).toBe(true);
-      expect(paths.some((p) => p.startsWith("inputs/policy/"))).toBe(true);
+      const manifests = await Promise.all(
+        (["raw_documents", "normalized_data", "reasoning_only"] as const).map(
+          async (lane) =>
+            (
+              await packCase(validCaseDir, {
+                role: "input",
+                lane,
+                outputPath: join(outputDir, `${lane}.uwb`),
+              })
+            ).manifest!,
+        ),
+      );
+      const [raw, normalized, reasoning] = manifests.map(
+        (manifest) => new Set(manifest.entries.map((entry) => entry.path)),
+      );
+      expect(
+        [...raw!].some((path) => path.startsWith("inputs/documents/")),
+      ).toBe(true);
+      expect([...raw!].some((path) => path.startsWith("inputs/records/"))).toBe(
+        false,
+      );
+      expect(raw!.has("normalized/canonical-input.json")).toBe(false);
+      expect(normalized!.has("normalized/canonical-input.json")).toBe(true);
+      expect(
+        [...normalized!].some((path) => path.startsWith("inputs/documents/")),
+      ).toBe(false);
+      expect(reasoning!.has("normalized/canonical-input.json")).toBe(true);
+      expect([...reasoning!].some((path) => path.startsWith("inputs/"))).toBe(
+        false,
+      );
+      for (const paths of [raw!, normalized!, reasoning!]) {
+        expect(paths.has("environment/tool-fixtures.json")).toBe(false);
+        expect([...paths].some((path) => path.startsWith("private/"))).toBe(
+          false,
+        );
+      }
     });
 
     it("rejects unsupported lane", async () => {
@@ -653,9 +678,12 @@ describe("packCase / unpackCase / verifyArchive", () => {
       expect(existsSync(join(outputDir, "task.md"))).toBe(true);
       expect(
         existsSync(join(outputDir, "environment/tool-fixtures.json")),
-      ).toBe(true);
+      ).toBe(false);
       expect(
         existsSync(join(outputDir, "inputs/documents/financial_statement.pdf")),
+      ).toBe(false);
+      expect(
+        existsSync(join(outputDir, "normalized/canonical-input.json")),
       ).toBe(true);
 
       const caseYaml = readFileSync(join(outputDir, "case.yaml"), "utf-8");
