@@ -24,7 +24,11 @@ export const CaseSchema = z.strictObject({
   as_of_date: z.string().date(),
   currency: Iso4217CurrencySchema,
   requested_product: z.string().min(1).max(64),
-  requested_amount: z.number().int().positive(),
+  requested_amount: z
+    .number()
+    .int()
+    .positive()
+    .describe("Requested amount in major units of the case currency"),
   supported_lanes: z.array(SupportedLaneSchema).min(1),
   features: CaseFeaturesSchema,
   budgets: CaseBudgetsSchema,

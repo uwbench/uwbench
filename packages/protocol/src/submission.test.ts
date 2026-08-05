@@ -10,7 +10,7 @@ import {
 } from "./submission.js";
 
 describe("financial value schemas", () => {
-  it("accepts signed expense and loss values in minor units", () => {
+  it("accepts signed expense and loss values in declared monetary units", () => {
     expect(
       FinancialSpreadSchema.safeParse({
         revenue: { amount: 1_000_000, currency: "USD" },

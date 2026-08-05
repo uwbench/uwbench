@@ -46,6 +46,8 @@ sources:
       - debt_service
       - total_debt
       - cash
+      - current_assets
+      - current_liabilities
       - total_assets
       - total_liabilities
       - equity

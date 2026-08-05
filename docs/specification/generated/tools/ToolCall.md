@@ -212,16 +212,18 @@ No fields.
 | `operatingExpenses` | [`__schema3`](#__schema3) |  |  |
 | `ebitda` | [`__schema3`](#__schema3) |  |  |
 | `interestExpense` | [`__schema3`](#__schema3) |  |  |
-| `debtService` | [`__schema5`](#__schema5) |  |  |
-| `totalDebt` | [`__schema5`](#__schema5) |  |  |
-| `cash` | [`__schema5`](#__schema5) |  |  |
-| `totalAssets` | [`__schema5`](#__schema5) |  |  |
-| `totalLiabilities` | [`__schema5`](#__schema5) |  |  |
+| `debtService` | [`__schema6`](#__schema6) |  |  |
+| `totalDebt` | [`__schema6`](#__schema6) |  |  |
+| `cash` | [`__schema6`](#__schema6) |  |  |
+| `currentAssets` | [`__schema6`](#__schema6) |  |  |
+| `currentLiabilities` | [`__schema6`](#__schema6) |  |  |
+| `totalAssets` | [`__schema6`](#__schema6) |  |  |
+| `totalLiabilities` | [`__schema6`](#__schema6) |  |  |
 | `equity` | [`__schema3`](#__schema3) |  |  |
 | `taxes` | [`__schema3`](#__schema3) |  |  |
 | `netIncome` | [`__schema3`](#__schema3) |  |  |
 | `period` | object | ✓ |  |
-| `currency` | [`__schema4`](#__schema4) | ✓ |  |
+| `currency` | [`__schema5`](#__schema5) | ✓ |  |
 | `scale` | string | ✓ |  |
 | `signConvention` | string | ✓ |  |
 
@@ -229,17 +231,21 @@ No fields.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `amount` | integer | ✓ |  |
-| `currency` | [`__schema4`](#__schema4) | ✓ |  |
+| `amount` | [`__schema4`](#__schema4) | ✓ |  |
+| `currency` | [`__schema5`](#__schema5) | ✓ |  |
 
 ### __schema4
 
 ### __schema5
 
+### __schema6
+
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `amount` | integer | ✓ |  |
-| `currency` | [`__schema4`](#__schema4) | ✓ |  |
+| `amount` | [`__schema7`](#__schema7) | ✓ |  |
+| `currency` | [`__schema5`](#__schema5) | ✓ |  |
+
+### __schema7
 
 ---
 *Generated from Zod schema. Do not edit directly.*

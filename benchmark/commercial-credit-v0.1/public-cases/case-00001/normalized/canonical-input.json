@@ -10,6 +10,8 @@
     "debtService": { "amount": 380000, "currency": "USD" },
     "totalDebt": { "amount": 2100000, "currency": "USD" },
     "cash": { "amount": 420000, "currency": "USD" },
+    "currentAssets": { "amount": 1350000, "currency": "USD" },
+    "currentLiabilities": { "amount": 1000000, "currency": "USD" },
     "totalAssets": { "amount": 4800000, "currency": "USD" },
     "totalLiabilities": { "amount": 2800000, "currency": "USD" },
     "equity": { "amount": 2000000, "currency": "USD" },
@@ -106,6 +108,30 @@
       "confidence": 1.0
     },
     {
+      "canonicalKey": "current_assets",
+      "value": 1350000,
+      "normalizedValue": 1350000,
+      "type": "currency",
+      "unit": "USD",
+      "currency": "USD",
+      "scale": 1,
+      "period": { "start": "2024-01-01", "end": "2024-12-31" },
+      "evidence": [{ "sourceId": "src_financials_2024" }],
+      "confidence": 1.0
+    },
+    {
+      "canonicalKey": "current_liabilities",
+      "value": 1000000,
+      "normalizedValue": 1000000,
+      "type": "currency",
+      "unit": "USD",
+      "currency": "USD",
+      "scale": 1,
+      "period": { "start": "2024-01-01", "end": "2024-12-31" },
+      "evidence": [{ "sourceId": "src_financials_2024" }],
+      "confidence": 1.0
+    },
+    {
       "canonicalKey": "equity",
       "value": 2000000,
       "normalizedValue": 2000000,
@@ -119,8 +145,8 @@
     },
     {
       "canonicalKey": "dscr",
-      "value": 2.74,
-      "normalizedValue": 2.74,
+      "value": 2.736842105263158,
+      "normalizedValue": 2.736842105263158,
       "type": "ratio",
       "unit": "multiple",
       "period": { "start": "2024-01-01", "end": "2024-12-31" },
@@ -129,8 +155,8 @@
     },
     {
       "canonicalKey": "leverage_ratio",
-      "value": 2.02,
-      "normalizedValue": 2.02,
+      "value": 2.019230769230769,
+      "normalizedValue": 2.019230769230769,
       "type": "ratio",
       "unit": "multiple",
       "period": { "start": "2024-01-01", "end": "2024-12-31" },
@@ -139,8 +165,8 @@
     },
     {
       "canonicalKey": "interest_coverage",
-      "value": 8.67,
-      "normalizedValue": 8.67,
+      "value": 8.666666666666666,
+      "normalizedValue": 8.666666666666666,
       "type": "ratio",
       "unit": "multiple",
       "period": { "start": "2024-01-01", "end": "2024-12-31" },
@@ -149,8 +175,8 @@
     },
     {
       "canonicalKey": "equity_to_assets",
-      "value": 0.417,
-      "normalizedValue": 0.417,
+      "value": 0.4166666666666667,
+      "normalizedValue": 0.4166666666666667,
       "type": "ratio",
       "unit": "percentage",
       "period": { "start": "2024-01-01", "end": "2024-12-31" },
@@ -196,10 +222,10 @@
     }
   ],
   "ratios": {
-    "dscr": 2.74,
-    "leverage_ratio": 2.02,
-    "interest_coverage": 8.67,
+    "dscr": 2.736842105263158,
+    "leverage_ratio": 2.019230769230769,
+    "interest_coverage": 8.666666666666666,
     "current_ratio": 1.35,
-    "equity_to_assets": 0.417
+    "equity_to_assets": 0.4166666666666667
   }
 }

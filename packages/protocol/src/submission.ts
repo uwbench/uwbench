@@ -183,15 +183,23 @@ export const ISO_4217_CURRENCIES = [
 
 export const Iso4217CurrencySchema = z.enum(ISO_4217_CURRENCIES);
 
-export const MoneySchema = z.strictObject({
-  amount: z.number().int(),
-  currency: Iso4217CurrencySchema,
-});
+export const MoneySchema = z
+  .strictObject({
+    amount: z.number().int(),
+    currency: Iso4217CurrencySchema,
+  })
+  .describe(
+    "Integer monetary amount in major currency units unless an enclosing schema declares a scale",
+  );
 
-export const NonnegativeMoneySchema = z.strictObject({
-  amount: z.number().int().nonnegative(),
-  currency: Iso4217CurrencySchema,
-});
+export const NonnegativeMoneySchema = z
+  .strictObject({
+    amount: z.number().int().nonnegative(),
+    currency: Iso4217CurrencySchema,
+  })
+  .describe(
+    "Nonnegative integer monetary amount in major currency units unless an enclosing schema declares a scale",
+  );
 
 export const FinancialSpreadSchema = z.strictObject({
   revenue: MoneySchema,
@@ -203,6 +211,8 @@ export const FinancialSpreadSchema = z.strictObject({
   debtService: NonnegativeMoneySchema.optional(),
   totalDebt: NonnegativeMoneySchema.optional(),
   cash: NonnegativeMoneySchema.optional(),
+  currentAssets: NonnegativeMoneySchema.optional(),
+  currentLiabilities: NonnegativeMoneySchema.optional(),
   totalAssets: NonnegativeMoneySchema.optional(),
   totalLiabilities: NonnegativeMoneySchema.optional(),
   equity: MoneySchema.optional(),

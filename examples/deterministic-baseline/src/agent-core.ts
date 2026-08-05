@@ -4,7 +4,6 @@ import {
   ToolFailureResultSchema,
   FinancialSpreadSchema,
   UnderwritingSubmissionSchema,
-  type FinancialSpread,
   type ToolName,
   type UnderwritingSubmission,
 } from "../../../packages/protocol/dist/index.js";
@@ -67,25 +66,6 @@ async function loadPolicies(url: string, token: string): Promise<PolicyRule[]> {
   return rules;
 }
 
-function amount(value: { amount: number } | undefined, field: string): number {
-  if (!value) throw new Error(`Canonical spread is missing ${field}`);
-  return value.amount;
-}
-
-function ratioValues(spread: FinancialSpread): Record<string, number> {
-  const ebitda = amount(spread.ebitda, "ebitda");
-  return {
-    dscr: ebitda / amount(spread.debtService, "debtService"),
-    leverage_ratio: amount(spread.totalDebt, "totalDebt") / ebitda,
-    interest_coverage:
-      ebitda / amount(spread.interestExpense, "interestExpense"),
-    current_ratio: 1.35,
-    equity_to_assets:
-      amount(spread.equity, "equity") /
-      amount(spread.totalAssets, "totalAssets"),
-  };
-}
-
 export async function runDeterministicAgent(
   toolGatewayUrl: string,
   bearerToken: string,
@@ -125,10 +105,25 @@ export async function runDeterministicAgent(
   const spread = FinancialSpreadSchema.parse(
     canonicalRecord.record["financialSpread"],
   );
-  await callTool(toolGatewayUrl, bearerToken, "finance.calculate_ratios", {
-    spread,
-  });
-  const ratios = ratioValues(spread);
+  const ratioResult = await callTool(
+    toolGatewayUrl,
+    bearerToken,
+    "finance.calculate_ratios",
+    { spread },
+  );
+  const ratios = ratioResult["ratios"] as Record<string, number>;
+  const canonicalRatios = canonicalRecord.record["ratios"] as Record<
+    string,
+    number
+  >;
+  for (const [name, expected] of Object.entries(canonicalRatios)) {
+    const actual = ratios[name];
+    if (actual === undefined || Math.abs(actual - expected) > 1e-9) {
+      throw new Error(
+        `Finance ratio ${name} disagrees with canonical input: ${actual} !== ${expected}`,
+      );
+    }
+  }
   // Preserve the case-declared source identity carried by canonical facts.
   const evidence = [{ sourceId: "src_financials_2024" }];
   const evaluations = policies.map((rule) => {

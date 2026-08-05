@@ -10,7 +10,7 @@
     {
       "ruleId": "rule_dscr_minimum",
       "passed": true,
-      "input": { "dscr": 2.74 },
+      "input": { "dscr": 2.737 },
       "threshold": 1.25,
       "operator": ">=",
       "exceptionDisclosed": false
@@ -18,7 +18,7 @@
     {
       "ruleId": "rule_leverage_maximum",
       "passed": true,
-      "input": { "leverage_ratio": 2.02 },
+      "input": { "leverage_ratio": 2.019 },
       "threshold": 4.0,
       "operator": "<=",
       "exceptionDisclosed": false
@@ -26,7 +26,7 @@
     {
       "ruleId": "rule_interest_coverage_minimum",
       "passed": true,
-      "input": { "interest_coverage": 8.67 },
+      "input": { "interest_coverage": 8.667 },
       "threshold": 3.0,
       "operator": ">=",
       "exceptionDisclosed": false

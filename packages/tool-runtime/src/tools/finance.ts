@@ -186,7 +186,8 @@ export function calculateRatios(
   const interestExpense = amount(spread.interestExpense);
   const debtService = amount(spread.debtService);
   const totalDebt = amount(spread.totalDebt);
-  const cash = amount(spread.cash);
+  const currentAssets = amount(spread.currentAssets);
+  const currentLiabilities = amount(spread.currentLiabilities);
   const totalAssets = amount(spread.totalAssets);
   const equity = amount(spread.equity);
   const netIncome = amount(spread.netIncome);
@@ -198,8 +199,9 @@ export function calculateRatios(
   setRatio(ratios, "interest_coverage", ebitda, interestExpense);
   setRatio(ratios, "total_debt_to_ebitda", totalDebt, ebitda);
   setRatio(ratios, "debt_to_equity", totalDebt, equity);
-  setRatio(ratios, "current_ratio", cash, debtService);
-  setRatio(ratios, "leverage_ratio", totalDebt, totalAssets);
+  setRatio(ratios, "current_ratio", currentAssets, currentLiabilities);
+  setRatio(ratios, "leverage_ratio", totalDebt, ebitda);
+  setRatio(ratios, "equity_to_assets", equity, totalAssets);
   setRatio(ratios, "return_on_assets", netIncome, totalAssets);
   setRatio(ratios, "return_on_equity", netIncome, equity);
   setRatio(ratios, "asset_turnover", revenue, totalAssets);
@@ -226,6 +228,8 @@ function currencyErrors(spread: FinancialSpread): string[] {
       spread.debtService,
       spread.totalDebt,
       spread.cash,
+      spread.currentAssets,
+      spread.currentLiabilities,
       spread.totalAssets,
       spread.totalLiabilities,
       spread.equity,

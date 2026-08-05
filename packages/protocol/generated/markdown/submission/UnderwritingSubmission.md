@@ -33,23 +33,27 @@ See [UnderwritingSubmission.json](../../json-schema/submission/UnderwritingSubmi
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `amount` | integer | ✓ |  |
-| `currency` | [`__schema1`](#__schema1) | ✓ |  |
+| `amount` | [`__schema1`](#__schema1) | ✓ |  |
+| `currency` | [`__schema2`](#__schema2) | ✓ |  |
 
 ### __schema1
 
 ### __schema2
 
+### __schema3
+
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `amount` | integer | ✓ |  |
-| `currency` | [`__schema1`](#__schema1) | ✓ |  |
-
-### __schema3
+| `amount` | [`__schema4`](#__schema4) | ✓ |  |
+| `currency` | [`__schema2`](#__schema2) | ✓ |  |
 
 ### __schema4
 
 ### __schema5
+
+### __schema6
+
+### __schema7
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
@@ -59,11 +63,11 @@ See [UnderwritingSubmission.json](../../json-schema/submission/UnderwritingSubmi
 | `startOffset` | integer |  |  |
 | `endOffset` | integer |  |  |
 
-### __schema6
-
-### __schema7
-
 ### __schema8
+
+### __schema9
+
+### __schema10
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|

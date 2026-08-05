@@ -4,11 +4,25 @@
   "type": "object",
   "properties": {
     "amount": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "currency": {
+      "$ref": "#/$defs/__schema1"
+    }
+  },
+  "required": [
+    "amount",
+    "currency"
+  ],
+  "additionalProperties": false,
+  "description": "Integer monetary amount in major currency units unless an enclosing schema declares a scale",
+  "$defs": {
+    "__schema0": {
       "type": "integer",
       "minimum": -9007199254740991,
       "maximum": 9007199254740991
     },
-    "currency": {
+    "__schema1": {
       "type": "string",
       "enum": [
         "AED",
@@ -190,10 +204,5 @@
         "ZWG"
       ]
     }
-  },
-  "required": [
-    "amount",
-    "currency"
-  ],
-  "additionalProperties": false
+  }
 }

@@ -230,11 +230,11 @@
       },
       "Money": {
         "$ref": "../json-schema/submission/Money.json",
-        "description": "Monetary amount in minor units with ISO 4217 currency"
+        "description": "Integer monetary amount in major currency units unless an enclosing schema declares a scale"
       },
       "NonnegativeMoney": {
         "$ref": "../json-schema/submission/NonnegativeMoney.json",
-        "description": "Naturally nonnegative monetary amount in minor units"
+        "description": "Nonnegative integer monetary amount in major currency units unless an enclosing schema declares a scale"
       },
       "FinancialSpread": {
         "$ref": "../json-schema/submission/FinancialSpread.json",

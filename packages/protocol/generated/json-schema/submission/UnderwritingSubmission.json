@@ -29,19 +29,25 @@
           "$ref": "#/$defs/__schema0"
         },
         "debtService": {
-          "$ref": "#/$defs/__schema2"
+          "$ref": "#/$defs/__schema3"
         },
         "totalDebt": {
-          "$ref": "#/$defs/__schema2"
+          "$ref": "#/$defs/__schema3"
         },
         "cash": {
-          "$ref": "#/$defs/__schema2"
+          "$ref": "#/$defs/__schema3"
+        },
+        "currentAssets": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "currentLiabilities": {
+          "$ref": "#/$defs/__schema3"
         },
         "totalAssets": {
-          "$ref": "#/$defs/__schema2"
+          "$ref": "#/$defs/__schema3"
         },
         "totalLiabilities": {
-          "$ref": "#/$defs/__schema2"
+          "$ref": "#/$defs/__schema3"
         },
         "equity": {
           "$ref": "#/$defs/__schema0"
@@ -73,7 +79,7 @@
           "additionalProperties": false
         },
         "currency": {
-          "$ref": "#/$defs/__schema1"
+          "$ref": "#/$defs/__schema2"
         },
         "scale": {
           "type": "string",
@@ -111,10 +117,10 @@
             "type": "string"
           },
           "value": {
-            "$ref": "#/$defs/__schema3"
+            "$ref": "#/$defs/__schema5"
           },
           "normalizedValue": {
-            "$ref": "#/$defs/__schema4"
+            "$ref": "#/$defs/__schema6"
           },
           "type": {
             "type": "string"
@@ -123,7 +129,7 @@
             "type": "string"
           },
           "currency": {
-            "$ref": "#/$defs/__schema1"
+            "$ref": "#/$defs/__schema2"
           },
           "scale": {
             "type": "integer",
@@ -154,7 +160,7 @@
             "minItems": 1,
             "type": "array",
             "items": {
-              "$ref": "#/$defs/__schema5"
+              "$ref": "#/$defs/__schema7"
             }
           },
           "confidence": {
@@ -203,7 +209,7 @@
           "evidence": {
             "type": "array",
             "items": {
-              "$ref": "#/$defs/__schema5"
+              "$ref": "#/$defs/__schema7"
             }
           },
           "confidence": {
@@ -385,10 +391,10 @@
                 "type": "boolean"
               },
               "input": {
-                "$ref": "#/$defs/__schema6"
+                "$ref": "#/$defs/__schema8"
               },
               "threshold": {
-                "$ref": "#/$defs/__schema7"
+                "$ref": "#/$defs/__schema9"
               },
               "operator": {
                 "type": "string"
@@ -433,7 +439,7 @@
           "maximum": 1
         },
         "proposedAmount": {
-          "$ref": "#/$defs/__schema2"
+          "$ref": "#/$defs/__schema3"
         },
         "proposedTermMonths": {
           "type": "integer",
@@ -451,7 +457,7 @@
               "evidence": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/$defs/__schema5"
+                  "$ref": "#/$defs/__schema7"
                 }
               }
             },
@@ -486,7 +492,7 @@
         "rationale": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/__schema8"
+            "$ref": "#/$defs/__schema10"
           }
         }
       },
@@ -508,7 +514,7 @@
         "claims": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/__schema8"
+            "$ref": "#/$defs/__schema10"
           }
         }
       },
@@ -584,21 +590,25 @@
       "type": "object",
       "properties": {
         "amount": {
-          "type": "integer",
-          "minimum": -9007199254740991,
-          "maximum": 9007199254740991
+          "$ref": "#/$defs/__schema1"
         },
         "currency": {
-          "$ref": "#/$defs/__schema1"
+          "$ref": "#/$defs/__schema2"
         }
       },
       "required": [
         "amount",
         "currency"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "Integer monetary amount in major currency units unless an enclosing schema declares a scale"
     },
     "__schema1": {
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    },
+    "__schema2": {
       "type": "string",
       "enum": [
         "AED",
@@ -780,56 +790,29 @@
         "ZWG"
       ]
     },
-    "__schema2": {
+    "__schema3": {
       "type": "object",
       "properties": {
         "amount": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
+          "$ref": "#/$defs/__schema4"
         },
         "currency": {
-          "$ref": "#/$defs/__schema1"
+          "$ref": "#/$defs/__schema2"
         }
       },
       "required": [
         "amount",
         "currency"
       ],
-      "additionalProperties": false
-    },
-    "__schema3": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "number"
-        },
-        {
-          "type": "boolean"
-        },
-        {
-          "type": "null"
-        },
-        {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/__schema3"
-          }
-        },
-        {
-          "type": "object",
-          "propertyNames": {
-            "type": "string"
-          },
-          "additionalProperties": {
-            "$ref": "#/$defs/__schema3"
-          }
-        }
-      ]
+      "additionalProperties": false,
+      "description": "Nonnegative integer monetary amount in major currency units unless an enclosing schema declares a scale"
     },
     "__schema4": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "__schema5": {
       "anyOf": [
         {
           "type": "string"
@@ -846,7 +829,7 @@
         {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/__schema4"
+            "$ref": "#/$defs/__schema5"
           }
         },
         {
@@ -855,42 +838,10 @@
             "type": "string"
           },
           "additionalProperties": {
-            "$ref": "#/$defs/__schema4"
+            "$ref": "#/$defs/__schema5"
           }
         }
       ]
-    },
-    "__schema5": {
-      "type": "object",
-      "properties": {
-        "sourceId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "documentId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "page": {
-          "type": "integer",
-          "exclusiveMinimum": 0,
-          "maximum": 9007199254740991
-        },
-        "startOffset": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
-        },
-        "endOffset": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991
-        }
-      },
-      "required": [
-        "sourceId"
-      ],
-      "additionalProperties": false
     },
     "__schema6": {
       "anyOf": [
@@ -924,6 +875,38 @@
       ]
     },
     "__schema7": {
+      "type": "object",
+      "properties": {
+        "sourceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "documentId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "page": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "startOffset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "endOffset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "sourceId"
+      ],
+      "additionalProperties": false
+    },
+    "__schema8": {
       "anyOf": [
         {
           "type": "string"
@@ -940,7 +923,7 @@
         {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/__schema7"
+            "$ref": "#/$defs/__schema8"
           }
         },
         {
@@ -949,12 +932,43 @@
             "type": "string"
           },
           "additionalProperties": {
-            "$ref": "#/$defs/__schema7"
+            "$ref": "#/$defs/__schema8"
           }
         }
       ]
     },
-    "__schema8": {
+    "__schema9": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema9"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema9"
+          }
+        }
+      ]
+    },
+    "__schema10": {
       "type": "object",
       "properties": {
         "claim": {
@@ -963,7 +977,7 @@
         "evidence": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/__schema5"
+            "$ref": "#/$defs/__schema7"
           }
         },
         "confidence": {

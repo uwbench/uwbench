@@ -79,23 +79,27 @@ See [RunStatusResponse.json](../../../../packages/protocol/generated/json-schema
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `amount` | integer | ✓ |  |
-| `currency` | [`__schema2`](#__schema2) | ✓ |  |
+| `amount` | [`__schema2`](#__schema2) | ✓ |  |
+| `currency` | [`__schema3`](#__schema3) | ✓ |  |
 
 ### __schema2
 
 ### __schema3
 
+### __schema4
+
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `amount` | integer | ✓ |  |
-| `currency` | [`__schema2`](#__schema2) | ✓ |  |
-
-### __schema4
+| `amount` | [`__schema5`](#__schema5) | ✓ |  |
+| `currency` | [`__schema3`](#__schema3) | ✓ |  |
 
 ### __schema5
 
 ### __schema6
+
+### __schema7
+
+### __schema8
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
@@ -105,11 +109,11 @@ See [RunStatusResponse.json](../../../../packages/protocol/generated/json-schema
 | `startOffset` | integer |  |  |
 | `endOffset` | integer |  |  |
 
-### __schema7
-
-### __schema8
-
 ### __schema9
+
+### __schema10
+
+### __schema11
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
@@ -117,7 +121,7 @@ See [RunStatusResponse.json](../../../../packages/protocol/generated/json-schema
 | `evidence` | array | ✓ |  |
 | `confidence` | number | ✓ |  |
 
-### __schema10
+### __schema12
 
 ---
 *Generated from Zod schema. Do not edit directly.*

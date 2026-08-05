@@ -189,6 +189,7 @@
     ],
     "scope_exceptions": [
       "packages/protocol/src/**",
+      "packages/protocol/scripts/**",
       "packages/protocol/package.json",
       "package.json",
       "tsconfig.base.json",
@@ -710,6 +711,7 @@
       "packages/case-schema/src/**",
       "packages/protocol/src/**",
       "packages/protocol/generated/**",
+      "packages/protocol/scripts/**",
       "docs/specification/generated/**",
       "packages/runner/src/**",
       "packages/tool-runtime/src/**",
@@ -725,11 +727,11 @@
     "status": "gated_pass",
     "priority": 19,
     "assignee": "orchestrator",
-    "started_at": "2026-08-05T17:10:20.395Z",
-    "attempts": 16,
-    "failures": 6,
-    "review_failures": 9,
+    "started_at": "2026-08-05T17:28:37.832Z",
+    "attempts": 18,
+    "failures": 7,
+    "review_failures": 10,
     "failure_limit": 9,
-    "completed_at": "2026-08-05T17:18:52.528Z"
+    "completed_at": "2026-08-05T17:29:05.086Z"
   }
 ]

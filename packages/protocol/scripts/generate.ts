@@ -531,13 +531,15 @@ export const SCHEMAS: {
     name: "Money",
     schema: SubmissionSchemas.MoneySchema,
     category: "submission",
-    description: "Monetary amount in minor units with ISO 4217 currency",
+    description:
+      "Integer monetary amount in major currency units unless an enclosing schema declares a scale",
   },
   {
     name: "NonnegativeMoney",
     schema: SubmissionSchemas.NonnegativeMoneySchema,
     category: "submission",
-    description: "Naturally nonnegative monetary amount in minor units",
+    description:
+      "Nonnegative integer monetary amount in major currency units unless an enclosing schema declares a scale",
   },
   {
     name: "FinancialSpread",

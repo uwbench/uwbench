@@ -20,16 +20,18 @@ See [FinancialSpread.json](../../../../packages/protocol/generated/json-schema/s
 | `operatingExpenses` | [`__schema0`](#__schema0) |  |  |  |
 | `ebitda` | [`__schema0`](#__schema0) |  |  |  |
 | `interestExpense` | [`__schema0`](#__schema0) |  |  |  |
-| `debtService` | [`__schema2`](#__schema2) |  |  |  |
-| `totalDebt` | [`__schema2`](#__schema2) |  |  |  |
-| `cash` | [`__schema2`](#__schema2) |  |  |  |
-| `totalAssets` | [`__schema2`](#__schema2) |  |  |  |
-| `totalLiabilities` | [`__schema2`](#__schema2) |  |  |  |
+| `debtService` | [`__schema3`](#__schema3) |  |  |  |
+| `totalDebt` | [`__schema3`](#__schema3) |  |  |  |
+| `cash` | [`__schema3`](#__schema3) |  |  |  |
+| `currentAssets` | [`__schema3`](#__schema3) |  |  |  |
+| `currentLiabilities` | [`__schema3`](#__schema3) |  |  |  |
+| `totalAssets` | [`__schema3`](#__schema3) |  |  |  |
+| `totalLiabilities` | [`__schema3`](#__schema3) |  |  |  |
 | `equity` | [`__schema0`](#__schema0) |  |  |  |
 | `taxes` | [`__schema0`](#__schema0) |  |  |  |
 | `netIncome` | [`__schema0`](#__schema0) |  |  |  |
 | `period` | object | ✓ |  |  |
-| `currency` | [`__schema1`](#__schema1) | ✓ |  |  |
+| `currency` | [`__schema2`](#__schema2) | ✓ |  |  |
 | `scale` | string | ✓ |  | enum: [units, thousands, millions, billions] |
 | `signConvention` | string | ✓ |  | enum: [positive_revenue_negative_expense, all_positive, all_negative] |
 
@@ -39,17 +41,21 @@ See [FinancialSpread.json](../../../../packages/protocol/generated/json-schema/s
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `amount` | integer | ✓ |  |
-| `currency` | [`__schema1`](#__schema1) | ✓ |  |
+| `amount` | [`__schema1`](#__schema1) | ✓ |  |
+| `currency` | [`__schema2`](#__schema2) | ✓ |  |
 
 ### __schema1
 
 ### __schema2
 
+### __schema3
+
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `amount` | integer | ✓ |  |
-| `currency` | [`__schema1`](#__schema1) | ✓ |  |
+| `amount` | [`__schema4`](#__schema4) | ✓ |  |
+| `currency` | [`__schema2`](#__schema2) | ✓ |  |
+
+### __schema4
 
 ---
 *Generated from Zod schema. Do not edit directly.*

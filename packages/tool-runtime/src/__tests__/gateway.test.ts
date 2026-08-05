@@ -34,6 +34,8 @@ const spread: FinancialSpread = {
   debtService: { amount: 1_000_000, currency: "USD" },
   totalDebt: { amount: 4_000_000, currency: "USD" },
   cash: { amount: 1_000_000, currency: "USD" },
+  currentAssets: { amount: 2_000_000, currency: "USD" },
+  currentLiabilities: { amount: 1_000_000, currency: "USD" },
   totalAssets: { amount: 10_000_000, currency: "USD" },
   totalLiabilities: { amount: 6_000_000, currency: "USD" },
   equity: { amount: 4_000_000, currency: "USD" },
@@ -828,7 +830,9 @@ describe("deterministic finance functions", () => {
       dscr: 2,
       total_debt_to_ebitda: 2,
       debt_to_equity: 1,
-      leverage_ratio: 0.4,
+      current_ratio: 2,
+      leverage_ratio: 2,
+      equity_to_assets: 0.4,
     });
     expect(spread).toEqual(before);
   });

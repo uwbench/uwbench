@@ -58,6 +58,8 @@
         "debt_service": 380000,
         "total_debt": 2100000,
         "cash": 420000,
+        "current_assets": 1350000,
+        "current_liabilities": 1000000,
         "total_assets": 4800000,
         "total_liabilities": 2800000,
         "equity": 2000000,

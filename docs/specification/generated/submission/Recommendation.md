@@ -16,7 +16,7 @@ See [Recommendation.json](../../../../packages/protocol/generated/json-schema/su
 |------|------|----------|-------------|-------------|
 | `decision` | string | ✓ |  | enum: [APPROVE, APPROVE_WITH_CONDITIONS, REFER, DECLINE, INSUFFICIENT_INFORMATION] |
 | `confidence` | number | ✓ |  | minimum: 0<br>maximum: 1 |
-| `proposedAmount` | object |  |  |  |
+| `proposedAmount` | object |  | Nonnegative integer monetary amount in major currency units unless an enclosing schema declares a scale |  |
 | `proposedTermMonths` | integer |  |  | maximum: 9007199254740991<br>exclusiveMinimum: 0 |
 | `conditions` | array<`object`> | ✓ |  |  |
 | `policyExceptions` | array<`object`> | ✓ |  |  |
@@ -25,6 +25,10 @@ See [Recommendation.json](../../../../packages/protocol/generated/json-schema/su
 ## Definitions
 
 ### __schema0
+
+### __schema1
+
+### __schema2
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
