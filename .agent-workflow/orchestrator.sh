@@ -23,7 +23,7 @@ PI_MODEL="${PI_MODEL:-nvidia/nemotron-3-ultra-550b-a55b}"
 PI_THINKING="${PI_THINKING:-}"
 PI_TASK_TIMEOUT_SECONDS="${PI_TASK_TIMEOUT_SECONDS:-7200}"
 SCOPE_MODE="${SCOPE_MODE:-enforce}"
-RUN_BRANCH="${RUN_BRANCH:-workflow/phase-1}"
+RUN_BRANCH="${RUN_BRANCH:-workflow/phase-2}"
 MAIN_BRANCH="${MAIN_BRANCH:-main}"
 MAX_TASK_ATTEMPTS="${MAX_TASK_ATTEMPTS:-3}"
 
@@ -847,8 +847,49 @@ run_to_checkpoint() {
   done
 }
 
+run_all_tasks() {
+  while [[ -n "$(jq -r '.[] | select(.status != "gated_pass") | .id' "$TASKS_FILE")" ]]; do
+    local task_id
+    task_id="$(current_task)"
+    if [[ -z "$task_id" ]]; then
+      cmd_next
+      task_id="$(current_task)"
+    fi
+    [[ -n "$task_id" ]] || die "No task is ready in the active phase."
+
+    local failure_limit
+    failure_limit="$(task_failure_limit "$task_id")"
+    (( $(task_failures "$task_id") < failure_limit )) ||
+      die "$task_id reached its implementation failure limit of $failure_limit."
+
+    local task_exit=0
+    if run_active_task "$task_id"; then
+      task_exit=0
+    else
+      task_exit=$?
+    fi
+    if [[ "$task_exit" -eq 75 ]]; then
+      die "$task_id was deferred because NVIDIA capacity is unavailable. Resume with run-all later."
+    fi
+    if [[ "$task_exit" -eq 76 ]]; then
+      die "$task_id modified the primary checkout. Inspect $(artifact_dir "$task_id")/primary-checkout-leak.status before resuming."
+    fi
+    if [[ "$task_exit" -ne 0 ]]; then
+      if (( $(task_failures "$task_id") >= failure_limit )); then
+        die "$task_id failed its implementation gate $(task_failures "$task_id") times. Inspect $(artifact_dir "$task_id")."
+      fi
+      warn "Retrying $task_id with gate feedback."
+    fi
+  done
+}
+
 cmd_run_all() {
   cmd_bootstrap
+  if jq -e 'any(.[]; .id == "T16")' "$TASKS_FILE" >/dev/null; then
+    run_all_tasks
+    ok "Phase 2 implementation tasks passed on $RUN_BRANCH."
+    return 0
+  fi
   run_to_checkpoint T8
   run_to_checkpoint T15
   ok "Phase 0-1 implementation and both reviews passed on $RUN_BRANCH."
@@ -903,7 +944,7 @@ Usage: .agent-workflow/orchestrator.sh <command> [args]
 
 Primary commands:
   preflight                  Validate pi, its selected model, and local tools
-  run-all                    Run T1→T8, review, T9→T15, review
+  run-all                    Run the active phase manifest to its configured checkpoint or completion
   status                     Show tasks, branch, and checkpoint status
   promote                    Fast-forward main after the final human decision
 
