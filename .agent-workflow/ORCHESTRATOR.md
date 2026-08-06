@@ -111,11 +111,18 @@ export NVIDIA_API_KEY=nvapi-your-key
 export PI_BIN=pi
 export PI_PROVIDER=nvidia
 export PI_MODEL=nvidia/nemotron-3-ultra-550b-a55b
+# Phase 2 capacity fallback (requires an authenticated Gemini CLI; disable with PI_FALLBACK_ENABLED=0).
+export GEMINI_CLI_BIN=gemini
+export GEMINI_CLI_MODEL=gemini-2.5-pro
+export PI_FALLBACK_ENABLED=1
+export PI_FALLBACK_EXECUTOR=gemini-cli
+export PI_FALLBACK_PROVIDER=google
+export PI_FALLBACK_MODEL=gemini-2.5-pro
 # Optional: leave empty to use the model/extension default.
 export PI_THINKING=
 # Maximum wall-clock time for one pi implementation attempt (default: 2 hours).
 export PI_TASK_TIMEOUT_SECONDS=7200
-export RUN_BRANCH=workflow/phase-1
+export RUN_BRANCH=workflow/phase-2
 export MAIN_BRANCH=main
 export MAX_TASK_ATTEMPTS=3
 export SCOPE_MODE=enforce
@@ -123,10 +130,15 @@ export SCOPE_MODE=enforce
 
 Override these in the shell before starting the run.
 
-`pi` runs locally in print mode with `--no-session --approve`, the explicit
-provider/model above, and its normal coding tools. `NVIDIA_API_KEY` must be
-present in the shell that launches the orchestrator. The workflow intentionally
-never passes it as a CLI argument or writes it into the repository or artifacts.
+`pi` runs locally in print mode with `--no-session --approve`, the active
+provider/model, and its normal coding tools. NVIDIA remains the primary
+provider. When the primary model is unavailable at preflight, or its attempt
+returns a recognized capacity/429/overload/empty-response failure, the active
+task is retried once with the configured Gemini CLI fallback. The fallback
+never applies to implementation or deterministic-gate failures. Provider,
+model, and executor attempts are recorded in task artifact metadata, while
+API keys are never passed as CLI arguments or written into the repository or
+artifacts.
 
 Each `pi` implementation attempt is bounded by `PI_TASK_TIMEOUT_SECONDS`. The
 orchestrator uses GNU `timeout`/`gtimeout` when installed and a portable Perl
@@ -244,8 +256,10 @@ directory. Increase `MAX_TASK_ATTEMPTS` only after understanding the repeated
 failure.
 
 If NVIDIA reports `ResourceExhausted`, HTTP 429, overload, or temporary
-unavailability, the active task returns to `pending` without consuming a failure.
-Wait for provider capacity and run `run-all` again.
+unavailability, the active task uses the configured Gemini CLI fallback once.
+If both executors are unavailable, it returns to `pending` without consuming
+an implementation failure. Set `PI_FALLBACK_ENABLED=0` to retain strict
+NVIDIA-only behavior.
 
 If Codex itself cannot execute, the checkpoint is not treated as a failed
 implementation and the task is not reopened. Fix the local Codex invocation and

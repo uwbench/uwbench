@@ -20,12 +20,24 @@ CHECKPOINT_WORKTREES="$WORKFLOW_DIR/checkpoint-worktrees"
 PI_BIN="${PI_BIN:-pi}"
 PI_PROVIDER="${PI_PROVIDER:-nvidia}"
 PI_MODEL="${PI_MODEL:-nvidia/nemotron-3-ultra-550b-a55b}"
+PI_FALLBACK_ENABLED="${PI_FALLBACK_ENABLED:-1}"
+PI_FALLBACK_EXECUTOR="${PI_FALLBACK_EXECUTOR:-gemini-cli}"
+GEMINI_CLI_BIN="${GEMINI_CLI_BIN:-gemini}"
+GEMINI_CLI_MODEL="${GEMINI_CLI_MODEL:-gemini-2.5-pro}"
+PI_FALLBACK_PROVIDER="${PI_FALLBACK_PROVIDER:-google}"
+PI_FALLBACK_MODEL="${PI_FALLBACK_MODEL:-$GEMINI_CLI_MODEL}"
 PI_THINKING="${PI_THINKING:-}"
 PI_TASK_TIMEOUT_SECONDS="${PI_TASK_TIMEOUT_SECONDS:-7200}"
 SCOPE_MODE="${SCOPE_MODE:-enforce}"
 RUN_BRANCH="${RUN_BRANCH:-workflow/phase-2}"
 MAIN_BRANCH="${MAIN_BRANCH:-main}"
 MAX_TASK_ATTEMPTS="${MAX_TASK_ATTEMPTS:-3}"
+
+ACTIVE_PROVIDER="$PI_PROVIDER"
+ACTIVE_MODEL="$PI_MODEL"
+ACTIVE_EXECUTOR="pi"
+FALLBACK_READY=0
+FALLBACK_USED=0
 
 RED=$'\033[0;31m'
 GREEN=$'\033[0;32m'
@@ -173,17 +185,76 @@ cmd_preflight() {
     die "PI_TASK_TIMEOUT_SECONDS must be a positive integer."
   [[ "$SCOPE_MODE" == "enforce" || "$SCOPE_MODE" == "warn" || "$SCOPE_MODE" == "off" ]] ||
     die "SCOPE_MODE must be enforce, warn, or off."
-  [[ -n "${NVIDIA_API_KEY:-}" ]] ||
-    die "NVIDIA_API_KEY is not set in this shell; pi cannot use the NVIDIA provider."
+  [[ "$PI_FALLBACK_ENABLED" == "0" || "$PI_FALLBACK_ENABLED" == "1" ]] ||
+    die "PI_FALLBACK_ENABLED must be 0 or 1."
   git check-ref-format --branch "$RUN_BRANCH" >/dev/null
   node "$ORCHESTRATOR" validate
   bash -n "$0"
+  ACTIVE_PROVIDER="$PI_PROVIDER"
+  ACTIVE_MODEL="$PI_MODEL"
+  ACTIVE_EXECUTOR="pi"
+  FALLBACK_READY=0
+  FALLBACK_USED=0
+
+  local primary_key_available=0
+  if provider_key_available "$PI_PROVIDER"; then primary_key_available=1; fi
+  if (( primary_key_available == 1 )) && model_available "$PI_PROVIDER" "$PI_MODEL"; then
+    :
+  elif fallback_available; then
+    ACTIVE_PROVIDER="$PI_FALLBACK_PROVIDER"
+    ACTIVE_MODEL="$PI_FALLBACK_MODEL"
+    ACTIVE_EXECUTOR="$PI_FALLBACK_EXECUTOR"
+    FALLBACK_READY=1
+    FALLBACK_USED=1
+    warn "Primary provider/model unavailable; using configured fallback $ACTIVE_EXECUTOR ($ACTIVE_PROVIDER/$ACTIVE_MODEL)."
+  else
+    die "Primary provider/model is unavailable and no usable Gemini fallback is configured."
+  fi
+
+  if [[ "$PI_FALLBACK_ENABLED" == "1" ]] && fallback_available; then
+    FALLBACK_READY=1
+  fi
+  ok "Local workflow preflight passed for $ACTIVE_MODEL via $ACTIVE_EXECUTOR (provider $ACTIVE_PROVIDER)."
+}
+
+provider_key_name() {
+  case "$1" in
+    nvidia) printf 'NVIDIA_API_KEY' ;;
+    google) printf 'GEMINI_API_KEY' ;;
+    *) printf '' ;;
+  esac
+}
+
+provider_key_available() {
+  local key_name
+  key_name="$(provider_key_name "$1")"
+  [[ -n "$key_name" && -n "${!key_name:-}" ]]
+}
+
+model_available() {
+  local provider="$1"
+  local model="$2"
   local model_output
-  model_output="$("$PI_BIN" --list-models "$PI_MODEL" 2>&1)" ||
-    die "pi could not load its model catalog: $model_output"
-  printf '%s\n' "$model_output" | grep -F "$PI_MODEL" >/dev/null ||
-    die "pi model '$PI_MODEL' is unavailable. Check NVIDIA_API_KEY and pi model configuration."
-  ok "Local workflow preflight passed for $PI_MODEL (provider $PI_PROVIDER)."
+  model_output="$("$PI_BIN" --provider "$provider" --list-models "$model" 2>&1)" || return 1
+  printf '%s\n' "$model_output" | grep -F "$model" >/dev/null && return 0
+  printf '%s\n' "$model_output" | grep -F "${model#*/}" >/dev/null
+}
+
+fallback_available() {
+  [[ "$PI_FALLBACK_ENABLED" == "1" ]] || return 1
+  [[ "$PI_FALLBACK_PROVIDER" != "$ACTIVE_PROVIDER" ]] || return 1
+  case "$PI_FALLBACK_EXECUTOR" in
+    gemini-cli)
+      command -v "$GEMINI_CLI_BIN" >/dev/null 2>&1
+      ;;
+    pi)
+      provider_key_available "$PI_FALLBACK_PROVIDER" || return 1
+      model_available "$PI_FALLBACK_PROVIDER" "$PI_FALLBACK_MODEL"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 cmd_bootstrap() {
@@ -259,23 +330,47 @@ cmd_deploy() {
   baseline_sha="$(git -C "$worktree" rev-parse HEAD)"
   printf '%s\n' "$baseline_sha" > "$artifacts/implementation-baseline.sha"
 
-  local pi_args=(
-    "$PI_BIN"
-    --provider "$PI_PROVIDER"
-    --model "$PI_MODEL"
-    --no-session
-    --approve
-    -p
-  )
-  if [[ -n "$PI_THINKING" ]]; then
-    pi_args+=(--thinking "$PI_THINKING")
+  local pi_args
+  local prompt_content=""
+  if [[ "$ACTIVE_EXECUTOR" == "gemini-cli" ]]; then
+    prompt_content="$(<"$task_prompt")"
+    pi_args=(
+      "$GEMINI_CLI_BIN"
+      --model "$GEMINI_CLI_MODEL"
+      --approval-mode yolo
+      --output-format text
+      --prompt "$prompt_content"
+    )
+  else
+    pi_args=(
+      "$PI_BIN"
+      --provider "$ACTIVE_PROVIDER"
+      --model "$ACTIVE_MODEL"
+      --no-session
+      --approve
+      -p
+    )
+    if [[ -n "$PI_THINKING" ]]; then
+      pi_args+=(--thinking "$PI_THINKING")
+    fi
   fi
 
-  log "Running pi with $PI_MODEL for $task_id (timeout: ${PI_TASK_TIMEOUT_SECONDS}s)..."
+  log "Running $ACTIVE_EXECUTOR with $ACTIVE_MODEL for $task_id (timeout: ${PI_TASK_TIMEOUT_SECONDS}s)..."
+  jq -nc \
+    --arg executor "$ACTIVE_EXECUTOR" \
+    --arg provider "$ACTIVE_PROVIDER" \
+    --arg model "$ACTIVE_MODEL" \
+    --arg task "$task_id" \
+    '{executor:$executor,provider:$provider,model:$model,task:$task}' \
+    >> "$artifacts/provider-attempts.ndjson"
   local implement_exit=0
   if (
     cd "$worktree"
-    run_with_timeout "$PI_TASK_TIMEOUT_SECONDS" "${pi_args[@]}" < "$task_prompt"
+    if [[ "$ACTIVE_EXECUTOR" == "gemini-cli" ]]; then
+      run_with_timeout "$PI_TASK_TIMEOUT_SECONDS" "${pi_args[@]}"
+    else
+      run_with_timeout "$PI_TASK_TIMEOUT_SECONDS" "${pi_args[@]}" < "$task_prompt"
+    fi
   ) > "$artifacts/implement.log" 2>&1; then
     implement_exit=0
   else
@@ -740,6 +835,33 @@ run_active_task() {
     deploy_exit=$?
   fi
   if [[ "$deploy_exit" -ne 0 ]]; then
+    if {
+      [[ "$deploy_exit" -eq 74 ]] || is_transient_provider_failure "$artifacts/implement.log"
+    } && (( FALLBACK_READY == 1 && FALLBACK_USED == 0 )); then
+      cp "$artifacts/implement.log" "$artifacts/implement.primary.log"
+      ACTIVE_PROVIDER="$PI_FALLBACK_PROVIDER"
+      ACTIVE_MODEL="$PI_FALLBACK_MODEL"
+      ACTIVE_EXECUTOR="$PI_FALLBACK_EXECUTOR"
+      FALLBACK_USED=1
+      jq -n \
+        --arg fromExecutor "pi" \
+        --arg fromProvider "$PI_PROVIDER" \
+        --arg fromModel "$PI_MODEL" \
+        --arg toExecutor "$ACTIVE_EXECUTOR" \
+        --arg toProvider "$ACTIVE_PROVIDER" \
+        --arg toModel "$ACTIVE_MODEL" \
+        --arg reason "transient provider capacity or empty response" \
+        '{fromExecutor:$fromExecutor,fromProvider:$fromProvider,fromModel:$fromModel,toExecutor:$toExecutor,toProvider:$toProvider,toModel:$toModel,reason:$reason}' \
+        > "$artifacts/provider-fallback.json"
+      warn "$task_id encountered $PI_PROVIDER capacity; retrying once with $ACTIVE_EXECUTOR ($ACTIVE_PROVIDER/$ACTIVE_MODEL)."
+      if cmd_deploy "$task_id"; then
+        deploy_exit=0
+      else
+        deploy_exit=$?
+      fi
+    fi
+  fi
+  if [[ "$deploy_exit" -ne 0 ]]; then
     if [[ "$deploy_exit" -eq 76 ]]; then
       record_gate_failure \
         "$task_id" \
@@ -960,6 +1082,12 @@ Environment:
   PI_BIN=$PI_BIN
   PI_PROVIDER=$PI_PROVIDER
   PI_MODEL=$PI_MODEL
+  PI_FALLBACK_ENABLED=$PI_FALLBACK_ENABLED
+  PI_FALLBACK_EXECUTOR=$PI_FALLBACK_EXECUTOR
+  GEMINI_CLI_BIN=$GEMINI_CLI_BIN
+  GEMINI_CLI_MODEL=$GEMINI_CLI_MODEL
+  PI_FALLBACK_PROVIDER=$PI_FALLBACK_PROVIDER
+  PI_FALLBACK_MODEL=$PI_FALLBACK_MODEL
   PI_THINKING=${PI_THINKING:-<model default>}
   PI_TASK_TIMEOUT_SECONDS=$PI_TASK_TIMEOUT_SECONDS
   RUN_BRANCH=$RUN_BRANCH
