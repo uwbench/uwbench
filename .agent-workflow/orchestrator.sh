@@ -546,7 +546,7 @@ is_transient_provider_failure() {
   local log_file="$1"
   [[ -f "$log_file" ]] || return 1
   grep -Eqi \
-    'ResourceExhausted|worker .*request limit|rate[ -]?limit|HTTP 429|429 status code|status code[^0-9]*429|40[04] status code \(no body\)|instance_id=.*not found for endpoint|temporarily unavailable|service unavailable|overloaded|connection error|request timed out|request timeout|ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT|Headers Timeout Error' \
+    'ResourceExhausted|worker .*request limit|rate[ -]?limit|HTTP 429|429 status code|status code[^0-9]*429|40[04] status code \(no body\)|instance_id=.*not found for endpoint|temporarily unavailable|service unavailable|overloaded|connection error|request timed out|request timeout|ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT|Headers Timeout Error|Stream ended without finish_reason|stream ended without|no finish_reason|Premature close|ERR_STREAM_PREMATURE_CLOSE' \
     "$log_file"
 }
 
