@@ -18,14 +18,14 @@
     ],
     "depends_on": [],
     "estimated_minutes": 180,
-    "status": "in_progress",
+    "status": "gated_pass",
     "priority": 1,
     "failure_limit": 3,
-    "assignee": "pi",
-    "attempts": 0,
-    "review_notes": "Automated deterministic gate failed.\n\nLast gate output:\n  ✓ Generated generated/markdown/submission/Recommendation.md\n  ✓ Generated docs/specification/generated/submission/Recommendation.md\n  ✓ Generated generated/markdown/submission/Decision.md\n  ✓ Generated docs/specification/generated/submission/Decision.md\n  ✓ Generated generated/markdown/submission/Memo.md\n  ✓ Generated docs/specification/generated/submission/Memo.md\n  ✓ Generated generated/markdown/submission/Confidence.md\n  ✓ Generated docs/specification/generated/submission/Confidence.md\n  ✓ Generated generated/markdown/submission/Usage.md\n  ✓ Generated docs/specification/generated/submission/Usage.md\n  ✓ Generated generated/markdown/submission/UnderwritingSubmission.md\n  ✓ Generated docs/specification/generated/submission/UnderwritingSubmission.md\n\n✅ Generation complete!\n\nOutput directories:\n  - packages/protocol/generated/json-schema\n  - packages/protocol/generated/openapi\n  - packages/protocol/generated/markdown\n  - docs/specification/generated\n\n## pnpm changeset:check\n\n> uwbench@0.0.0 changeset:check /Users/tobias/Development/uwbench/.agent-workflow/gate-worktrees/T16-attempt-2\n> changeset status\n\n🦋  info NO packages to be bumped at patch\n🦋  ---\n🦋  info NO packages to be bumped at minor\n🦋  ---\n🦋  info NO packages to be bumped at major\n\n## pnpm smoke\n\n> uwbench@0.0.0 smoke /Users/tobias/Development/uwbench/.agent-workflow/gate-worktrees/T16-attempt-2\n> bash scripts/smoke-reasoning-only.sh\n\nUWBench Phase 1 reasoning_only smoke\n  ✅ Event hash chain valid\n  ✅ Checksums valid\n  ✅ Manifest valid\n  ✅ Submission schema valid\n  ✅ Phase 1 not_scored result valid\nSmoke assertions passed: 5 rules, >=3 risks, 2 retrieved follow-ups, trusted events, not_scored\n\n RUN  v2.1.9 /Users/tobias/Development/uwbench/.agent-workflow/gate-worktrees/T16-attempt-2\n\n ✓ packages/tool-runtime/src/__tests__/gateway.test.ts (22 tests) 251ms\n ✓ packages/runner/src/__tests__/runner.test.ts (50 tests) 8762ms\n   ✓ LocalRunner > should enforce wall clock budget 1051ms\n   ✓ LocalRunner > rejects a completed response that crosses the hard deadline 2112ms\n   ✓ LocalRunner > drains an in-flight artifact before appending the cancellation event 3214ms\n   ✓ LocalRunner > fails closed when remote cancellation has a cancellation timeout 1013ms\n\n Test Files  2 passed (2)\n      Tests  72 passed (72)\n   Start at  20:38:01\n   Duration  9.40s (transform 275ms, setup 0ms, collect 717ms, tests 9.01s, environment 0ms, prepare 119ms)\n\n ELIFECYCLE  Command failed with exit code 1.",
-    "failures": 0,
-    "started_at": "2026-08-07T13:38:16.083Z"
+    "assignee": "orchestrator",
+    "attempts": 1,
+    "failures": 1,
+    "started_at": "2026-08-07T14:49:46.894Z",
+    "completed_at": "2026-08-07T15:53:38.253Z"
   },
   {
     "id": "T17",
