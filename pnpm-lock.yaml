@@ -209,6 +209,28 @@ importers:
         specifier: ^2.0.5
         version: 2.1.9(@types/node@22.20.1)
 
+  packages/scorer-policy:
+    dependencies:
+      '@uwbench/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@uwbench/scorer-core':
+        specifier: workspace:*
+        version: link:../scorer-core
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+      vitest:
+        specifier: ^2.0.5
+        version: 2.1.9(@types/node@22.20.1)
+
   packages/testkit:
     dependencies:
       '@uwbench/protocol':
