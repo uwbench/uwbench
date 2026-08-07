@@ -244,7 +244,7 @@ pnpm --silent exec vitest run \
 
 SCAFFOLD_DIR="${SMOKE_TEMP}/scaffold-agent"
 pnpm --silent uwbench init-agent "${SCAFFOLD_DIR}" >/dev/null
-pnpm --dir "${SCAFFOLD_DIR}" install --offline --frozen-lockfile=false >/dev/null
+pnpm --dir "${SCAFFOLD_DIR}" install --prefer-offline --frozen-lockfile=false >/dev/null
 pnpm --dir "${SCAFFOLD_DIR}" build >/dev/null
 PORT="${SCAFFOLD_PORT}" HOST=127.0.0.1 pnpm --dir "${SCAFFOLD_DIR}" start \
   >"${SMOKE_TEMP}/scaffold.log" 2>&1 &
