@@ -240,8 +240,7 @@ NODE
 
 pnpm --silent exec vitest run \
   packages/tool-runtime/src/__tests__/gateway.test.ts \
-  packages/runner/src/__tests__/runner.test.ts \
-  -t "rejects conflicting reuse|meters cached responses|rejects schema-valid evidence|explicitly rejects a stale"
+  packages/runner/src/__tests__/runner.test.ts
 
 SCAFFOLD_DIR="${SMOKE_TEMP}/scaffold-agent"
 pnpm --silent uwbench init-agent "${SCAFFOLD_DIR}" >/dev/null

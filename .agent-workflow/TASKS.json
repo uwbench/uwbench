@@ -10,12 +10,22 @@
       "Deterministic tests cover correct, missing, conflicting, and malformed fields",
       "Package exports a versioned score component without semantic-judge dependence"
     ],
-    "files_touched": ["packages/scorer-financial/src/**", "packages/scorer-financial/package.json"],
+    "files_touched": [
+      "packages/scorer-financial/src/**",
+      "packages/scorer-financial/package.json",
+      "tsconfig.json",
+      "vitest.config.ts"
+    ],
     "depends_on": [],
     "estimated_minutes": 180,
     "status": "pending",
     "priority": 1,
-    "failure_limit": 3
+    "failure_limit": 3,
+    "assignee": "pi",
+    "attempts": 3,
+    "review_notes": "Automated deterministic gate failed.\n\nLast gate output:\n  ✓ Generated generated/markdown/submission/Condition.md\n  ✓ Generated docs/specification/generated/submission/Condition.md\n  ✓ Generated generated/markdown/submission/PolicyException.md\n  ✓ Generated docs/specification/generated/submission/PolicyException.md\n  ✓ Generated generated/markdown/submission/Recommendation.md\n  ✓ Generated docs/specification/generated/submission/Recommendation.md\n  ✓ Generated generated/markdown/submission/Decision.md\n  ✓ Generated docs/specification/generated/submission/Decision.md\n  ✓ Generated generated/markdown/submission/Memo.md\n  ✓ Generated docs/specification/generated/submission/Memo.md\n  ✓ Generated generated/markdown/submission/Confidence.md\n  ✓ Generated docs/specification/generated/submission/Confidence.md\n  ✓ Generated generated/markdown/submission/Usage.md\n  ✓ Generated docs/specification/generated/submission/Usage.md\n  ✓ Generated generated/markdown/submission/UnderwritingSubmission.md\n  ✓ Generated docs/specification/generated/submission/UnderwritingSubmission.md\n\n✅ Generation complete!\n\nOutput directories:\n  - packages/protocol/generated/json-schema\n  - packages/protocol/generated/openapi\n  - packages/protocol/generated/markdown\n  - docs/specification/generated\n\n## pnpm changeset:check\n\n> uwbench@0.0.0 changeset:check /Users/tobias/Development/uwbench/.agent-workflow/gate-worktrees/T16-attempt-3\n> changeset status\n\n🦋  info NO packages to be bumped at patch\n🦋  ---\n🦋  info NO packages to be bumped at minor\n🦋  ---\n🦋  info NO packages to be bumped at major\n\n## pnpm smoke\n\n> uwbench@0.0.0 smoke /Users/tobias/Development/uwbench/.agent-workflow/gate-worktrees/T16-attempt-3\n> bash scripts/smoke-reasoning-only.sh\n\nUWBench Phase 1 reasoning_only smoke\n  ✅ Event hash chain valid\n  ✅ Checksums valid\n  ✅ Manifest valid\n  ✅ Submission schema valid\n  ✅ Phase 1 not_scored result valid\nSmoke assertions passed: 5 rules, >=3 risks, 2 retrieved follow-ups, trusted events, not_scored\n\n RUN  v2.1.9 /Users/tobias/Development/uwbench/.agent-workflow/gate-worktrees/T16-attempt-3\n\n ✓ packages/tool-runtime/src/__tests__/gateway.test.ts (22 tests | 20 skipped) 26ms\n ✓ packages/runner/src/__tests__/runner.test.ts (50 tests | 48 skipped) 42ms\n\n Test Files  2 passed (2)\n      Tests  4 passed | 68 skipped (72)\n   Start at  14:03:17\n   Duration  324ms (transform 113ms, setup 0ms, collect 289ms, tests 67ms, environment 0ms, prepare 48ms)\n\n ELIFECYCLE  Command failed with exit code 1.",
+    "failures": 3,
+    "started_at": "2026-08-07T06:24:22.248Z"
   },
   {
     "id": "T17",
@@ -28,7 +38,10 @@
       "Invalid schema and mandatory-decline safety caps are deterministic and tested",
       "Package exports a versioned policy score component"
     ],
-    "files_touched": ["packages/scorer-policy/src/**", "packages/scorer-policy/package.json"],
+    "files_touched": [
+      "packages/scorer-policy/src/**",
+      "packages/scorer-policy/package.json"
+    ],
     "depends_on": [],
     "estimated_minutes": 180,
     "status": "pending",
@@ -46,7 +59,10 @@
       "Fabricated citations zero the evidence component and apply the documented penalty",
       "Tests cover page, character, unreachable, and missing-anchor cases"
     ],
-    "files_touched": ["packages/scorer-evidence/src/**", "packages/scorer-evidence/package.json"],
+    "files_touched": [
+      "packages/scorer-evidence/src/**",
+      "packages/scorer-evidence/package.json"
+    ],
     "depends_on": [],
     "estimated_minutes": 150,
     "status": "pending",
@@ -64,7 +80,10 @@
       "Semantic judging is only used for inconclusive matches and cannot override deterministic results",
       "Tests cover critical, duplicate, unsupported, and evidence-backed risks"
     ],
-    "files_touched": ["packages/scorer-risk/src/**", "packages/scorer-risk/package.json"],
+    "files_touched": [
+      "packages/scorer-risk/src/**",
+      "packages/scorer-risk/package.json"
+    ],
     "depends_on": [],
     "estimated_minutes": 150,
     "status": "pending",
@@ -82,7 +101,10 @@
       "Brier score and expected calibration error are computed across cases",
       "Tests cover decline, refer, approve, and insufficient-information outcomes"
     ],
-    "files_touched": ["packages/scorer-core/src/decision.ts", "packages/scorer-core/src/**"],
+    "files_touched": [
+      "packages/scorer-core/src/decision.ts",
+      "packages/scorer-core/src/**"
+    ],
     "depends_on": [],
     "estimated_minutes": 150,
     "status": "pending",
@@ -100,7 +122,10 @@
       "Malformed or unverifiable event streams fail closed",
       "Deterministic fixtures cover successful, incomplete, and failed workflows"
     ],
-    "files_touched": ["packages/scorer-workflow/src/**", "packages/scorer-workflow/package.json"],
+    "files_touched": [
+      "packages/scorer-workflow/src/**",
+      "packages/scorer-workflow/package.json"
+    ],
     "depends_on": [],
     "estimated_minutes": 180,
     "status": "pending",
@@ -118,8 +143,19 @@
       "Safety caps are applied after component scoring and are auditable",
       "JSON and static HTML reports name exact scorer versions and are snapshot-tested"
     ],
-    "files_touched": ["packages/report/src/**", "packages/report/package.json", "packages/scorer-core/src/**"],
-    "depends_on": ["T16", "T17", "T18", "T19", "T20", "T21"],
+    "files_touched": [
+      "packages/report/src/**",
+      "packages/report/package.json",
+      "packages/scorer-core/src/**"
+    ],
+    "depends_on": [
+      "T16",
+      "T17",
+      "T18",
+      "T19",
+      "T20",
+      "T21"
+    ],
     "estimated_minutes": 210,
     "status": "pending",
     "priority": 7,
@@ -136,7 +172,10 @@
       "Loan requests, policies, missing-information events, risks, and decisions are labeled benchmark-authored synthetic references",
       "No mutable live fetch occurs during a scored run and privacy/lane validation passes for every case"
     ],
-    "files_touched": ["benchmark/commercial-credit-v0.1/public-cases/**", "scripts/datasets/**"],
+    "files_touched": [
+      "benchmark/commercial-credit-v0.1/public-cases/**",
+      "scripts/datasets/**"
+    ],
     "depends_on": [],
     "estimated_minutes": 600,
     "status": "pending",
@@ -154,8 +193,14 @@
       "Scores perfectly on narrow implemented fields and zero on unimplemented fields",
       "Runs reproducibly across the initial public case set"
     ],
-    "files_touched": ["examples/deterministic-baseline/**", "scripts/**"],
-    "depends_on": ["T22", "T23"],
+    "files_touched": [
+      "examples/deterministic-baseline/**",
+      "scripts/**"
+    ],
+    "depends_on": [
+      "T22",
+      "T23"
+    ],
     "estimated_minutes": 180,
     "status": "pending",
     "priority": 9,
@@ -172,8 +217,13 @@
       "Run metadata records prompt/model/provider versions",
       "Baseline behavior is reproducible and scored through the common report"
     ],
-    "files_touched": ["examples/single-prompt-baseline/**"],
-    "depends_on": ["T22", "T23"],
+    "files_touched": [
+      "examples/single-prompt-baseline/**"
+    ],
+    "depends_on": [
+      "T22",
+      "T23"
+    ],
     "estimated_minutes": 150,
     "status": "pending",
     "priority": 10,
@@ -190,8 +240,14 @@
       "Budget, retry, duplicate, and failure behavior is covered by tests",
       "Runs against the frozen public cases without private-reference access"
     ],
-    "files_touched": ["examples/tool-agent-baseline/**", "packages/tool-runtime/src/**"],
-    "depends_on": ["T22", "T23"],
+    "files_touched": [
+      "examples/tool-agent-baseline/**",
+      "packages/tool-runtime/src/**"
+    ],
+    "depends_on": [
+      "T22",
+      "T23"
+    ],
     "estimated_minutes": 240,
     "status": "pending",
     "priority": 11,
@@ -208,8 +264,14 @@
       "Run metadata identifies the oracle-input track and exact fixture fingerprint",
       "Results are report-compatible and reproducible"
     ],
-    "files_touched": ["examples/oracle-input-baseline/**", "benchmark/**"],
-    "depends_on": ["T22", "T23"],
+    "files_touched": [
+      "examples/oracle-input-baseline/**",
+      "benchmark/**"
+    ],
+    "depends_on": [
+      "T22",
+      "T23"
+    ],
     "estimated_minutes": 150,
     "status": "pending",
     "priority": 12,
@@ -226,8 +288,13 @@
       "Harness, model, provider, adapter, prompt, and scorer versions are recorded separately",
       "Ephemeral state and authorized-tool boundaries are explicit in run metadata"
     ],
-    "files_touched": ["packages/harness-adapter/**", "packages/testkit/**"],
-    "depends_on": ["T22"],
+    "files_touched": [
+      "packages/harness-adapter/**",
+      "packages/testkit/**"
+    ],
+    "depends_on": [
+      "T22"
+    ],
     "estimated_minutes": 240,
     "status": "pending",
     "priority": 13,
@@ -244,8 +311,13 @@
       "Built-in filesystem, network, memory, approval, and connector differences are normalized or declared",
       "Only benchmark-authorized tools are available in the controlled track"
     ],
-    "files_touched": ["examples/harness-adapters/**", "packages/harness-adapter/**"],
-    "depends_on": ["T27A"],
+    "files_touched": [
+      "examples/harness-adapters/**",
+      "packages/harness-adapter/**"
+    ],
+    "depends_on": [
+      "T27A"
+    ],
     "estimated_minutes": 360,
     "status": "pending",
     "priority": 14,
@@ -262,8 +334,15 @@
       "Results publish default, equalized, and tenant-configured dimensions without collapsing materially different operating profiles",
       "Synthetic references are never presented as real credit opinions"
     ],
-    "files_touched": ["benchmark/results/**", "apps/cli/**", "scripts/benchmarks/**"],
-    "depends_on": ["T23", "T27B"],
+    "files_touched": [
+      "benchmark/results/**",
+      "apps/cli/**",
+      "scripts/benchmarks/**"
+    ],
+    "depends_on": [
+      "T23",
+      "T27B"
+    ],
     "estimated_minutes": 480,
     "status": "pending",
     "priority": 15,
@@ -280,8 +359,15 @@
       "Missing connectors, manual setup, credentials, mappings, operator interventions, and participant-owned glue are counted",
       "Default-to-equalized and equalized-to-tenant-configured deltas use held-out cases and explicitly name adaptation mechanisms"
     ],
-    "files_touched": ["packages/testkit/**", "benchmark/commercial-credit-v0.1/harness-gap-cases/**", "benchmark/results/**"],
-    "depends_on": ["T27B", "T27C"],
+    "files_touched": [
+      "packages/testkit/**",
+      "benchmark/commercial-credit-v0.1/harness-gap-cases/**",
+      "benchmark/results/**"
+    ],
+    "depends_on": [
+      "T27B",
+      "T27C"
+    ],
     "estimated_minutes": 360,
     "status": "pending",
     "priority": 16,
