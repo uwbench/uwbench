@@ -13,6 +13,8 @@
     { "path": "./packages/runner" },
     { "path": "./packages/tool-runtime" },
     { "path": "./packages/scorer-core" },
+    { "path": "./packages/scorer-financial" },
+    { "path": "./packages/scorer-policy" },
     { "path": "./apps/cli" },
     { "path": "./examples/deterministic-baseline" }
   ]
