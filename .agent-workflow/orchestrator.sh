@@ -121,6 +121,70 @@ run_with_timeout() {
   return "$status"
 }
 
+# pi in --print mode emits nothing until it exits, so implement.log stays empty
+# for the whole run and there is no way to tell a working task from a wedged
+# one. Report progress from the outside instead: sample the worktree once a
+# minute into a file that can be tailed.
+PROGRESS_PID=""
+
+start_progress_heartbeat() {
+  local worktree="$1"
+  local log="$2"
+  local interval="${PROGRESS_INTERVAL_SECONDS:-60}"
+
+  : > "$log"
+  local restore_monitor=0
+  case "$-" in *m*) : ;; *) restore_monitor=1 ;; esac
+  set -m
+  (
+    local started="$SECONDS"
+    while true; do
+      sleep "$interval"
+      local elapsed=$((SECONDS - started))
+      local changed=0
+      local newest_path=""
+      local newest_mtime=0
+      local path
+      local mtime
+
+      while IFS= read -r path; do
+        [[ -n "$path" ]] || continue
+        changed=$((changed + 1))
+        [[ -f "$worktree/$path" ]] || continue
+        mtime="$(stat -f '%m' "$worktree/$path" 2>/dev/null)" || continue
+        if [[ "$mtime" -gt "$newest_mtime" ]]; then
+          newest_mtime="$mtime"
+          newest_path="$path"
+        fi
+      done < <(
+        git -C "$worktree" status --porcelain --untracked-files=all 2>/dev/null |
+          cut -c4-
+      )
+
+      # git status honours .gitignore, so node_modules never enters this scan.
+      if [[ -n "$newest_path" ]]; then
+        printf '[%s] %dm elapsed | %d files changed | last write %ds ago: %s\n' \
+          "$(date +%H:%M:%S)" "$((elapsed / 60))" "$changed" \
+          "$(( $(date +%s) - newest_mtime ))" "$newest_path"
+      else
+        printf '[%s] %dm elapsed | no file changes yet\n' \
+          "$(date +%H:%M:%S)" "$((elapsed / 60))"
+      fi
+    done
+  ) >> "$log" 2>&1 &
+  PROGRESS_PID=$!
+  [[ "$restore_monitor" -eq 1 ]] && set +m
+  return 0
+}
+
+stop_progress_heartbeat() {
+  [[ -n "$PROGRESS_PID" ]] || return 0
+  # Kill the group so the pending sleep goes too, as with the deadline watchdog.
+  kill -TERM "-$PROGRESS_PID" 2>/dev/null || kill -TERM "$PROGRESS_PID" 2>/dev/null
+  wait "$PROGRESS_PID" 2>/dev/null || true
+  PROGRESS_PID=""
+}
+
 task_value() {
   local task_id="$1"
   local field="$2"
@@ -414,6 +478,7 @@ cmd_deploy() {
     '{executor:$executor,provider:$provider,model:$model,task:$task}' \
     >> "$artifacts/provider-attempts.ndjson"
   local implement_exit=0
+  start_progress_heartbeat "$worktree" "$artifacts/implement.progress.log"
   if (
     cd "$worktree"
     if [[ "$ACTIVE_EXECUTOR" == "gemini-cli" ]]; then
@@ -426,6 +491,7 @@ cmd_deploy() {
   else
     implement_exit=$?
   fi
+  stop_progress_heartbeat
 
   git -C "$worktree" add -N . >/dev/null
   git -C "$worktree" \
