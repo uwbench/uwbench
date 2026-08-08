@@ -70,11 +70,13 @@
     ],
     "depends_on": [],
     "estimated_minutes": 150,
-    "status": "pending",
+    "status": "gated_pass",
     "priority": 3,
     "failure_limit": 3,
-    "attempts": 0,
-    "failures": 0
+    "attempts": 3,
+    "failures": 0,
+    "assignee": "orchestrator",
+    "completed_at": "2026-08-08T12:51:08.732Z"
   },
   {
     "id": "T19",
