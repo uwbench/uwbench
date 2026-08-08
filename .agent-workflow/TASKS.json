@@ -72,7 +72,9 @@
     "estimated_minutes": 150,
     "status": "pending",
     "priority": 3,
-    "failure_limit": 3
+    "failure_limit": 3,
+    "attempts": 0,
+    "failures": 0
   },
   {
     "id": "T19",
