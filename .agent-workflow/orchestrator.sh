@@ -634,7 +634,7 @@ run_repository_checks() {
       exit 1
     fi
     pnpm install --frozen-lockfile --ignore-scripts --prefer-offline || exit $?
-    for script in lint typecheck test build generate changeset:check smoke; do
+    for script in lint typecheck check:references test build generate changeset:check smoke; do
       if jq -e --arg script "$script" '.scripts[$script] != null' package.json >/dev/null; then
         printf '\n## pnpm %s\n' "$script"
         pnpm "$script" || exit $?
