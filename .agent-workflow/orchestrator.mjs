@@ -261,12 +261,13 @@ Read these repository-relative files completely before editing:
 2. Preserve existing user changes and do not edit task state in \`.agent-workflow/TASKS.json\`.
 3. Do not commit. The orchestrator independently gates, applies, and commits a passing patch.
 4. Use pnpm and the repository's pinned package manager.
-5. Run the strongest available checks. At minimum run \`pnpm typecheck\` and \`pnpm test\` once those scripts exist.
-6. Do not claim a check passed unless its command completed successfully.
-7. Do not add generated artifacts that disagree with their source schemas.
-8. On a retry, address the prior feedback even if a narrowly scoped dependency-owned file must change.
-9. Finish with a concise summary containing changed files, commands run, results, and any remaining blocker.
-10. Run \`git diff --check\` before finishing and remove every whitespace error it reports.
+5. A new workspace package is not part of the build until the root \`tsconfig.json\` lists it under \`references\`. Add \`{ "path": "./<package>" }\` there whenever you create one; \`pnpm typecheck\` passes without it, so it will not tell you. Editing the root \`tsconfig.json\` for this is in scope, and \`pnpm check:references\` verifies it.
+6. Run the strongest available checks. At minimum run \`pnpm typecheck\` and \`pnpm test\` once those scripts exist.
+7. Do not claim a check passed unless its command completed successfully.
+8. Do not add generated artifacts that disagree with their source schemas.
+9. On a retry, address the prior feedback even if a narrowly scoped dependency-owned file must change.
+10. Finish with a concise summary containing changed files, commands run, results, and any remaining blocker.
+11. Run \`git diff --check\` before finishing and remove every whitespace error it reports.
 `;
 }
 
