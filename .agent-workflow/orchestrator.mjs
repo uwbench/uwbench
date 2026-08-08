@@ -261,7 +261,9 @@ Read these repository-relative files completely before editing:
 2. Preserve existing user changes and do not edit task state in \`.agent-workflow/TASKS.json\`.
 3. Do not commit. The orchestrator independently gates, applies, and commits a passing patch.
 4. Use pnpm and the repository's pinned package manager.
-5. A new workspace package is not part of the build until the root \`tsconfig.json\` lists it under \`references\`. Add \`{ "path": "./<package>" }\` there whenever you create one; \`pnpm typecheck\` passes without it, so it will not tell you. Editing the root \`tsconfig.json\` for this is in scope, and \`pnpm check:references\` verifies it.
+5. When you add a workspace package, two things are easy to get wrong and neither shows up in a local \`pnpm typecheck\`:
+   - It is not part of the build until the root \`tsconfig.json\` lists it under \`references\`. Add \`{ "path": "./<package>" }\` there; editing the root \`tsconfig.json\` for this is in scope, and \`pnpm check:references\` verifies it.
+   - Copy the shared toolchain versions (\`@types/node\`, \`typescript\`, \`vitest\`) from a sibling package in \`packages/\` rather than picking your own. Two majors of \`@types/node\` in one workspace make the root build fail with hundreds of duplicate-identifier errors.
 6. Run the strongest available checks. At minimum run \`pnpm typecheck\` and \`pnpm test\` once those scripts exist.
 7. Do not claim a check passed unless its command completed successfully.
 8. Do not add generated artifacts that disagree with their source schemas.
