@@ -60,13 +60,65 @@ run_with_timeout() {
 
   if command -v timeout >/dev/null 2>&1; then
     timeout --signal=TERM --kill-after=30s "${seconds}s" "$@"
-  elif command -v gtimeout >/dev/null 2>&1; then
-    gtimeout --signal=TERM --kill-after=30s "${seconds}s" "$@"
-  else
-    # macOS does not ship GNU timeout. POSIX preserves an alarm across exec,
-    # so the replacement pi process receives SIGALRM when the deadline expires.
-    perl -e 'alarm shift @ARGV; exec @ARGV or die "exec failed: $!"' "$seconds" "$@"
+    return
   fi
+  if command -v gtimeout >/dev/null 2>&1; then
+    gtimeout --signal=TERM --kill-after=30s "${seconds}s" "$@"
+    return
+  fi
+
+  # macOS ships neither GNU timeout nor gtimeout, and a perl alarm is not a
+  # usable substitute here: pi loads signal-exit, which registers a SIGALRM
+  # listener and thereby removes node's default terminate-on-SIGALRM, so the
+  # deadline was swallowed and tasks ran unbounded. Watch the child by PID
+  # instead and signal its whole process group: TERM first, KILL after 30s.
+  # Reports 124 on expiry, matching GNU timeout.
+  local marker
+  marker="$(mktemp "${TMPDIR:-/tmp}/orchestrator-deadline.XXXXXX")"
+
+  # Monitor mode puts the child in its own process group, so the watchdog can
+  # signal pi together with the pnpm/tsc children it spawns.
+  local restore_monitor=0
+  case "$-" in *m*) : ;; *) restore_monitor=1 ;; esac
+  set -m
+  # The explicit stdin redirect defeats the </dev/null that bash otherwise
+  # applies to asynchronous commands when job control is off.
+  "$@" <&0 &
+  local child_pid=$!
+
+  # The watchdog gets its own process group too, so cancelling it also reaps
+  # its sleep. Its output goes to /dev/null: were it to inherit the caller's
+  # stdout, a pending sleep would hold that pipe open and stall any caller
+  # reading us through a command substitution.
+  (
+    sleep "$seconds"
+    kill -0 "$child_pid" 2>/dev/null || exit 0
+    printf 'timeout\n' > "$marker"
+    kill -TERM "-$child_pid" 2>/dev/null || kill -TERM "$child_pid" 2>/dev/null
+    sleep 30
+    kill -0 "$child_pid" 2>/dev/null || exit 0
+    kill -KILL "-$child_pid" 2>/dev/null || kill -KILL "$child_pid" 2>/dev/null
+  ) >/dev/null 2>&1 &
+  local watchdog_pid=$!
+  [[ "$restore_monitor" -eq 1 ]] && set +m
+
+  # The child now sits in its own process group, so a Ctrl-C delivered to the
+  # orchestrator no longer reaches it; forward the interrupt by hand.
+  trap 'kill -TERM "-$child_pid" 2>/dev/null || kill -TERM "$child_pid" 2>/dev/null' INT TERM
+
+  local status=0
+  wait "$child_pid" || status=$?
+
+  trap - INT TERM
+  kill -TERM "-$watchdog_pid" 2>/dev/null || kill -TERM "$watchdog_pid" 2>/dev/null
+  wait "$watchdog_pid" 2>/dev/null || true
+
+  local timed_out=0
+  [[ -s "$marker" ]] && timed_out=1
+  rm -f "$marker"
+
+  [[ "$timed_out" -eq 1 ]] && return 124
+  return "$status"
 }
 
 task_value() {
@@ -175,10 +227,8 @@ cmd_preflight() {
   require_command codex
   require_command pnpm
   require_command "$PI_BIN"
-  if ! command -v timeout >/dev/null 2>&1 &&
-    ! command -v gtimeout >/dev/null 2>&1; then
-    require_command perl
-  fi
+  # No external dependency for the deadline: run_with_timeout falls back to a
+  # PID watchdog built from bash builtins when GNU timeout is absent.
   [[ "$MAX_TASK_ATTEMPTS" =~ ^[1-9][0-9]*$ ]] ||
     die "MAX_TASK_ATTEMPTS must be a positive integer."
   [[ "$PI_TASK_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]] ||
@@ -445,6 +495,12 @@ path_allowed_for_task() {
       local package_root="${BASH_REMATCH[1]}"
       if [[ "$path" == "$package_root/package.json" ||
             "$path" == "$package_root/tsconfig.json" ]]; then
+        return 0
+      fi
+      # Registering the package in the root project references is likewise a
+      # mechanical consequence of adding one. Without this, every task that
+      # introduces a package fails scope on the one line that wires it up.
+      if [[ "$path" == "tsconfig.json" ]]; then
         return 0
       fi
       if [[ "$path" == "$package_root"/src/* ]] &&
