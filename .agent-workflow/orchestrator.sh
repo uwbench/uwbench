@@ -91,7 +91,15 @@ run_with_timeout() {
   # stdout, a pending sleep would hold that pipe open and stall any caller
   # reading us through a command substitution.
   (
-    sleep "$seconds"
+    # Poll a wall-clock deadline rather than sleeping for the whole duration.
+    # A single long sleep measures awake time only: macOS suspends the timer
+    # across system sleep, so a 7200s deadline silently stretched to 150+
+    # minutes of wall clock during T18 attempt 2 and never fired.
+    local deadline=$(( $(date +%s) + seconds ))
+    while [[ "$(date +%s)" -lt "$deadline" ]]; do
+      kill -0 "$child_pid" 2>/dev/null || exit 0
+      sleep 30
+    done
     kill -0 "$child_pid" 2>/dev/null || exit 0
     printf 'timeout\n' > "$marker"
     kill -TERM "-$child_pid" 2>/dev/null || kill -TERM "$child_pid" 2>/dev/null
@@ -371,8 +379,21 @@ fallback_available() {
   esac
 }
 
+# macOS idle sleep suspends pi mid-request. The provider socket dies with it and
+# resurfaces as undici's bare `terminated`, which cost T18 attempt 2 a failure
+# slot after 150 minutes of wall clock. Hold an idle-sleep assertion for the
+# length of the run; caffeinate -w exits on its own when this shell does, even
+# if the run is killed. Set WORKFLOW_PREVENT_SLEEP=0 to opt out.
+prevent_idle_sleep() {
+  [[ "${WORKFLOW_PREVENT_SLEEP:-1}" == "1" ]] || return 0
+  command -v caffeinate >/dev/null 2>&1 || return 0
+  caffeinate -i -m -w "$$" >/dev/null 2>&1 &
+  ok "Holding off idle sleep for this run (caffeinate pid $!)."
+}
+
 cmd_bootstrap() {
   cmd_preflight
+  prevent_idle_sleep
   cd "$REPO_ROOT"
 
   if [[ ! -d .git ]]; then
@@ -668,7 +689,7 @@ is_transient_provider_failure() {
   local log_file="$1"
   [[ -f "$log_file" ]] || return 1
   grep -Eqi \
-    'ResourceExhausted|worker .*request limit|rate[ -]?limit|HTTP 429|429 status code|status code[^0-9]*429|40[04] status code \(no body\)|instance_id=.*not found for endpoint|temporarily unavailable|service unavailable|overloaded|connection error|request timed out|request timeout|ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT|Headers Timeout Error|Stream ended without finish_reason|stream ended without|no finish_reason|Premature close|ERR_STREAM_PREMATURE_CLOSE' \
+    'ResourceExhausted|worker .*request limit|rate[ -]?limit|HTTP 429|429 status code|status code[^0-9]*429|40[04] status code \(no body\)|instance_id=.*not found for endpoint|temporarily unavailable|service unavailable|overloaded|connection error|request timed out|request timeout|ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT|Headers Timeout Error|Stream ended without finish_reason|stream ended without|no finish_reason|Premature close|ERR_STREAM_PREMATURE_CLOSE|(^|[^[:alnum:]])terminated([^[:alnum:]]|$)|UND_ERR_SOCKET|SocketError|ECONNRESET|other side closed' \
     "$log_file"
 }
 
