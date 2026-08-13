@@ -23,7 +23,7 @@ PI_MODEL="${PI_MODEL:-nvidia/nemotron-3-ultra-550b-a55b}"
 PI_FALLBACK_ENABLED="${PI_FALLBACK_ENABLED:-1}"
 PI_FALLBACK_EXECUTOR="${PI_FALLBACK_EXECUTOR:-gemini-cli}"
 GEMINI_CLI_BIN="${GEMINI_CLI_BIN:-gemini}"
-GEMINI_CLI_MODEL="${GEMINI_CLI_MODEL:-gemini-2.5-pro}"
+GEMINI_CLI_MODEL="${GEMINI_CLI_MODEL:-gemini-3.6-flash}"
 PI_FALLBACK_PROVIDER="${PI_FALLBACK_PROVIDER:-google}"
 PI_FALLBACK_MODEL="${PI_FALLBACK_MODEL:-$GEMINI_CLI_MODEL}"
 PI_THINKING="${PI_THINKING:-}"
@@ -503,7 +503,12 @@ cmd_deploy() {
   if (
     cd "$worktree"
     if [[ "$ACTIVE_EXECUTOR" == "gemini-cli" ]]; then
-      run_with_timeout "$PI_TASK_TIMEOUT_SECONDS" "${pi_args[@]}"
+      # Gemini's non-interactive mode still probes stdin for cancellation and
+      # calls setRawMode when it inherits a terminal. run_with_timeout places
+      # the child in a background process group on macOS, so terminal stdin
+      # makes it stop under SIGTTIN (or fail with setRawMode EIO). It already
+      # receives the complete task through --prompt; detach stdin explicitly.
+      run_with_timeout "$PI_TASK_TIMEOUT_SECONDS" "${pi_args[@]}" </dev/null
     else
       run_with_timeout "$PI_TASK_TIMEOUT_SECONDS" "${pi_args[@]}" < "$task_prompt"
     fi
@@ -689,7 +694,7 @@ is_transient_provider_failure() {
   local log_file="$1"
   [[ -f "$log_file" ]] || return 1
   grep -Eqi \
-    'ResourceExhausted|worker .*request limit|rate[ -]?limit|HTTP 429|429 status code|status code[^0-9]*429|40[04] status code \(no body\)|instance_id=.*not found for endpoint|temporarily unavailable|service unavailable|overloaded|connection error|request timed out|request timeout|ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT|Headers Timeout Error|Stream ended without finish_reason|stream ended without|no finish_reason|Premature close|ERR_STREAM_PREMATURE_CLOSE|(^|[^[:alnum:]])terminated([^[:alnum:]]|$)|UND_ERR_SOCKET|SocketError|ECONNRESET|other side closed' \
+    'ModelNotFoundError|model .*no longer available|ResourceExhausted|worker .*request limit|rate[ -]?limit|HTTP 429|429 status code|status code[^0-9]*429|40[04] status code \(no body\)|instance_id=.*not found for endpoint|temporarily unavailable|service unavailable|overloaded|connection error|request timed out|request timeout|ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT|Headers Timeout Error|Stream ended without finish_reason|stream ended without|no finish_reason|Premature close|ERR_STREAM_PREMATURE_CLOSE|(^|[^[:alnum:]])terminated([^[:alnum:]]|$)|UND_ERR_SOCKET|SocketError|ECONNRESET|other side closed' \
     "$log_file"
 }
 
@@ -699,7 +704,7 @@ record_provider_deferral() {
   local feedback
   feedback="$(
     gate_failure_feedback \
-      "Transient model-provider capacity, HTTP 429, or request-timeout failure. Retry this task from its clean baseline without broadening scope." \
+      "Model-provider availability, capacity, HTTP 429, or request-timeout failure. Retry this task from its clean baseline without broadening scope." \
       "$log_file"
   )"
   node "$ORCHESTRATOR" defer "$task_id" "$feedback"
@@ -1020,7 +1025,7 @@ run_active_task() {
     fi
     if is_transient_provider_failure "$artifacts/implement.log"; then
       record_provider_deferral "$task_id" "$artifacts/implement.log"
-      warn "Deferred $task_id because the model provider is temporarily saturated."
+      warn "Deferred $task_id because the configured model/provider is unavailable."
       return 75
     fi
     if [[ "$deploy_exit" -eq 124 || "$deploy_exit" -eq 142 ]]; then
