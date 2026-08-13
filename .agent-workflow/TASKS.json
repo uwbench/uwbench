@@ -95,9 +95,14 @@
     ],
     "depends_on": [],
     "estimated_minutes": 150,
-    "status": "pending",
+    "status": "gated_pass",
     "priority": 4,
-    "failure_limit": 3
+    "failure_limit": 3,
+    "assignee": "orchestrator",
+    "started_at": "2026-08-13T14:57:02.573Z",
+    "attempts": 6,
+    "failures": 5,
+    "completed_at": "2026-08-13T14:57:39.572Z"
   },
   {
     "id": "T20",

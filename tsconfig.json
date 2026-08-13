@@ -16,6 +16,7 @@
     { "path": "./packages/scorer-financial" },
     { "path": "./packages/scorer-policy" },
     { "path": "./packages/scorer-evidence" },
+    { "path": "./packages/scorer-risk" },
     { "path": "./apps/cli" },
     { "path": "./examples/deterministic-baseline" }
   ]
