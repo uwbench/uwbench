@@ -1,0 +1,221 @@
+{
+  "normalizedFacts": [
+    {
+      "canonicalKey": "revenue",
+      "value": 2800000000,
+      "normalizedValue": 2800000000,
+      "type": "currency",
+      "unit": "USD",
+      "currency": "USD",
+      "scale": 1,
+      "period": { "start": "2024-01-01", "end": "2024-12-31" },
+      "evidence": [{ "sourceId": "src_financials_2024" }],
+      "confidence": 1.0
+    },
+    {
+      "canonicalKey": "cogs",
+      "value": 1680000000,
+      "normalizedValue": 1680000000,
+      "type": "currency",
+      "unit": "USD",
+      "currency": "USD",
+      "scale": 1,
+      "period": { "start": "2024-01-01", "end": "2024-12-31" },
+      "evidence": [{ "sourceId": "src_financials_2024" }],
+      "confidence": 1.0
+    },
+    {
+      "canonicalKey": "ebitda",
+      "value": 560000000,
+      "normalizedValue": 560000000,
+      "type": "currency",
+      "unit": "USD",
+      "currency": "USD",
+      "scale": 1,
+      "period": { "start": "2024-01-01", "end": "2024-12-31" },
+      "evidence": [{ "sourceId": "src_financials_2024" }],
+      "confidence": 1.0
+    },
+    {
+      "canonicalKey": "interest_expense",
+      "value": 38000000,
+      "normalizedValue": 38000000,
+      "type": "currency",
+      "unit": "USD",
+      "currency": "USD",
+      "scale": 1,
+      "period": { "start": "2024-01-01", "end": "2024-12-31" },
+      "evidence": [{ "sourceId": "src_financials_2024" }],
+      "confidence": 1.0
+    },
+    {
+      "canonicalKey": "total_debt",
+      "value": 820000000,
+      "normalizedValue": 820000000,
+      "type": "currency",
+      "unit": "USD",
+      "currency": "USD",
+      "scale": 1,
+      "period": { "start": "2024-01-01", "end": "2024-12-31" },
+      "evidence": [{ "sourceId": "src_financials_2024" }],
+      "confidence": 1.0
+    },
+    {
+      "canonicalKey": "cash",
+      "value": 320000000,
+      "normalizedValue": 320000000,
+      "type": "currency",
+      "unit": "USD",
+      "currency": "USD",
+      "scale": 1,
+      "period": { "start": "2024-01-01", "end": "2024-12-31" },
+      "evidence": [{ "sourceId": "src_financials_2024" }],
+      "confidence": 1.0
+    },
+    {
+      "canonicalKey": "total_assets",
+      "value": 3200000000,
+      "normalizedValue": 3200000000,
+      "type": "currency",
+      "unit": "USD",
+      "currency": "USD",
+      "scale": 1,
+      "period": { "start": "2024-01-01", "end": "2024-12-31" },
+      "evidence": [{ "sourceId": "src_financials_2024" }],
+      "confidence": 1.0
+    },
+    {
+      "canonicalKey": "current_assets",
+      "value": 980000000,
+      "normalizedValue": 980000000,
+      "type": "currency",
+      "unit": "USD",
+      "currency": "USD",
+      "scale": 1,
+      "period": { "start": "2024-01-01", "end": "2024-12-31" },
+      "evidence": [{ "sourceId": "src_financials_2024" }],
+      "confidence": 1.0
+    },
+    {
+      "canonicalKey": "current_liabilities",
+      "value": 350000000,
+      "normalizedValue": 350000000,
+      "type": "currency",
+      "unit": "USD",
+      "currency": "USD",
+      "scale": 1,
+      "period": { "start": "2024-01-01", "end": "2024-12-31" },
+      "evidence": [{ "sourceId": "src_financials_2024" }],
+      "confidence": 1.0
+    },
+    {
+      "canonicalKey": "equity",
+      "value": 1750000000,
+      "normalizedValue": 1750000000,
+      "type": "currency",
+      "unit": "USD",
+      "currency": "USD",
+      "scale": 1,
+      "period": { "start": "2024-01-01", "end": "2024-12-31" },
+      "evidence": [{ "sourceId": "src_financials_2024" }],
+      "confidence": 1.0
+    },
+    {
+      "canonicalKey": "dscr",
+      "value": 4.0,
+      "normalizedValue": 4.0,
+      "type": "ratio",
+      "unit": "multiple",
+      "period": { "start": "2024-01-01", "end": "2024-12-31" },
+      "evidence": [{ "sourceId": "src_financials_2024" }],
+      "confidence": 1.0
+    },
+    {
+      "canonicalKey": "leverage_ratio",
+      "value": 1.4642857142857142,
+      "normalizedValue": 1.4642857142857142,
+      "type": "ratio",
+      "unit": "multiple",
+      "period": { "start": "2024-01-01", "end": "2024-12-31" },
+      "evidence": [{ "sourceId": "src_financials_2024" }],
+      "confidence": 1.0
+    },
+    {
+      "canonicalKey": "interest_coverage",
+      "value": 14.736842105263158,
+      "normalizedValue": 14.736842105263158,
+      "type": "ratio",
+      "unit": "multiple",
+      "period": { "start": "2024-01-01", "end": "2024-12-31" },
+      "evidence": [{ "sourceId": "src_financials_2024" }],
+      "confidence": 1.0
+    },
+    {
+      "canonicalKey": "equity_to_assets",
+      "value": 0.546875,
+      "normalizedValue": 0.546875,
+      "type": "ratio",
+      "unit": "percentage",
+      "period": { "start": "2024-01-01", "end": "2024-12-31" },
+      "evidence": [{ "sourceId": "src_financials_2024" }],
+      "confidence": 1.0
+    },
+    {
+      "canonicalKey": "current_ratio",
+      "value": 2.8,
+      "normalizedValue": 2.8,
+      "type": "ratio",
+      "unit": "multiple",
+      "period": { "start": "2024-01-01", "end": "2024-12-31" },
+      "evidence": [{ "sourceId": "src_financials_2024" }],
+      "confidence": 1.0
+    },
+    {
+      "canonicalKey": "top_customer_pct",
+      "value": 0.32,
+      "normalizedValue": 0.32,
+      "type": "ratio",
+      "unit": "percentage",
+      "period": { "start": "2024-01-01", "end": "2024-12-31" },
+      "evidence": [{ "sourceId": "src_customer_concentration" }],
+      "confidence": 0.95
+    },
+    {
+      "canonicalKey": "top_3_customer_pct",
+      "value": 0.68,
+      "normalizedValue": 0.68,
+      "type": "ratio",
+      "unit": "percentage",
+      "period": { "start": "2024-01-01", "end": "2024-12-31" },
+      "evidence": [{ "sourceId": "src_customer_concentration" }],
+      "confidence": 0.95
+    },
+    {
+      "canonicalKey": "entity_type",
+      "value": "Corporation",
+      "normalizedValue": "Corporation",
+      "type": "categorical",
+      "unit": "none",
+      "evidence": [{ "sourceId": "src_borrower_profile" }],
+      "confidence": 1.0
+    },
+    {
+      "canonicalKey": "naics_code",
+      "value": "332721",
+      "normalizedValue": "332721",
+      "type": "categorical",
+      "unit": "none",
+      "evidence": [{ "sourceId": "src_borrower_profile" }],
+      "confidence": 1.0
+    },
+    {
+      "canonicalKey": "years_in_business",
+      "value": 25,
+      "normalizedValue": 25,
+      "type": "integer",
+      "unit": "years",
+      "evidence": [{ "sourceId": "src_borrower_profile" }],
+      "confidence": 1.0
+    }
+  ]
+}

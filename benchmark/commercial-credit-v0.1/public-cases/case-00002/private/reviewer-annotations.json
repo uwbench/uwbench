@@ -1,0 +1,84 @@
+{
+  "annotations": [
+    {
+      "annotatorId": "reviewer_001",
+      "role": "senior_credit_analyst",
+      "experienceYears": 12,
+      "timestamp": "2025-01-15T10:30:00Z",
+      "schemaVersion": "1.0",
+      "rubricVersion": "0.1.0",
+      "riskAnnotations": [
+        {
+          "riskId": "risk_dscr_borderline",
+          "agreement": "AGREE",
+          "notes": "DSCR failure is the primary credit issue. Would require exception with board approval."
+        },
+        {
+          "riskId": "risk_incomplete_financials",
+          "agreement": "AGREE",
+          "notes": "Missing core fields in initial submission is a red flag for borrower readiness."
+        },
+        {
+          "riskId": "risk_customer_concentration",
+          "agreement": "AGREE",
+          "notes": "Standard industry risk, but should be quantified if possible."
+        }
+      ],
+      "decisionAnnotation": {
+        "decision": "REFER",
+        "confidence": 0.9,
+        "rationale": "DSCR policy failure requires committee review. Strong mitigants (leverage, interest coverage, equity) support conditional approval path but not unqualified approval."
+      }
+    },
+    {
+      "annotatorId": "reviewer_002",
+      "role": "credit_committee_chair",
+      "experienceYears": 18,
+      "timestamp": "2025-01-16T14:20:00Z",
+      "schemaVersion": "1.0",
+      "rubricVersion": "0.1.0",
+      "riskAnnotations": [
+        {
+          "riskId": "risk_dscr_borderline",
+          "agreement": "AGREE",
+          "notes": "1.21x vs 1.25x is close. Would consider exception with additional collateral or guarantor."
+        },
+        {
+          "riskId": "risk_incomplete_financials",
+          "agreement": "PARTIAL",
+          "notes": "Missing fields are common in private company submissions. Less concerning if resolved quickly."
+        }
+      ],
+      "decisionAnnotation": {
+        "decision": "APPROVE_WITH_CONDITIONS",
+        "confidence": 0.75,
+        "rationale": "Borderline DSCR with strong offsetting factors. Would approve with conditions: 1) additional collateral, 2) quarterly financial reporting, 3) DSCR covenant at 1.15x."
+      }
+    },
+    {
+      "annotatorId": "reviewer_003",
+      "role": "portfolio_manager",
+      "experienceYears": 10,
+      "timestamp": "2025-01-17T09:15:00Z",
+      "schemaVersion": "1.0",
+      "rubricVersion": "0.1.0",
+      "riskAnnotations": [
+        {
+          "riskId": "risk_dscr_borderline",
+          "agreement": "AGREE",
+          "notes": "Policy is policy. Exception precedent matters for portfolio."
+        },
+        {
+          "riskId": "risk_customer_concentration",
+          "agreement": "AGREE",
+          "notes": "Wholesale distribution concentration risk is real and under-monitored."
+        }
+      ],
+      "decisionAnnotation": {
+        "decision": "REFER",
+        "confidence": 0.85,
+        "rationale": "Must refer to committee for exception decision. Portfolio precedent requires consistent exception handling."
+      }
+    }
+  ]
+}

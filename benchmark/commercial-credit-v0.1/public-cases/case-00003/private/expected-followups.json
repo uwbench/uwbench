@@ -1,0 +1,11 @@
+{
+  "followUpRequests": [
+    {
+      "requestId": "req_revenue_reconciliation",
+      "concept": "revenue_reconciliation",
+      "status": "FULFILLED",
+      "response": "Revenue reconciliation memo provided explaining $3.5M difference between GAAP ($42.0M) and tax ($38.5M) due to percentage-of-completion vs completed-contract timing on three projects (Alpha $1.2M, Beta $1.5M, Gamma $0.8M). No EBITDA impact — lifetime revenue same.",
+      "revealedDocuments": ["doc_revenue_reconciliation"]
+    }
+  ]
+}

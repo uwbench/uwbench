@@ -1,0 +1,16 @@
+{
+  "citations": [
+    {
+      "citationId": "cite_dscr",
+      "sourceId": "src_financials_2024",
+      "fields": ["ebitda", "debt_service"],
+      "confidence": 1.0
+    },
+    {
+      "citationId": "cite_tax_returns",
+      "sourceId": "src_tax_returns_2023_2024",
+      "fields": ["taxable_income", "taxes_paid"],
+      "confidence": 1.0
+    }
+  ]
+}
