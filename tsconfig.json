@@ -20,6 +20,7 @@
     { "path": "./packages/scorer-workflow" },
     { "path": "./packages/report" },
     { "path": "./apps/cli" },
-    { "path": "./examples/deterministic-baseline" }
+    { "path": "./examples/deterministic-baseline" },
+    { "path": "./examples/single-prompt-baseline" }
   ]
 }
