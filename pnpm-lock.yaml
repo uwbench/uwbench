@@ -152,6 +152,43 @@ importers:
         specifier: ^2.0.5
         version: 2.1.9(@types/node@22.20.1)
 
+  packages/report:
+    dependencies:
+      '@uwbench/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@uwbench/scorer-core':
+        specifier: workspace:*
+        version: link:../scorer-core
+      '@uwbench/scorer-evidence':
+        specifier: workspace:*
+        version: link:../scorer-evidence
+      '@uwbench/scorer-financial':
+        specifier: workspace:*
+        version: link:../scorer-financial
+      '@uwbench/scorer-policy':
+        specifier: workspace:*
+        version: link:../scorer-policy
+      '@uwbench/scorer-risk':
+        specifier: workspace:*
+        version: link:../scorer-risk
+      '@uwbench/scorer-workflow':
+        specifier: workspace:*
+        version: link:../scorer-workflow
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^20.14.10
+        version: 20.19.43
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+      vitest:
+        specifier: ^2.0.5
+        version: 2.1.9(@types/node@20.19.43)
+
   packages/runner:
     dependencies:
       '@uwbench/case-schema':

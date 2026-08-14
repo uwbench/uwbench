@@ -18,6 +18,7 @@
     { "path": "./packages/scorer-evidence" },
     { "path": "./packages/scorer-risk" },
     { "path": "./packages/scorer-workflow" },
+    { "path": "./packages/report" },
     { "path": "./apps/cli" },
     { "path": "./examples/deterministic-baseline" }
   ]
