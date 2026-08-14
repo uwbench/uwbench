@@ -21,11 +21,10 @@ PI_BIN="${PI_BIN:-pi}"
 PI_PROVIDER="${PI_PROVIDER:-nvidia}"
 PI_MODEL="${PI_MODEL:-nvidia/nemotron-3-ultra-550b-a55b}"
 PI_FALLBACK_ENABLED="${PI_FALLBACK_ENABLED:-1}"
-PI_FALLBACK_EXECUTOR="${PI_FALLBACK_EXECUTOR:-gemini-cli}"
+PI_GLM_FALLBACK_PROVIDER="${PI_GLM_FALLBACK_PROVIDER:-nvidia}"
+PI_GLM_FALLBACK_MODEL="${PI_GLM_FALLBACK_MODEL:-z-ai/glm-5.2}"
 GEMINI_CLI_BIN="${GEMINI_CLI_BIN:-gemini}"
 GEMINI_CLI_MODEL="${GEMINI_CLI_MODEL:-gemini-3.6-flash}"
-PI_FALLBACK_PROVIDER="${PI_FALLBACK_PROVIDER:-google}"
-PI_FALLBACK_MODEL="${PI_FALLBACK_MODEL:-$GEMINI_CLI_MODEL}"
 PI_THINKING="${PI_THINKING:-}"
 PI_TASK_TIMEOUT_SECONDS="${PI_TASK_TIMEOUT_SECONDS:-7200}"
 SCOPE_MODE="${SCOPE_MODE:-enforce}"
@@ -36,8 +35,8 @@ MAX_TASK_ATTEMPTS="${MAX_TASK_ATTEMPTS:-3}"
 ACTIVE_PROVIDER="$PI_PROVIDER"
 ACTIVE_MODEL="$PI_MODEL"
 ACTIVE_EXECUTOR="pi"
-FALLBACK_READY=0
-FALLBACK_USED=0
+GLM_FALLBACK_READY=0
+GEMINI_FALLBACK_READY=0
 
 RED=$'\033[0;31m'
 GREEN=$'\033[0;32m'
@@ -315,28 +314,31 @@ cmd_preflight() {
   ACTIVE_PROVIDER="$PI_PROVIDER"
   ACTIVE_MODEL="$PI_MODEL"
   ACTIVE_EXECUTOR="pi"
-  FALLBACK_READY=0
-  FALLBACK_USED=0
+  GLM_FALLBACK_READY=0
+  GEMINI_FALLBACK_READY=0
 
   local primary_key_available=0
   if provider_key_available "$PI_PROVIDER"; then primary_key_available=1; fi
   if (( primary_key_available == 1 )) && model_available "$PI_PROVIDER" "$PI_MODEL"; then
     :
-  elif fallback_available; then
-    ACTIVE_PROVIDER="$PI_FALLBACK_PROVIDER"
-    ACTIVE_MODEL="$PI_FALLBACK_MODEL"
-    ACTIVE_EXECUTOR="$PI_FALLBACK_EXECUTOR"
-    FALLBACK_READY=1
-    FALLBACK_USED=1
-    warn "Primary provider/model unavailable; using configured fallback $ACTIVE_EXECUTOR ($ACTIVE_PROVIDER/$ACTIVE_MODEL)."
   else
-    die "Primary provider/model is unavailable and no usable Gemini fallback is configured."
+    die "Primary provider/model is unavailable."
   fi
 
-  if [[ "$PI_FALLBACK_ENABLED" == "1" ]] && fallback_available; then
-    FALLBACK_READY=1
+  if [[ "$PI_FALLBACK_ENABLED" == "1" ]]; then
+    if provider_key_available "$PI_GLM_FALLBACK_PROVIDER" &&
+      model_available "$PI_GLM_FALLBACK_PROVIDER" "$PI_GLM_FALLBACK_MODEL"; then
+      GLM_FALLBACK_READY=1
+    else
+      warn "GLM fallback is unavailable: $PI_GLM_FALLBACK_PROVIDER/$PI_GLM_FALLBACK_MODEL"
+    fi
+    if command -v "$GEMINI_CLI_BIN" >/dev/null 2>&1; then
+      GEMINI_FALLBACK_READY=1
+    else
+      warn "Gemini CLI fallback is unavailable: $GEMINI_CLI_BIN"
+    fi
   fi
-  ok "Local workflow preflight passed for $ACTIVE_MODEL via $ACTIVE_EXECUTOR (provider $ACTIVE_PROVIDER)."
+  ok "Local workflow preflight passed for $ACTIVE_MODEL via $ACTIVE_EXECUTOR (provider $ACTIVE_PROVIDER); fallbacks: GLM=$GLM_FALLBACK_READY Gemini=$GEMINI_FALLBACK_READY."
 }
 
 provider_key_name() {
@@ -362,21 +364,10 @@ model_available() {
   printf '%s\n' "$model_output" | grep -F "${model#*/}" >/dev/null
 }
 
-fallback_available() {
-  [[ "$PI_FALLBACK_ENABLED" == "1" ]] || return 1
-  [[ "$PI_FALLBACK_PROVIDER" != "$ACTIVE_PROVIDER" ]] || return 1
-  case "$PI_FALLBACK_EXECUTOR" in
-    gemini-cli)
-      command -v "$GEMINI_CLI_BIN" >/dev/null 2>&1
-      ;;
-    pi)
-      provider_key_available "$PI_FALLBACK_PROVIDER" || return 1
-      model_available "$PI_FALLBACK_PROVIDER" "$PI_FALLBACK_MODEL"
-      ;;
-    *)
-      return 1
-      ;;
-  esac
+reset_active_provider() {
+  ACTIVE_PROVIDER="$PI_PROVIDER"
+  ACTIVE_MODEL="$PI_MODEL"
+  ACTIVE_EXECUTOR="pi"
 }
 
 # macOS idle sleep suspends pi mid-request. The provider socket dies with it and
@@ -694,8 +685,24 @@ is_transient_provider_failure() {
   local log_file="$1"
   [[ -f "$log_file" ]] || return 1
   grep -Eqi \
-    'ModelNotFoundError|model .*no longer available|ResourceExhausted|worker .*request limit|rate[ -]?limit|HTTP 429|429 status code|status code[^0-9]*429|40[04] status code \(no body\)|instance_id=.*not found for endpoint|temporarily unavailable|service unavailable|overloaded|connection error|request timed out|request timeout|ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT|Headers Timeout Error|Stream ended without finish_reason|stream ended without|no finish_reason|Premature close|ERR_STREAM_PREMATURE_CLOSE|(^|[^[:alnum:]])terminated([^[:alnum:]]|$)|UND_ERR_SOCKET|SocketError|ECONNRESET|other side closed' \
+    'ModelNotFoundError|model .*no longer available|ResourceExhausted|TerminalQuotaError|exhausted .*quota|quota exceeded|worker .*request limit|rate[ -]?limit|HTTP 429|429 status code|status code[^0-9]*429|40[04] status code \(no body\)|instance_id=.*not found for endpoint|temporarily unavailable|service unavailable|overloaded|connection error|fetch failed|request timed out|request timeout|ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT|Headers Timeout Error|Stream ended without finish_reason|stream ended without|no finish_reason|Premature close|ERR_STREAM_PREMATURE_CLOSE|(^|[^[:alnum:]])terminated([^[:alnum:]]|$)|UND_ERR_SOCKET|SocketError|ECONNRESET|other side closed' \
     "$log_file"
+}
+
+implementation_failure_is_transient() {
+  local exit_code="$1"
+  local log_file="$2"
+  [[ "$exit_code" -eq 74 ]] || is_transient_provider_failure "$log_file"
+}
+
+preserve_provider_artifacts() {
+  local artifacts="$1"
+  local label="$2"
+  local file
+  for file in implement.log implement.exit-code implementation.patch status.txt; do
+    [[ -f "$artifacts/$file" ]] || continue
+    cp "$artifacts/$file" "$artifacts/${file%.*}.$label.${file##*.}"
+  done
 }
 
 record_provider_deferral() {
@@ -975,6 +982,7 @@ run_active_task() {
   local task_id="$1"
   local artifacts
   artifacts="$(artifact_dir "$task_id")"
+  reset_active_provider
 
   local deploy_exit=0
   if cmd_deploy "$task_id"; then
@@ -982,31 +990,27 @@ run_active_task() {
   else
     deploy_exit=$?
   fi
-  if [[ "$deploy_exit" -ne 0 ]]; then
-    if {
-      [[ "$deploy_exit" -eq 74 ]] || is_transient_provider_failure "$artifacts/implement.log"
-    } && (( FALLBACK_READY == 1 && FALLBACK_USED == 0 )); then
-      cp "$artifacts/implement.log" "$artifacts/implement.primary.log"
-      ACTIVE_PROVIDER="$PI_FALLBACK_PROVIDER"
-      ACTIVE_MODEL="$PI_FALLBACK_MODEL"
-      ACTIVE_EXECUTOR="$PI_FALLBACK_EXECUTOR"
-      FALLBACK_USED=1
-      jq -n \
-        --arg fromExecutor "pi" \
-        --arg fromProvider "$PI_PROVIDER" \
-        --arg fromModel "$PI_MODEL" \
-        --arg toExecutor "$ACTIVE_EXECUTOR" \
-        --arg toProvider "$ACTIVE_PROVIDER" \
-        --arg toModel "$ACTIVE_MODEL" \
-        --arg reason "transient provider capacity or empty response" \
-        '{fromExecutor:$fromExecutor,fromProvider:$fromProvider,fromModel:$fromModel,toExecutor:$toExecutor,toProvider:$toProvider,toModel:$toModel,reason:$reason}' \
-        > "$artifacts/provider-fallback.json"
-      warn "$task_id encountered $PI_PROVIDER capacity; retrying once with $ACTIVE_EXECUTOR ($ACTIVE_PROVIDER/$ACTIVE_MODEL)."
-      if cmd_deploy "$task_id"; then
-        deploy_exit=0
-      else
-        deploy_exit=$?
-      fi
+  if [[ "$deploy_exit" -ne 0 && "$deploy_exit" -ne 76 ]] &&
+    implementation_failure_is_transient "$deploy_exit" "$artifacts/implement.log"; then
+    preserve_provider_artifacts "$artifacts" "nemotron"
+    if (( GLM_FALLBACK_READY == 1 )); then
+      ACTIVE_PROVIDER="$PI_GLM_FALLBACK_PROVIDER"
+      ACTIVE_MODEL="$PI_GLM_FALLBACK_MODEL"
+      ACTIVE_EXECUTOR="pi"
+      warn "$task_id encountered Nemotron capacity; retrying once with pi/GLM ($ACTIVE_MODEL)."
+      if cmd_deploy "$task_id"; then deploy_exit=0; else deploy_exit=$?; fi
+    fi
+  fi
+
+  if [[ "$deploy_exit" -ne 0 && "$deploy_exit" -ne 76 ]] &&
+    implementation_failure_is_transient "$deploy_exit" "$artifacts/implement.log"; then
+    preserve_provider_artifacts "$artifacts" "glm"
+    if (( GEMINI_FALLBACK_READY == 1 )); then
+      ACTIVE_PROVIDER="google"
+      ACTIVE_MODEL="$GEMINI_CLI_MODEL"
+      ACTIVE_EXECUTOR="gemini-cli"
+      warn "$task_id encountered GLM/provider capacity; retrying once with Gemini CLI ($ACTIVE_MODEL)."
+      if cmd_deploy "$task_id"; then deploy_exit=0; else deploy_exit=$?; fi
     fi
   fi
   if [[ "$deploy_exit" -ne 0 ]]; then
@@ -1231,11 +1235,10 @@ Environment:
   PI_PROVIDER=$PI_PROVIDER
   PI_MODEL=$PI_MODEL
   PI_FALLBACK_ENABLED=$PI_FALLBACK_ENABLED
-  PI_FALLBACK_EXECUTOR=$PI_FALLBACK_EXECUTOR
+  PI_GLM_FALLBACK_PROVIDER=$PI_GLM_FALLBACK_PROVIDER
+  PI_GLM_FALLBACK_MODEL=$PI_GLM_FALLBACK_MODEL
   GEMINI_CLI_BIN=$GEMINI_CLI_BIN
   GEMINI_CLI_MODEL=$GEMINI_CLI_MODEL
-  PI_FALLBACK_PROVIDER=$PI_FALLBACK_PROVIDER
-  PI_FALLBACK_MODEL=$PI_FALLBACK_MODEL
   PI_THINKING=${PI_THINKING:-<model default>}
   PI_TASK_TIMEOUT_SECONDS=$PI_TASK_TIMEOUT_SECONDS
   RUN_BRANCH=$RUN_BRANCH
