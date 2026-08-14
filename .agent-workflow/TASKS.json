@@ -232,16 +232,22 @@
     ],
     "files_touched": [
       "examples/deterministic-baseline/**",
-      "scripts/**"
+      "scripts/**",
+      "packages/runner/src/__tests__/runner.test.ts"
     ],
     "depends_on": [
       "T22",
       "T23"
     ],
     "estimated_minutes": 180,
-    "status": "pending",
+    "status": "gated_pass",
     "priority": 9,
-    "failure_limit": 3
+    "failure_limit": 3,
+    "assignee": "orchestrator",
+    "started_at": "2026-08-14T18:53:20.375Z",
+    "attempts": 5,
+    "failures": 2,
+    "completed_at": "2026-08-14T18:53:59.313Z"
   },
   {
     "id": "T25",

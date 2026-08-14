@@ -111,7 +111,7 @@ function refreshChecksum(runDir: string, file: string): void {
 }
 
 // Mock agent server
-let mockAgentServer: (() => void) | null = null;
+let mockAgentServer: (() => Promise<void>) | null = null;
 let mockAgentUrl = "";
 let mockDeleteCount = 0;
 let mockStartedRunCount = 0;
@@ -138,8 +138,7 @@ async function startMockAgent(
   const { createServer } = await import("node:http");
   const { URL } = await import("node:url");
 
-  const port = 9090 + Math.floor(Math.random() * 1000);
-  mockAgentUrl = `http://127.0.0.1:${port}`;
+  let port = 0;
 
   interface MockRun {
     status: string;
@@ -436,20 +435,30 @@ async function startMockAgent(
   });
 
   await new Promise<void>((resolve, reject) => {
-    server.listen(port, "127.0.0.1", () => resolve());
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      if (!address || typeof address === "string") {
+        reject(new Error("Mock agent did not receive a TCP address"));
+        return;
+      }
+      port = address.port;
+      mockAgentUrl = `http://127.0.0.1:${port}`;
+      resolve();
+    });
     server.on("error", reject);
   });
 
-  mockAgentServer = () => {
-    server.close();
-  };
+  mockAgentServer = () =>
+    new Promise<void>((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    });
 
   return mockAgentUrl;
 }
 
 async function stopMockAgent(): Promise<void> {
   if (mockAgentServer) {
-    mockAgentServer();
+    await mockAgentServer();
     mockAgentServer = null;
   }
 }
