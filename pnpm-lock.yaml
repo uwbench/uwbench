@@ -60,6 +60,9 @@ importers:
       '@uwbench/case-schema':
         specifier: workspace:*
         version: link:../../packages/case-schema
+      '@uwbench/harness-adapter':
+        specifier: workspace:*
+        version: link:../../packages/harness-adapter
       '@uwbench/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol

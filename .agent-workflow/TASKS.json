@@ -411,9 +411,13 @@
       "T27B"
     ],
     "estimated_minutes": 480,
-    "status": "pending",
+    "status": "gated_pass",
     "priority": 15,
-    "failure_limit": 3
+    "failure_limit": 3,
+    "assignee": "orchestrator",
+    "started_at": "2026-08-15T20:58:17.181Z",
+    "attempts": 1,
+    "completed_at": "2026-08-15T20:58:56.868Z"
   },
   {
     "id": "T27D",

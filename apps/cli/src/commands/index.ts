@@ -4,6 +4,7 @@ import { validateAgentCommand } from "./validate-agent.js";
 import { validateCaseCommand } from "./validate-case.js";
 import { runCommand } from "./run.js";
 import { suiteCommand } from "./suite.js";
+import { harnessPilotCommand } from "./harness-pilot.js";
 
 export const program = new Command();
 
@@ -14,6 +15,7 @@ program.addCommand(validateAgentCommand);
 program.addCommand(validateCaseCommand);
 program.addCommand(runCommand);
 program.addCommand(suiteCommand);
+program.addCommand(harnessPilotCommand);
 
 // Global error handling for unknown commands
 program.on("command:*", () => {

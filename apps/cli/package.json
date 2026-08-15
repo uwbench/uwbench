@@ -26,6 +26,7 @@
     "@uwbench/protocol": "workspace:*",
     "@uwbench/case-schema": "workspace:*",
     "@uwbench/testkit": "workspace:*",
-    "@uwbench/runner": "workspace:*"
+    "@uwbench/runner": "workspace:*",
+    "@uwbench/harness-adapter": "workspace:*"
   }
 }
