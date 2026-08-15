@@ -1,0 +1,17 @@
+{
+  "id": "market-data",
+  "dimension": "connector",
+  "description": "Market-data or industry-benchmark lookup.",
+  "availability": {
+    "default-readiness": false,
+    "protocol-equalized": false,
+    "tenant-configured": true
+  },
+  "setupEffort": {
+    "credentials": 1,
+    "mappings": 2,
+    "manualSteps": 1,
+    "participantGlue": 1
+  },
+  "adaptationMechanisms": ["connector_mappings", "credentials"]
+}

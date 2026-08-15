@@ -1,0 +1,17 @@
+{
+  "id": "crm-aggregation",
+  "dimension": "connector",
+  "description": "CRM aggregation of borrower relationships and open opportunities.",
+  "availability": {
+    "default-readiness": false,
+    "protocol-equalized": false,
+    "tenant-configured": true
+  },
+  "setupEffort": {
+    "credentials": 1,
+    "mappings": 2,
+    "manualSteps": 2,
+    "participantGlue": 1
+  },
+  "adaptationMechanisms": ["connector_mappings", "credentials"]
+}

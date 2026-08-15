@@ -1,0 +1,17 @@
+{
+  "id": "sanctions",
+  "dimension": "connector",
+  "description": "Sanctions-list screening against frozen watchlists.",
+  "availability": {
+    "default-readiness": false,
+    "protocol-equalized": false,
+    "tenant-configured": true
+  },
+  "setupEffort": {
+    "credentials": 1,
+    "mappings": 1,
+    "manualSteps": 2,
+    "participantGlue": 1
+  },
+  "adaptationMechanisms": ["connector_mappings", "credentials"]
+}

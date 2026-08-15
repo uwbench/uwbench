@@ -1,0 +1,17 @@
+{
+  "id": "pep",
+  "dimension": "connector",
+  "description": "Politically exposed person screening.",
+  "availability": {
+    "default-readiness": false,
+    "protocol-equalized": false,
+    "tenant-configured": true
+  },
+  "setupEffort": {
+    "credentials": 1,
+    "mappings": 1,
+    "manualSteps": 2,
+    "participantGlue": 1
+  },
+  "adaptationMechanisms": ["connector_mappings", "credentials"]
+}

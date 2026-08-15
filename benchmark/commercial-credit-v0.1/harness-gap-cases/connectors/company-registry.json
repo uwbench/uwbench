@@ -1,0 +1,17 @@
+{
+  "id": "company-registry",
+  "dimension": "connector",
+  "description": "Authoritative company-registry lookup for legal name and officers.",
+  "availability": {
+    "default-readiness": false,
+    "protocol-equalized": false,
+    "tenant-configured": true
+  },
+  "setupEffort": {
+    "credentials": 1,
+    "mappings": 1,
+    "manualSteps": 1,
+    "participantGlue": 1
+  },
+  "adaptationMechanisms": ["connector_mappings", "credentials"]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "document-store",
+  "dimension": "connector",
+  "description": "External document-store retrieval beyond the authorized case archive.",
+  "availability": {
+    "default-readiness": true,
+    "protocol-equalized": false,
+    "tenant-configured": true
+  },
+  "setupEffort": {
+    "credentials": 1,
+    "mappings": 1,
+    "manualSteps": 1,
+    "participantGlue": 1
+  },
+  "adaptationMechanisms": ["connector_mappings", "credentials"]
+}

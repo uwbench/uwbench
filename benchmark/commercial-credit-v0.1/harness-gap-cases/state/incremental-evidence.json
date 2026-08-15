@@ -1,0 +1,23 @@
+{
+  "id": "incremental-evidence",
+  "dimension": "state",
+  "description": "A later document drop must be visible only inside the same authorized run, not across cases.",
+  "profiles": {
+    "default-readiness": {
+      "sharesMemoryAcrossDrops": true,
+      "requiresManualReload": true,
+      "operatorInterventions": 2,
+      "participantGlue": 1
+    },
+    "protocol-equalized": {
+      "sharesMemoryAcrossDrops": false,
+      "requiresManualReload": false,
+      "operatorInterventions": 0,
+      "participantGlue": 0
+    },
+    "tenant-configured": {
+      "heldOut": true,
+      "adaptationMechanisms": ["operator_feedback", "connector_mappings"]
+    }
+  }
+}

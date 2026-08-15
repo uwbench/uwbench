@@ -1,0 +1,23 @@
+{
+  "id": "restart-resume",
+  "dimension": "state",
+  "description": "Restart or resume after a cancelled run must not inherit unauthorized prior conversation.",
+  "profiles": {
+    "default-readiness": {
+      "resumeSupported": true,
+      "inheritsConversation": true,
+      "operatorInterventions": 1,
+      "participantGlue": 1
+    },
+    "protocol-equalized": {
+      "resumeSupported": false,
+      "inheritsConversation": false,
+      "operatorInterventions": 0,
+      "participantGlue": 0
+    },
+    "tenant-configured": {
+      "heldOut": true,
+      "adaptationMechanisms": ["operator_feedback", "session_resume"]
+    }
+  }
+}

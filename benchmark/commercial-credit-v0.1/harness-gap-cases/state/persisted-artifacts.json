@@ -1,0 +1,23 @@
+{
+  "id": "persisted-artifacts",
+  "dimension": "state",
+  "description": "Workspace artifacts must not survive an ephemeral controlled run.",
+  "profiles": {
+    "default-readiness": {
+      "workspaceRetained": true,
+      "artifactsRetained": true,
+      "operatorInterventions": 1,
+      "participantGlue": 1
+    },
+    "protocol-equalized": {
+      "workspaceRetained": false,
+      "artifactsRetained": false,
+      "operatorInterventions": 0,
+      "participantGlue": 0
+    },
+    "tenant-configured": {
+      "heldOut": true,
+      "adaptationMechanisms": ["persistent_workspace"]
+    }
+  }
+}
