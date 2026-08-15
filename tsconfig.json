@@ -12,6 +12,7 @@
     { "path": "./packages/testkit" },
     { "path": "./packages/runner" },
     { "path": "./packages/tool-runtime" },
+    { "path": "./packages/harness-adapter" },
     { "path": "./packages/scorer-core" },
     { "path": "./packages/scorer-financial" },
     { "path": "./packages/scorer-policy" },
