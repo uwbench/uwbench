@@ -99,6 +99,25 @@ importers:
         specifier: ^2.0.5
         version: 2.1.9(@types/node@20.19.43)
 
+  examples/harness-adapters:
+    dependencies:
+      '@uwbench/harness-adapter':
+        specifier: workspace:*
+        version: link:../../packages/harness-adapter
+      '@uwbench/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
+      '@uwbench/testkit':
+        specifier: workspace:*
+        version: link:../../packages/testkit
+    devDependencies:
+      '@types/node':
+        specifier: ^20.14.10
+        version: 20.19.43
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
   examples/oracle-input-baseline:
     dependencies:
       '@uwbench/protocol':

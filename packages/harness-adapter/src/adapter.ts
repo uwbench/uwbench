@@ -32,6 +32,7 @@ import {
   type HarnessIdentity,
   type HarnessRunMetadata,
 } from "@uwbench/testkit";
+import type { HarnessCapabilityDeclaration } from "./capabilities.js";
 import {
   ADAPTER_VERSION,
   DEFAULT_IDENTITY,
@@ -66,6 +67,7 @@ export class HarnessAdapter {
   private readonly options: HarnessAdapterOptions;
   private readonly identity: HarnessIdentity;
   private readonly authorizedTools: string[];
+  private readonly declaration: HarnessCapabilityDeclaration | undefined;
   private readonly runs = new Map<string, RunState>();
   private readonly idempotencyKeys = new Map<string, string>();
   private server: ReturnType<Express["listen"]> | null = null;
@@ -78,6 +80,7 @@ export class HarnessAdapter {
     this.options = options;
     this.identity = { ...DEFAULT_IDENTITY, ...options.identity };
     this.authorizedTools = [...(options.authorizedTools ?? TOOL_NAMES)];
+    this.declaration = options.declaration;
     this.app = express();
     this.app.use(express.json({ limit: "10mb" }));
     this.app.use(
@@ -107,6 +110,10 @@ export class HarnessAdapter {
 
   getRunMetadata(agentRunId: string): HarnessRunMetadata | undefined {
     return this.runs.get(agentRunId)?.metadata;
+  }
+
+  getCapabilityDeclaration(): HarnessCapabilityDeclaration | undefined {
+    return this.declaration;
   }
 
   private configureRoutes(): void {
@@ -250,6 +257,12 @@ export class HarnessAdapter {
       join(run.workspace, "metadata.json"),
       JSON.stringify(run.metadata),
     );
+    if (this.declaration) {
+      writeFileSync(
+        join(run.workspace, "capabilities.json"),
+        JSON.stringify(this.declaration),
+      );
+    }
   }
 
   private isTerminal(run: RunState): boolean {

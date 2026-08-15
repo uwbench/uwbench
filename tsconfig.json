@@ -24,6 +24,7 @@
     { "path": "./examples/deterministic-baseline" },
     { "path": "./examples/single-prompt-baseline" },
     { "path": "./examples/tool-agent-baseline" },
-    { "path": "./examples/oracle-input-baseline" }
+    { "path": "./examples/oracle-input-baseline" },
+    { "path": "./examples/harness-adapters" }
   ]
 }
