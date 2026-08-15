@@ -298,9 +298,15 @@
       "T23"
     ],
     "estimated_minutes": 240,
-    "status": "pending",
+    "status": "gated_pass",
     "priority": 11,
-    "failure_limit": 3
+    "failure_limit": 3,
+    "assignee": "orchestrator",
+    "started_at": "2026-08-15T20:36:00.190Z",
+    "attempts": 8,
+    "deferrals": 5,
+    "failures": 2,
+    "completed_at": "2026-08-15T20:36:46.334Z"
   },
   {
     "id": "T27",
