@@ -143,9 +143,9 @@ compareCommand.action(
             ? casePath
             : resolveCaseAcrossTracks(caseId);
           const row: (typeof rows)[number] = { caseId };
-          for (const [label, agent] of [
-            [options.labelA, options.agentA],
-            [options.labelB, options.agentB],
+          for (const [label, agent, participant] of [
+            [options.labelA, options.agentA, participantA],
+            [options.labelB, options.agentB, participantB],
           ] as const) {
             const runDir = join(outputDir, label, caseId);
             clearStaleCompareRun(runDir, options.force === true);
@@ -155,6 +155,7 @@ compareCommand.action(
               lane,
               outputDir: runDir,
               ...(Object.keys(limits).length > 0 ? { limits } : {}),
+              ...(participant ? { participant } : {}),
             });
             row[`${label}.status`] = result.status;
             row[`${label}.scoreStatus`] = result.scoreStatus;
@@ -181,6 +182,10 @@ compareCommand.action(
               disclaimer:
                 "Scores are benchmark artifacts, not real credit opinions.",
               lane,
+              participants: {
+                [options.labelA]: participantA ?? "from-agent-health",
+                [options.labelB]: participantB ?? "from-agent-health",
+              },
               rows,
             },
             null,

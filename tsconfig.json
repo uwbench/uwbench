@@ -25,6 +25,7 @@
     { "path": "./examples/single-prompt-baseline" },
     { "path": "./examples/tool-agent-baseline" },
     { "path": "./examples/oracle-input-baseline" },
-    { "path": "./examples/harness-adapters" }
+    { "path": "./examples/harness-adapters" },
+    { "path": "./examples/securelend-adapter" }
   ]
 }
