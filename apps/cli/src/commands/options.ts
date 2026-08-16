@@ -1,3 +1,8 @@
+import type { Command } from "commander";
+import { existsSync, readdirSync } from "node:fs";
+import { join, resolve } from "node:path";
+import type { ParticipantIdentity } from "@uwbench/protocol";
+
 export type CliLane = "raw_documents" | "normalized_data" | "reasoning_only";
 
 const LANES = new Set<CliLane>([
@@ -44,6 +49,44 @@ export function jsonError(error: unknown): string {
   );
 }
 
+export function addParticipantOptions(
+  command: Command,
+  suffix = "",
+): Command {
+  const flag = (name: string): string => (suffix ? `${name}-${suffix}` : name);
+  return command
+    .option(`--${flag("harness")} <id>`, "Participant harness id")
+    .option(`--${flag("model")} <id>`, "Participant model id")
+    .option(`--${flag("provider")} <id>`, "Participant model provider")
+    .option(`--${flag("harness-version")} <ver>`, "Harness version")
+    .option(`--${flag("model-version")} <ver>`, "Model version")
+    .option(`--${flag("provider-version")} <ver>`, "Provider version");
+}
+
+export function participantFromFlags(flags: {
+  harness?: string;
+  model?: string;
+  provider?: string;
+  harnessVersion?: string;
+  modelVersion?: string;
+  providerVersion?: string;
+}): ParticipantIdentity | undefined {
+  if (!flags.harness && !flags.model && !flags.provider) return undefined;
+  if (!flags.harness || !flags.model) {
+    throw new Error("--harness and --model must be set together");
+  }
+  return {
+    harness: flags.harness,
+    harnessVersion: flags.harnessVersion ?? "undeclared",
+    model: flags.model,
+    modelVersion: flags.modelVersion ?? "undeclared",
+    provider: flags.provider ?? "undeclared",
+    providerVersion: flags.providerVersion ?? "undeclared",
+    adapter: "uwbench-cli",
+    adapterVersion: "0.0.0",
+  };
+}
+
 export function resolveCaseInput(input: string): string {
   const direct = resolve(input);
   if (existsSync(direct)) return direct;
@@ -63,5 +106,3 @@ export function resolveCaseInput(input: string): string {
   }
   throw new Error(`Case ID not found: ${input}`);
 }
-import { existsSync, readdirSync } from "node:fs";
-import { join, resolve } from "node:path";

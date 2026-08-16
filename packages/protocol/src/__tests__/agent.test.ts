@@ -267,6 +267,26 @@ describe("Agent Protocol Schemas", () => {
       expect(result.success).toBe(true);
     });
 
+    it("accepts a participant identity", () => {
+      const result = HealthResponseSchema.safeParse({
+        schemaVersion: "1.0",
+        status: "ok",
+        version: "1.0.0",
+        protocolVersion: "1.0",
+        participant: {
+          harness: "securelend-underwriting-agent",
+          harnessVersion: "0.1.0",
+          model: "claude-sonnet-4-6",
+          modelVersion: "2026-02-19",
+          provider: "anthropic",
+          providerVersion: "undeclared",
+          adapter: "@uwbench/securelend-adapter",
+          adapterVersion: "0.1.0",
+        },
+      });
+      expect(result.success).toBe(true);
+    });
+
     it("rejects non-ok status", () => {
       const result = HealthResponseSchema.safeParse({
         schemaVersion: "1.0",

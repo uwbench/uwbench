@@ -54,7 +54,13 @@ export interface DocumentFixture {
   sizeBytes: number;
   sha256: string;
   content: string;
-  pages: { pageNumber: number; text: string }[];
+  pages: {
+    pageNumber: number;
+    text: string;
+    rendering?: "text" | "image" | undefined;
+    imagePngBase64?: string | undefined;
+  }[];
+  fileName?: string | undefined;
 }
 
 export interface RecordFixture {
@@ -98,11 +104,14 @@ const DocumentFixtureSchema: z.ZodType<DocumentFixture> = z.strictObject({
   sha256: z.string().regex(/^[a-f0-9]{64}$/),
   content: z.string(),
   pages: z.array(
-    z.strictObject({
+    z.object({
       pageNumber: z.number().int().positive(),
       text: z.string(),
+      rendering: z.enum(["text", "image"]).optional(),
+      imagePngBase64: z.string().min(1).optional(),
     }),
   ),
+  fileName: z.string().min(1).optional(),
 });
 
 const CaseFixtureDataSchema = z.strictObject({
@@ -811,6 +820,8 @@ export class ToolGateway {
           documentId: document.documentId,
           page: page.pageNumber,
         } satisfies EvidenceReference,
+        ...(page.rendering ? { rendering: page.rendering } : {}),
+        ...(page.imagePngBase64 ? { imagePngBase64: page.imagePngBase64 } : {}),
       })),
     });
   }

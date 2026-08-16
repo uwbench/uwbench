@@ -34,6 +34,8 @@ import {
   type EventSource,
   type EventType,
   type EventWithoutHash,
+  type HealthResponse,
+  type ParticipantIdentity,
   type ProtocolError,
   type ProtocolErrorCode,
   type RunRequest,
@@ -133,6 +135,7 @@ export interface RunOptions {
   outputDir?: string;
   runId?: string;
   skipHealthCheck?: boolean;
+  participant?: ParticipantIdentity;
 }
 
 export interface RunResult {
@@ -169,6 +172,7 @@ export interface RunManifest {
   submissionHash?: string;
   configurationHash: string;
   error?: ProtocolError;
+  participant?: ParticipantIdentity;
 }
 
 export interface Checksums {
@@ -199,6 +203,27 @@ function validateRunId(runId: string): void {
 
 function createOpaqueCaseId(): string {
   return `opaque_${randomUUID().replaceAll("-", "")}`;
+}
+
+function mergeParticipant(
+  declared: ParticipantIdentity | undefined,
+  override: ParticipantIdentity | undefined,
+): ParticipantIdentity | undefined {
+  if (!declared && !override) return undefined;
+  return {
+    harness: override?.harness ?? declared?.harness ?? "undeclared",
+    harnessVersion:
+      override?.harnessVersion ?? declared?.harnessVersion ?? "undeclared",
+    model: override?.model ?? declared?.model ?? "undeclared",
+    modelVersion:
+      override?.modelVersion ?? declared?.modelVersion ?? "undeclared",
+    provider: override?.provider ?? declared?.provider ?? "undeclared",
+    providerVersion:
+      override?.providerVersion ?? declared?.providerVersion ?? "undeclared",
+    adapter: override?.adapter ?? declared?.adapter ?? "undeclared",
+    adapterVersion:
+      override?.adapterVersion ?? declared?.adapterVersion ?? "undeclared",
+  };
 }
 
 function sha256(content: string | Buffer): string {
@@ -391,6 +416,17 @@ function buildLaneToolFixtures(
   );
   const trusted = existsSync(trustedFixturePath)
     ? (JSON.parse(readFileSync(trustedFixturePath, "utf8")) as {
+        documents?: {
+          documentId?: string;
+          fileName?: string;
+          content?: string;
+          pages?: {
+            pageNumber: number;
+            text: string;
+            rendering?: "text" | "image";
+            imagePngBase64?: string;
+          }[];
+        }[];
         revealableDocuments?: unknown[];
         information?: Record<string, unknown>;
       })
@@ -433,6 +469,12 @@ function buildLaneToolFixtures(
         const declared = sourceForInputFile(caseData, "document", entry.name);
         const documentId = declared?.documentId ?? `document:${entry.name}`;
         const extension = extname(entry.name).toLocaleLowerCase();
+        if (
+          entry.name === "source-provenance.yaml" ||
+          entry.name === "source-provenance.yml"
+        ) {
+          continue;
+        }
         const mimeType =
           declared?.mimeType ??
           (extension === ".txt" || extension === ".md" || extension === ".csv"
@@ -441,25 +483,43 @@ function buildLaneToolFixtures(
               ? "application/json"
               : extension === ".pdf"
                 ? "application/pdf"
-                : "application/octet-stream");
-        if (!(
-          mimeType.startsWith("text/") || mimeType === "application/json"
-        )) {
+                : extension === ".xlsx"
+                  ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  : extension === ".docx"
+                    ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    : "application/octet-stream");
+        const extraction = (trusted.documents ?? []).find(
+          (candidate) =>
+            candidate.documentId === documentId ||
+            candidate.fileName === entry.name,
+        );
+        const extractedPages = extraction?.pages;
+        const isText =
+          mimeType.startsWith("text/") || mimeType === "application/json";
+        if (!isText && (!extractedPages || extractedPages.length === 0)) {
           throw new Error(
             `Raw document ${entry.name} has unsupported binary media type ${mimeType}; provide authoritative extracted text and page metadata before running raw_documents`,
           );
         }
-        const pageCount = declared?.pageCount ?? 1;
-        if (pageCount !== 1) {
+        const pageCount = extractedPages?.length ?? declared?.pageCount ?? 1;
+        if (!extractedPages && pageCount !== 1) {
           throw new Error(
             `Raw document ${entry.name} declares ${pageCount} pages but has no authoritative per-page extraction`,
           );
         }
         let content: string;
-        try {
-          content = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-        } catch {
-          throw new Error(`Raw document ${entry.name} is not valid UTF-8 text`);
+        if (isText) {
+          try {
+            content = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+          } catch {
+            throw new Error(
+              `Raw document ${entry.name} is not valid UTF-8 text`,
+            );
+          }
+        } else {
+          content =
+            extraction?.content ??
+            extractedPages!.map((page) => page.text).join("\n\n");
         }
         documents.push({
           documentId,
@@ -470,7 +530,8 @@ function buildLaneToolFixtures(
           sizeBytes: bytes.length,
           sha256: createHash("sha256").update(bytes).digest("hex"),
           content,
-          pages: [{ pageNumber: 1, text: content }],
+          pages: extractedPages ?? [{ pageNumber: 1, text: content }],
+          fileName: entry.name,
         });
       }
     }
@@ -558,6 +619,7 @@ export class LocalRunner {
   private lastFinalScore: number | undefined;
   private participantCaseId = "";
   private currentAgentUrl = "";
+  private currentParticipant: ParticipantIdentity | undefined;
   private currentLane: SupportedLane = "reasoning_only";
   private currentBenchmark = "";
   private currentBenchmarkVersion = "";
@@ -707,6 +769,7 @@ export class LocalRunner {
       manifest.submissionHash = sha256(JSON.stringify(this.submission));
     }
     if (this.terminalError) manifest.error = this.terminalError;
+    if (this.currentParticipant) manifest.participant = this.currentParticipant;
     writeFileSync(
       join(this.currentRunDir, "run-manifest.json"),
       JSON.stringify(manifest, null, 2),
@@ -846,10 +909,13 @@ export class LocalRunner {
     if (gateway) await gateway.stop();
   }
 
-  private async checkAgentHealth(agentUrl: string): Promise<void> {
+  private async checkAgentHealth(
+    agentUrl: string,
+    signal?: AbortSignal | null,
+  ): Promise<HealthResponse> {
     const response = await fetchWithTimeout(
       `${agentUrl}/health`,
-      { signal: this.pollController.signal },
+      signal ? { signal } : {},
       5_000,
     );
     if (!response.ok) {
@@ -866,6 +932,7 @@ export class LocalRunner {
         `Agent protocol version mismatch: ${parsed.data.protocolVersion}`,
       );
     }
+    return parsed.data;
   }
 
   private async startAgentRun(
@@ -1095,6 +1162,11 @@ export class LocalRunner {
     }
     const taskMarkdown = readFileSync(join(casePath, "task.md"), "utf8");
     const normalizedAgentUrl = options.agentUrl.replace(/\/$/, "");
+    let participant = options.participant;
+    if (!options.skipHealthCheck) {
+      const health = await this.checkAgentHealth(normalizedAgentUrl);
+      participant = mergeParticipant(health.participant, options.participant);
+    }
     const limits: Budget = {
       wallClockSeconds:
         options.limits?.wallClockSeconds ??
@@ -1122,6 +1194,7 @@ export class LocalRunner {
         benchmarkVersion: caseData.benchmark_version,
         caseInputFingerprint: caseInputFingerprint(casePath, lane),
         limits,
+        ...(participant ? { participant } : {}),
       }),
     );
     const existing = await this.findExistingRun(
@@ -1179,6 +1252,7 @@ export class LocalRunner {
     this.lastFinalScore = undefined;
     this.participantCaseId = createOpaqueCaseId();
     this.currentAgentUrl = normalizedAgentUrl;
+    this.currentParticipant = participant;
     this.currentLane = lane;
     this.currentBenchmark = caseData.track;
     this.currentBenchmarkVersion = caseData.benchmark_version;
@@ -1234,9 +1308,6 @@ export class LocalRunner {
         toolGatewayUrl: `http://127.0.0.1:${this.gatewayPort}/v1/tools/call`,
         authentication: "run-scoped bearer token issued (redacted)",
       });
-      if (!options.skipHealthCheck)
-        await this.checkAgentHealth(this.currentAgentUrl);
-
       const request: RunRequest = {
         schemaVersion: "1.0",
         idempotencyKey: this.currentRunId,

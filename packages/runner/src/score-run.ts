@@ -104,6 +104,19 @@ function citationIndexToBounds(index: unknown): SourceBounds[] {
       records: [],
       availableInLane: true,
     };
+    if (kind === "document") {
+      bounds.documents = [
+        {
+          sourceId,
+          documentId: String(entry["documentId"] ?? sourceId),
+          availableInLane: true,
+          hasPages: true,
+          hasCharacterOffsets: false,
+          pageCount:
+            typeof entry["pageCount"] === "number" ? entry["pageCount"] : 1,
+        },
+      ];
+    }
     if (kind === "record") {
       bounds.records = [
         {

@@ -6,6 +6,7 @@ import { runCommand } from "./run.js";
 import { suiteCommand } from "./suite.js";
 import { harnessPilotCommand } from "./harness-pilot.js";
 import { compareCommand } from "./compare.js";
+import { matrixCommand } from "./matrix.js";
 
 export const program = new Command();
 
@@ -18,6 +19,7 @@ program.addCommand(runCommand);
 program.addCommand(suiteCommand);
 program.addCommand(harnessPilotCommand);
 program.addCommand(compareCommand);
+program.addCommand(matrixCommand);
 
 // Global error handling for unknown commands
 program.on("command:*", () => {

@@ -1,0 +1,22 @@
+{
+  "name": "@uwbench/securelend-adapter",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/server.js",
+  "types": "./dist/server.d.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "clean": "rm -rf dist .tsbuildinfo",
+    "start": "node dist/server.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "@uwbench/protocol": "workspace:*"
+  }
+}

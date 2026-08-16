@@ -1,0 +1,6 @@
+type: sec_edgar_frozen
+issuer: "Federal Signal Corporation"
+ticker: FSS
+accession: "0000277509-25-000012"
+asOf: "2024-12-31"
+note: "Rounded frozen 10-K summary rendered into PDF/XLSX/DOCX. Loan and policy are synthetic."

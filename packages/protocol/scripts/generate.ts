@@ -195,6 +195,12 @@ export const SCHEMAS: {
     description: "Stable agent protocol error code",
   },
   {
+    name: "ParticipantIdentity",
+    schema: AgentSchemas.ParticipantIdentitySchema,
+    category: "agent",
+    description: "Harness, model, and adapter identity for published scores",
+  },
+  {
     name: "HealthResponse",
     schema: AgentSchemas.HealthResponseSchema,
     category: "agent",

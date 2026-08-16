@@ -319,6 +319,47 @@ describe("ToolGateway", () => {
     }
   });
 
+  it("returns image page payloads from case.read_document", async () => {
+    gateway.registerRun("ocr-token", 5, {
+      documents: [
+        {
+          documentId: "doc_scan",
+          sourceId: "src_scan",
+          title: "Scanned financials",
+          mimeType: "application/pdf",
+          pageCount: 1,
+          sizeBytes: 12,
+          sha256: "a".repeat(64),
+          content: "",
+          pages: [
+            {
+              pageNumber: 1,
+              text: "",
+              rendering: "image",
+              imagePngBase64: "iVBORw0KGgo=",
+            },
+          ],
+        },
+      ],
+    });
+    const result = ToolResultSchema.parse(
+      (
+        await rawCall(
+          {
+            schemaVersion: "1.0",
+            callId: "read-scan",
+            name: "case.read_document",
+            arguments: { documentId: "doc_scan" },
+          },
+          "ocr-token",
+        )
+      ).json,
+    );
+    expect(result.ok).toBe(true);
+    expect(JSON.stringify(result)).toContain('"rendering":"image"');
+    expect(JSON.stringify(result)).toContain("iVBORw0KGgo=");
+  });
+
   it("supports a fake agent calling all twelve tools successfully", async () => {
     const calls: [ToolName, unknown][] = [
       ["case.list_documents", {}],
