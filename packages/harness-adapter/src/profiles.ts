@@ -15,6 +15,8 @@ export interface HarnessProfile {
   identity: HarnessIdentity;
   declaration: HarnessCapabilityDeclaration;
   liveBinary: string;
+  liveProvider?: string;
+  liveModel?: string;
 }
 
 function identity(
@@ -130,10 +132,91 @@ export const GEMINI_CLI_PROFILE: HarnessProfile = {
   }),
 };
 
+export const PI_NEMOTRON_PROFILE: HarnessProfile = {
+  id: "pi-nemotron",
+  identity: identity("pi-nemotron", "nvidia"),
+  liveBinary: "pi",
+  liveProvider: "nvidia",
+  liveModel: "nvidia/nemotron-3-super-120b-a12b",
+  declaration: declaration("pi-nemotron", {
+    filesystem: "host-visible workspace plus AGENTS.md / CLAUDE.md lookup",
+    network: "NVIDIA NIM API plus optional tool HTTP",
+    memory: "retained pi session files under ~/.pi",
+    approval: "interactive tool prompts unless print mode",
+    connectors: ["nvidia-nim"],
+    notes: [
+      "Controlled live runs use `pi -p --no-session --no-context-files`.",
+      "Default model is nvidia/nemotron-3-super-120b-a12b; override with UWBENCH_LIVE_MODEL.",
+    ],
+  }),
+};
+
+export const PI_GLM_52_PROFILE: HarnessProfile = {
+  id: "pi-glm-5.2",
+  identity: identity("pi-glm-5.2", "nvidia"),
+  liveBinary: "pi",
+  liveProvider: "nvidia",
+  liveModel: "z-ai/glm-5.2",
+  declaration: declaration("pi-glm-5.2", {
+    filesystem: "host-visible workspace plus AGENTS.md / CLAUDE.md lookup",
+    network: "NVIDIA NIM API plus optional tool HTTP",
+    memory: "retained pi session files under ~/.pi",
+    approval: "interactive tool prompts unless print mode",
+    connectors: ["nvidia-nim"],
+    notes: [
+      "Controlled live runs use `pi -p --no-session --no-context-files`.",
+      "Default model is z-ai/glm-5.2; override with UWBENCH_LIVE_MODEL.",
+    ],
+  }),
+};
+
+export const PI_GROK_46_PROFILE: HarnessProfile = {
+  id: "pi-grok-4.6",
+  identity: identity("pi-grok-4.6", "xai"),
+  liveBinary: "pi",
+  liveProvider: "xai",
+  liveModel: "grok-4.6",
+  declaration: declaration("pi-grok-4.6", {
+    filesystem: "host-visible workspace plus AGENTS.md / CLAUDE.md lookup",
+    network: "xAI API plus optional tool HTTP",
+    memory: "retained pi session files under ~/.pi",
+    approval: "interactive tool prompts unless print mode",
+    connectors: ["xai"],
+    notes: [
+      "Controlled live runs use `pi -p --no-session --no-context-files`.",
+      "Default model is xai/grok-4.6 (built-in Pi catalog; XAI_API_KEY or `/login xai`).",
+      "Optional SuperGrok path: `pi install npm:pi-grok-cli`, then UWBENCH_LIVE_PROVIDER=grok-cli.",
+      "Override with UWBENCH_LIVE_PROVIDER / UWBENCH_LIVE_MODEL.",
+    ],
+  }),
+};
+
+export const OPENCODE_PROFILE: HarnessProfile = {
+  id: "opencode",
+  identity: identity("opencode", "opencode"),
+  liveBinary: "opencode",
+  declaration: declaration("opencode", {
+    filesystem:
+      "host-visible workspace plus AGENTS.md / CLAUDE.md / .opencode lookup",
+    network: "provider API plus optional MCP / web tools",
+    memory: "retained OpenCode sessions under ~/.local/share/opencode",
+    approval: "interactive permission prompts unless --auto",
+    connectors: ["mcp"],
+    notes: [
+      "Controlled live runs use `opencode --pure run --auto` in the ephemeral workspace.",
+      "Uses the locally configured OpenCode model; pin with UWBENCH_LIVE_MODEL (provider/model).",
+    ],
+  }),
+};
+
 export const CONTROLLED_PROFILES: Record<HarnessProfileId, HarnessProfile> = {
   "claude-code": CLAUDE_CODE_PROFILE,
   codex: CODEX_PROFILE,
   "gemini-cli": GEMINI_CLI_PROFILE,
+  "pi-nemotron": PI_NEMOTRON_PROFILE,
+  "pi-glm-5.2": PI_GLM_52_PROFILE,
+  "pi-grok-4.6": PI_GROK_46_PROFILE,
+  opencode: OPENCODE_PROFILE,
 };
 
 export function fixtureWorkerPath(): string {
@@ -160,23 +243,54 @@ export interface ControlledAdapterOptions {
   env?: Record<string, string>;
 }
 
+export function liveWorkerPath(): string {
+  return join(dirname(fileURLToPath(import.meta.url)), "../workers/live.mjs");
+}
+
+export function liveCommand(
+  binary: string,
+  env: Record<string, string> = {},
+): HarnessCommand {
+  return {
+    command: process.execPath,
+    args: [liveWorkerPath()],
+    env: {
+      UWBENCH_LIVE_BIN: binary,
+      ...env,
+    },
+  };
+}
+
+function liveEnv(profile: HarnessProfile): Record<string, string> {
+  const env: Record<string, string> = {};
+  if (profile.liveProvider) env["UWBENCH_LIVE_PROVIDER"] = profile.liveProvider;
+  if (profile.liveModel) env["UWBENCH_LIVE_MODEL"] = profile.liveModel;
+  return env;
+}
+
 export function createControlledAdapter(
   profileId: HarnessProfileId,
   options: ControlledAdapterOptions,
 ): HarnessAdapter {
   const profile = CONTROLLED_PROFILES[profileId];
   const live = options.live === true;
-  if (live) {
-    throw new Error(
-      `${profile.liveBinary} live mode is opt-in and not used for protocol conformance`,
-    );
-  }
-  const adapterOptions = {
+  const identity = live
+    ? {
+        ...profile.identity,
+        model: profile.liveModel ?? "live",
+        modelVersion: "undeclared",
+      }
+    : profile.identity;
+  return new HarnessAdapter({
     port: options.port,
-    command: fixtureCommand(options.env ?? {}),
-    identity: profile.identity,
+    command: live
+      ? liveCommand(profile.liveBinary, {
+          ...liveEnv(profile),
+          ...options.env,
+        })
+      : fixtureCommand(options.env ?? {}),
+    identity,
     authorizedTools: options.authorizedTools ?? TOOL_NAMES,
     declaration: profile.declaration,
-  };
-  return new HarnessAdapter(adapterOptions);
+  });
 }

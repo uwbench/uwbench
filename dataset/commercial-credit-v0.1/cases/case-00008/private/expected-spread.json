@@ -1,0 +1,24 @@
+{
+  "financialSpread": {
+    "revenue": { "amount": 1120000000, "currency": "USD" },
+    "cogs": { "amount": 672000000, "currency": "USD" },
+    "grossProfit": { "amount": 448000000, "currency": "USD" },
+    "operatingExpenses": { "amount": 392000000, "currency": "USD" },
+    "ebitda": { "amount": 56000000, "currency": "USD" },
+    "interestExpense": { "amount": 18000000, "currency": "USD" },
+    "debtService": { "amount": 65000000, "currency": "USD" },
+    "totalDebt": { "amount": 420000000, "currency": "USD" },
+    "cash": { "amount": 68000000, "currency": "USD" },
+    "currentAssets": { "amount": 320000000, "currency": "USD" },
+    "currentLiabilities": { "amount": 210000000, "currency": "USD" },
+    "totalAssets": { "amount": 1250000000, "currency": "USD" },
+    "totalLiabilities": { "amount": 720000000, "currency": "USD" },
+    "equity": { "amount": 530000000, "currency": "USD" },
+    "taxes": { "amount": 9500000, "currency": "USD" },
+    "netIncome": { "amount": 18500000, "currency": "USD" },
+    "period": { "start": "2024-01-01", "end": "2024-12-31" },
+    "currency": "USD",
+    "scale": "units",
+    "signConvention": "positive_revenue_negative_expense"
+  }
+}

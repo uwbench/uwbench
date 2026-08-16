@@ -1,0 +1,17 @@
+{
+  "revenue": 2200000000,
+  "cogs": 1760000000,
+  "operating_expenses": 352000000,
+  "ebitda": 88000000,
+  "interest_expense": 28000000,
+  "debt_service": 85000000,
+  "total_debt": 720000000,
+  "cash": 38000000,
+  "current_assets": 420000000,
+  "current_liabilities": 380000000,
+  "total_assets": 1550000000,
+  "total_liabilities": 980000000,
+  "equity": 570000000,
+  "taxes": 15000000,
+  "net_income": 10000000
+}

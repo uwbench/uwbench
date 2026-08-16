@@ -1,0 +1,16 @@
+{
+  "citations": [
+    {
+      "citationId": "cite_concentration",
+      "sourceId": "src_customer_concentration",
+      "fields": ["top_1_pct", "top_3_total_pct"],
+      "confidence": 0.95
+    },
+    {
+      "citationId": "cite_dscr",
+      "sourceId": "src_financials_2024",
+      "fields": ["ebitda", "debt_service"],
+      "confidence": 1.0
+    }
+  ]
+}

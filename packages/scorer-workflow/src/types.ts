@@ -30,7 +30,7 @@ export type WorkflowScorerVersion = z.infer<typeof WorkflowScorerVersionSchema>;
 /**
  * TOOL_CALL event payload
  */
-export const ToolCallPayloadSchema = z.strictObject({
+export const ToolCallPayloadSchema = z.object({
   callId: z.string().min(1),
   name: z.string().min(1),
   arguments: z.record(z.string(), z.unknown()),
@@ -40,22 +40,26 @@ export type ToolCallPayload = z.infer<typeof ToolCallPayloadSchema>;
 /**
  * TOOL_RESULT event payload
  */
-export const ToolResultPayloadSchema = z.strictObject({
+export const ToolResultPayloadSchema = z.object({
   callId: z.string().min(1),
-  ok: z.boolean(),
   name: z.string().min(1),
+  ok: z.boolean().optional(),
   result: z.record(z.string(), z.unknown()).optional(),
   error: z.record(z.string(), z.unknown()).optional(),
+  resultBytes: z.number().int().nonnegative().optional(),
 });
 export type ToolResultPayload = z.infer<typeof ToolResultPayloadSchema>;
 
 /**
- * TOOL_ERROR event payload
+ * TOOL_ERROR event payload.
+ * The gateway emits `{ callId, name, code, resultBytes }`; fixtures may use `error`.
  */
-export const ToolErrorPayloadSchema = z.strictObject({
+export const ToolErrorPayloadSchema = z.object({
   callId: z.string().min(1),
   name: z.string().min(1),
-  error: z.record(z.string(), z.unknown()),
+  error: z.record(z.string(), z.unknown()).optional(),
+  code: z.string().optional(),
+  resultBytes: z.number().int().nonnegative().optional(),
 });
 export type ToolErrorPayload = z.infer<typeof ToolErrorPayloadSchema>;
 

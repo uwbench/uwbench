@@ -1,4 +1,4 @@
-import { HARNESS_PROFILE_IDS } from "@uwbench/harness-adapter";
+import { PILOT_HARNESS_IDS } from "@uwbench/harness-adapter";
 import {
   PILOT_TRACKS,
   type PilotCell,
@@ -22,7 +22,7 @@ function percentile(values: number[], fraction: number): number {
 
 export function summarizePilot(cells: PilotCell[]): PilotDistribution[] {
   const distributions: PilotDistribution[] = [];
-  for (const harness of HARNESS_PROFILE_IDS) {
+  for (const harness of PILOT_HARNESS_IDS) {
     for (const track of PILOT_TRACKS) {
       const group = cells.filter(
         (cell) => cell.harness === harness && cell.track === track,

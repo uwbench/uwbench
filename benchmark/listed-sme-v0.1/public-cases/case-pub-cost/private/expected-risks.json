@@ -1,0 +1,16 @@
+{
+  "risks": [
+    {
+      "riskId": "risk_primary_operating",
+      "category": "OPERATIONAL",
+      "severity": "MEDIUM",
+      "statement": "Low-margin membership retail with inventory and membership-renewal sensitivity.",
+      "evidence": [
+        {
+          "sourceId": "src_borrower_profile"
+        }
+      ],
+      "confidence": 0.7
+    }
+  ]
+}

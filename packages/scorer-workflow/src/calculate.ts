@@ -72,7 +72,7 @@ export function findToolResult(
         type: "TOOL_RESULT",
         payload: result.payload,
         callId: result.payload.callId,
-        ok: result.payload.ok,
+        ok: result.payload.ok ?? result.payload.result !== undefined,
         result: result.payload.result,
       };
     }

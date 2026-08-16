@@ -1,0 +1,22 @@
+{
+  "citations": [
+    {
+      "citationId": "cite_identity",
+      "sourceId": "src_borrower_profile_primary",
+      "fields": ["legal_name", "entity_type"],
+      "confidence": 1.0
+    },
+    {
+      "citationId": "cite_secondary",
+      "sourceId": "src_borrower_profile_secondary",
+      "fields": ["legal_name", "entity_type"],
+      "confidence": 1.0
+    },
+    {
+      "citationId": "cite_ownership",
+      "sourceId": "src_ownership_structure",
+      "fields": ["ownership_structure"],
+      "confidence": 0.95
+    }
+  ]
+}

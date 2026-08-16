@@ -17,6 +17,7 @@ import {
   successfulWorkflowEvents,
   incompleteWorkflowEvents,
   failedWorkflowEvents,
+  gatewayErrorWorkflowEvents,
   infoRequestWorkflowEvents,
   duplicateWorkflowEvents,
   budgetWarningWorkflowEvents,
@@ -149,6 +150,21 @@ describe("Workflow Scorer", () => {
       expect(result.score).toBeLessThan(0.98); // Slightly penalized for incomplete
       expect(result.toolCallCount).toBe(1);
       expect(result.cancellationBehavior.gracefulCompletion).toBe(false);
+    });
+  });
+
+  describe("scoreWorkflow - gateway TOOL_ERROR payloads", () => {
+    it("scores events that use code/resultBytes instead of error", () => {
+      const input = createWorkflowScoreInput(
+        gatewayErrorWorkflowEvents,
+        "case_test",
+        "run_test",
+        testBudgetLimits,
+      );
+
+      const result = scoreWorkflow(input);
+      expect(result.toolErrorCount).toBe(1);
+      expect(result.recoveryBehavior.totalErrors).toBe(1);
     });
   });
 

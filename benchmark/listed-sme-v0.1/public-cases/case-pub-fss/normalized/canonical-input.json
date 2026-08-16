@@ -1,0 +1,170 @@
+{
+  "schemaVersion": "1.0",
+  "financialSpread": {
+    "revenue": {
+      "amount": 186100000000,
+      "currency": "USD"
+    },
+    "cogs": {
+      "amount": 132000000000,
+      "currency": "USD"
+    },
+    "grossProfit": {
+      "amount": 54100000000,
+      "currency": "USD"
+    },
+    "operatingExpenses": {
+      "amount": 28000000000,
+      "currency": "USD"
+    },
+    "ebitda": {
+      "amount": 31000000000,
+      "currency": "USD"
+    },
+    "interestExpense": {
+      "amount": 1800000000,
+      "currency": "USD"
+    },
+    "debtService": {
+      "amount": 4500000000,
+      "currency": "USD"
+    },
+    "totalDebt": {
+      "amount": 28000000000,
+      "currency": "USD"
+    },
+    "cash": {
+      "amount": 9000000000,
+      "currency": "USD"
+    },
+    "currentAssets": {
+      "amount": 72000000000,
+      "currency": "USD"
+    },
+    "currentLiabilities": {
+      "amount": 31000000000,
+      "currency": "USD"
+    },
+    "totalAssets": {
+      "amount": 182000000000,
+      "currency": "USD"
+    },
+    "totalLiabilities": {
+      "amount": 78000000000,
+      "currency": "USD"
+    },
+    "equity": {
+      "amount": 104000000000,
+      "currency": "USD"
+    },
+    "taxes": {
+      "amount": 5200000000,
+      "currency": "USD"
+    },
+    "netIncome": {
+      "amount": 21600000000,
+      "currency": "USD"
+    },
+    "period": {
+      "start": "2024-01-01",
+      "end": "2024-12-31"
+    },
+    "currency": "USD",
+    "scale": "units",
+    "signConvention": "positive_revenue_negative_expense"
+  },
+  "ratios": {
+    "gross_margin": 0.2907039226222461,
+    "ebitda_margin": 0.16657710908113918,
+    "net_margin": 0.11606663084363246,
+    "dscr": 6.888888888888889,
+    "interest_coverage": 17.22222222222222,
+    "total_debt_to_ebitda": 0.9032258064516129,
+    "debt_to_equity": 0.2692307692307692,
+    "current_ratio": 2.3225806451612905,
+    "leverage_ratio": 0.9032258064516129,
+    "equity_to_assets": 0.5714285714285714,
+    "return_on_assets": 0.11868131868131868,
+    "return_on_equity": 0.2076923076923077,
+    "asset_turnover": 1.0225274725274724,
+    "operating_margin": 0.14024717893605587
+  },
+  "normalizedFacts": [
+    {
+      "canonicalKey": "revenue",
+      "value": 186100000000,
+      "normalizedValue": 186100000000,
+      "type": "currency",
+      "unit": "USD",
+      "currency": "USD",
+      "scale": 1,
+      "period": {
+        "start": "2024-01-01",
+        "end": "2024-12-31"
+      },
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "ebitda",
+      "value": 31000000000,
+      "normalizedValue": 31000000000,
+      "type": "currency",
+      "unit": "USD",
+      "currency": "USD",
+      "scale": 1,
+      "period": {
+        "start": "2024-01-01",
+        "end": "2024-12-31"
+      },
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "total_debt",
+      "value": 28000000000,
+      "normalizedValue": 28000000000,
+      "type": "currency",
+      "unit": "USD",
+      "currency": "USD",
+      "scale": 1,
+      "period": {
+        "start": "2024-01-01",
+        "end": "2024-12-31"
+      },
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "equity",
+      "value": 104000000000,
+      "normalizedValue": 104000000000,
+      "type": "currency",
+      "unit": "USD",
+      "currency": "USD",
+      "scale": 1,
+      "period": {
+        "start": "2024-01-01",
+        "end": "2024-12-31"
+      },
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 1
+    }
+  ]
+}

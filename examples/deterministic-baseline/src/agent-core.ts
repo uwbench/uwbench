@@ -502,10 +502,9 @@ export async function runDeterministicAgent(
     { spread },
   );
   const ratios = ratioResult["ratios"] as Record<string, number>;
-  const canonicalRatios = canonicalRecord.record["ratios"] as Record<
-    string,
-    number
-  >;
+  const canonicalRatios =
+    (canonicalRecord.record["ratios"] as Record<string, number> | undefined) ??
+    {};
   for (const [name, expected] of Object.entries(canonicalRatios)) {
     const actual = ratios[name];
     if (actual === undefined || Math.abs(actual - expected) > 1e-9) {

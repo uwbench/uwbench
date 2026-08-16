@@ -1,0 +1,16 @@
+{
+  "risks": [
+    {
+      "riskId": "risk_primary_operating",
+      "category": "OPERATIONAL",
+      "severity": "MEDIUM",
+      "statement": "Customer concentration at a single automotive Tier-2 program.",
+      "evidence": [
+        {
+          "sourceId": "src_borrower_profile"
+        }
+      ],
+      "confidence": 0.7
+    }
+  ]
+}

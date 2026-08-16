@@ -53,6 +53,8 @@ import {
   NotScoredReportSchema,
   SCORER_CORE_VERSION,
 } from "@uwbench/scorer-core";
+import { FinalScoreReportSchema } from "@uwbench/report";
+import { scoreCompletedRun, writeScoreOutcome } from "./score-run.js";
 import {
   checkBudgetViolation,
   createInitialBudgetState,
@@ -143,6 +145,8 @@ export interface RunResult {
   scorePath: string;
   status: RunStatus;
   error: ProtocolError | undefined;
+  scoreStatus: "scored" | "not_scored";
+  finalScore?: number;
 }
 
 export interface RunManifest {
@@ -158,7 +162,7 @@ export interface RunManifest {
   startedAt: string;
   completedAt?: string;
   status: RunStatus;
-  scoreStatus: "not_scored";
+  scoreStatus: "scored" | "not_scored";
   limits: Budget;
   usage: BudgetState;
   eventCount: number;
@@ -549,6 +553,9 @@ export class LocalRunner {
   private currentRunDir = "";
   private currentRunId = "";
   private currentCaseId = "";
+  private currentCasePath = "";
+  private lastScoreStatus: "scored" | "not_scored" = "not_scored";
+  private lastFinalScore: number | undefined;
   private participantCaseId = "";
   private currentAgentUrl = "";
   private currentLane: SupportedLane = "reasoning_only";
@@ -689,7 +696,7 @@ export class LocalRunner {
       requiredOutputs: this.currentRequiredOutputs,
       startedAt: new Date(this.runStartTime).toISOString(),
       status,
-      scoreStatus: "not_scored",
+      scoreStatus: this.lastScoreStatus,
       limits: this.currentLimits,
       usage: this.budgetState,
       eventCount: this.events.length,
@@ -706,19 +713,37 @@ export class LocalRunner {
     );
   }
 
-  private writeScore(): void {
+  private async writeScore(): Promise<void> {
+    if (this.submission && this.currentCasePath) {
+      const outcome = await scoreCompletedRun({
+        casePath: this.currentCasePath,
+        runDir: this.currentRunDir,
+        caseId: this.currentCaseId,
+        runId: this.currentRunId,
+        lane: this.currentLane,
+        limits: this.currentLimits,
+        events: this.events,
+        submission: UnderwritingSubmissionSchema.parse(this.submission),
+      });
+      writeScoreOutcome(this.currentRunDir, outcome);
+      this.lastScoreStatus = outcome.status;
+      this.lastFinalScore =
+        outcome.status === "scored" ? outcome.report.finalScore : undefined;
+      return;
+    }
     const report = createNotScoredReport({
       scorerVersion: SCORER_CORE_VERSION,
       caseId: this.currentCaseId,
       runId: this.currentRunId,
-      reason: "phase1_vertical_slice",
-      detail:
-        "Phase 1 records artifacts without calculating a benchmark score.",
+      reason: "case_not_scorable",
+      detail: "No completed submission was available to score.",
     });
     writeFileSync(
       join(this.currentRunDir, "score.json"),
       JSON.stringify(report, null, 2),
     );
+    this.lastScoreStatus = "not_scored";
+    this.lastFinalScore = undefined;
   }
 
   private writeChecksums(): void {
@@ -728,6 +753,7 @@ export class LocalRunner {
       "run-manifest.json",
       "submission.json",
       "score.json",
+      "report.html",
     ]) {
       const path = join(this.currentRunDir, file);
       if (existsSync(path)) files[file] = sha256(readFileSync(path));
@@ -780,7 +806,7 @@ export class LocalRunner {
         JSON.stringify(this.submission, null, 2),
       );
     }
-    this.writeScore();
+    await this.writeScore();
     this.writeManifest(status, new Date().toISOString());
     this.writeChecksums();
   }
@@ -1032,6 +1058,13 @@ export class LocalRunner {
             `Matching run ${manifest.runId} failed bundle verification: ${verification.errors.join("; ")}`,
           );
         }
+        this.lastScoreStatus = manifest.scoreStatus;
+        const existingScore = existsSync(join(runDir, "score.json"))
+          ? (JSON.parse(readFileSync(join(runDir, "score.json"), "utf8")) as {
+              finalScore?: number;
+            })
+          : {};
+        this.lastFinalScore = existingScore.finalScore;
         return this.resultFor(
           manifest.runId,
           runDir,
@@ -1096,7 +1129,44 @@ export class LocalRunner {
       options.runId,
       options.outputDir,
     );
-    if (existing) return existing;
+    if (existing) {
+      if (
+        existing.status === "completed" &&
+        existing.scoreStatus === "not_scored" &&
+        existsSync(existing.submissionPath)
+      ) {
+        const outcome = await scoreCompletedRun({
+          casePath,
+          runDir: existing.runDir,
+          caseId: caseData.case_id,
+          runId: existing.runId,
+          lane,
+          limits,
+        });
+        writeScoreOutcome(existing.runDir, outcome);
+        const manifest = JSON.parse(
+          readFileSync(existing.manifestPath, "utf8"),
+        ) as RunManifest;
+        manifest.scoreStatus = outcome.status;
+        writeFileSync(
+          existing.manifestPath,
+          `${JSON.stringify(manifest, null, 2)}\n`,
+        );
+        this.currentRunDir = existing.runDir;
+        this.currentRunId = existing.runId;
+        this.writeChecksums();
+        this.lastScoreStatus = outcome.status;
+        this.lastFinalScore =
+          outcome.status === "scored" ? outcome.report.finalScore : undefined;
+        return this.resultFor(
+          existing.runId,
+          existing.runDir,
+          existing.status,
+          existing.error,
+        );
+      }
+      return existing;
+    }
 
     this.currentRunId =
       options.runId ?? `run_${Date.now()}_${randomUUID().slice(0, 8)}`;
@@ -1104,6 +1174,9 @@ export class LocalRunner {
       options.outputDir ?? join(this.defaultOutputBase, this.currentRunId),
     );
     this.currentCaseId = caseData.case_id;
+    this.currentCasePath = casePath;
+    this.lastScoreStatus = "not_scored";
+    this.lastFinalScore = undefined;
     this.participantCaseId = createOpaqueCaseId();
     this.currentAgentUrl = normalizedAgentUrl;
     this.currentLane = lane;
@@ -1406,6 +1479,10 @@ export class LocalRunner {
       scorePath: join(runDir, "score.json"),
       status,
       error,
+      scoreStatus: this.lastScoreStatus,
+      ...(this.lastFinalScore !== undefined
+        ? { finalScore: this.lastFinalScore }
+        : {}),
     };
   }
 
@@ -1436,8 +1513,13 @@ export async function verifyRun(runDir: string): Promise<VerifyRunResult> {
   } else {
     try {
       manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as RunManifest;
-      if (manifest.scoreStatus !== "not_scored") {
-        errors.push("Manifest must record scoreStatus=not_scored in Phase 1");
+      if (
+        manifest.scoreStatus !== "not_scored" &&
+        manifest.scoreStatus !== "scored"
+      ) {
+        errors.push(
+          `Manifest has invalid scoreStatus: ${String(manifest.scoreStatus)}`,
+        );
       }
       if (!["completed", "failed", "cancelled"].includes(manifest.status)) {
         errors.push(
@@ -1470,14 +1552,18 @@ export async function verifyRun(runDir: string): Promise<VerifyRunResult> {
     errors.push("Missing score.json");
   } else {
     try {
-      const parsed = NotScoredReportSchema.parse(
-        JSON.parse(readFileSync(scorePath, "utf8")),
-      );
-      score = parsed as {
-        status?: string;
-        runId?: string;
-        caseId?: string;
-      };
+      const raw = JSON.parse(readFileSync(scorePath, "utf8"));
+      const notScored = NotScoredReportSchema.safeParse(raw);
+      const scored = FinalScoreReportSchema.safeParse(raw);
+      if (notScored.success) {
+        score = notScored.data;
+      } else if (scored.success) {
+        score = scored.data;
+      } else {
+        throw new Error(
+          "score.json is neither a scored nor a not_scored report",
+        );
+      }
     } catch (error) {
       errors.push(`Score parse error: ${String(error)}`);
     }

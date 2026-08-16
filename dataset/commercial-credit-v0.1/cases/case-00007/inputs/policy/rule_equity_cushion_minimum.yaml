@@ -1,0 +1,18 @@
+ruleId: "rule_equity_cushion_minimum"
+sourceId: "src_policy_equity_cushion"
+title: "Minimum Equity Cushion"
+version: "2024.1"
+effectiveDate: "2024-01-01"
+jurisdiction: "US"
+appliesWhen: "term loan requested"
+input:
+  ratio: "equity_to_assets"
+operator: ">="
+threshold: 0.25
+onFailure: "REFER"
+severity: "HIGH"
+evidence:
+  - "src_policy_equity_cushion"
+description: |
+  The Equity to Assets Ratio (Equity / Total Assets) must be at least 25%.
+  This is a benchmark-authored synthetic policy rule, not from any real lender.

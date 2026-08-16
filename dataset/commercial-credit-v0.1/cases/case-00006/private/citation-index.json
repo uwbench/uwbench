@@ -1,0 +1,16 @@
+{
+  "citations": [
+    {
+      "citationId": "cite_ltv_flv",
+      "sourceId": "src_collateral_appraisal",
+      "fields": ["forced_liquidation_value"],
+      "confidence": 0.95
+    },
+    {
+      "citationId": "cite_dscr",
+      "sourceId": "src_financials_2024",
+      "fields": ["ebitda", "debt_service"],
+      "confidence": 1.0
+    }
+  ]
+}

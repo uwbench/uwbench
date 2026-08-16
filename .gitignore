@@ -48,3 +48,11 @@ tmp
 temp
 *.tmp
 *.temp
+# Local live-compare artifacts. Not official scores.
+benchmark/results/compare/
+
+# commercial-credit-v0.1 gold is published as public_reference (CoS addendum).
+# Keep ignoring unpublished gold if it ever lands under other dataset dumps.
+dataset/**/private/
+!dataset/commercial-credit-v0.1/cases/*/private/
+!dataset/commercial-credit-v0.1/cases/*/private/**

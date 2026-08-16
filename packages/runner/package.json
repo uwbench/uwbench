@@ -27,6 +27,12 @@
     "@uwbench/protocol": "workspace:*",
     "@uwbench/tool-runtime": "workspace:*",
     "@uwbench/case-schema": "workspace:*",
-    "@uwbench/scorer-core": "workspace:*"
+    "@uwbench/scorer-core": "workspace:*",
+    "@uwbench/scorer-financial": "workspace:*",
+    "@uwbench/scorer-policy": "workspace:*",
+    "@uwbench/scorer-evidence": "workspace:*",
+    "@uwbench/scorer-risk": "workspace:*",
+    "@uwbench/scorer-workflow": "workspace:*",
+    "@uwbench/report": "workspace:*"
   }
 }

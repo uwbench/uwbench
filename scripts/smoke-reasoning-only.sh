@@ -196,10 +196,15 @@ for (const concept of ["tax_returns", "aging_receivables"]) {
     throw new Error(`follow-up was not fulfilled with a readable document: ${concept}`);
   }
 }
-if (manifest.lane !== "reasoning_only" || manifest.scoreStatus !== "not_scored") {
-  throw new Error("manifest lane or score status is incorrect");
+if (manifest.lane !== "reasoning_only") {
+  throw new Error("manifest lane is incorrect");
 }
-if (score.status !== "not_scored") throw new Error("score.json is not not_scored");
+if (!["scored", "not_scored"].includes(manifest.scoreStatus)) {
+  throw new Error("manifest score status is incorrect");
+}
+if (score.status !== "not_scored" && typeof score.finalScore !== "number") {
+  throw new Error("score.json is neither scored nor not_scored");
+}
 if (/run-token-|bearerToken|Bearer\s+(?!\[REDACTED\])/i.test(eventsText)) {
   throw new Error("event log contains a bearer credential");
 }
@@ -235,7 +240,7 @@ if (!artifactEvent || !checksums.files[artifactEvent.payload.artifactPath]) {
 if (!fs.existsSync(`${runDir}/${artifactEvent.payload.artifactPath}`)) {
   throw new Error("saved artifact file is missing");
 }
-console.log("Smoke assertions passed: 5 rules, >=3 risks, 2 retrieved follow-ups, trusted events, not_scored");
+console.log("Smoke assertions passed: 5 rules, >=3 risks, 2 retrieved follow-ups, trusted events, scored bundle");
 NODE
 
 pnpm --silent exec vitest run \

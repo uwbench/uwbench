@@ -310,9 +310,27 @@ importers:
       '@uwbench/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@uwbench/report':
+        specifier: workspace:*
+        version: link:../report
       '@uwbench/scorer-core':
         specifier: workspace:*
         version: link:../scorer-core
+      '@uwbench/scorer-evidence':
+        specifier: workspace:*
+        version: link:../scorer-evidence
+      '@uwbench/scorer-financial':
+        specifier: workspace:*
+        version: link:../scorer-financial
+      '@uwbench/scorer-policy':
+        specifier: workspace:*
+        version: link:../scorer-policy
+      '@uwbench/scorer-risk':
+        specifier: workspace:*
+        version: link:../scorer-risk
+      '@uwbench/scorer-workflow':
+        specifier: workspace:*
+        version: link:../scorer-workflow
       '@uwbench/tool-runtime':
         specifier: workspace:*
         version: link:../tool-runtime

@@ -1,0 +1,22 @@
+{
+  "citations": [
+    {
+      "citationId": "cite_current_ratio",
+      "sourceId": "src_financials_2024",
+      "fields": ["current_assets", "current_liabilities"],
+      "confidence": 1.0
+    },
+    {
+      "citationId": "cite_dscr",
+      "sourceId": "src_financials_2024",
+      "fields": ["ebitda", "debt_service"],
+      "confidence": 1.0
+    },
+    {
+      "citationId": "cite_exception_framework",
+      "sourceId": "src_policy_exception_framework",
+      "fields": ["exception_disclosed"],
+      "confidence": 1.0
+    }
+  ]
+}

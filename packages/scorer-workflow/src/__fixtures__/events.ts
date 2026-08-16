@@ -356,6 +356,56 @@ export const failedWorkflowEvents: Event[] = buildEventChain([
   { type: "RUN_COMPLETED", source: "RUNNER" },
 ]);
 
+export const gatewayErrorWorkflowEvents: Event[] = buildEventChain([
+  { type: "RUN_STARTED", source: "RUNNER" },
+  { type: "AGENT_READY", source: "AGENT" },
+  { type: "AGENT_RUN_STARTED", source: "AGENT" },
+  {
+    type: "TOOL_CALL",
+    source: "AGENT",
+    payload: {
+      callId: "call_gw",
+      name: "case.get_structured_record",
+      arguments: { recordId: "missing" },
+    },
+  },
+  {
+    type: "TOOL_ERROR",
+    source: "TOOL_GATEWAY",
+    payload: {
+      callId: "call_gw",
+      name: "case.get_structured_record",
+      code: "NOT_FOUND",
+      resultBytes: 280,
+    },
+  },
+  {
+    type: "TOOL_CALL",
+    source: "AGENT",
+    payload: {
+      callId: "call_gw2",
+      name: "case.get_structured_record",
+      arguments: { recordId: "record_financials_2024" },
+    },
+  },
+  {
+    type: "TOOL_RESULT",
+    source: "TOOL_GATEWAY",
+    payload: {
+      callId: "call_gw2",
+      name: "case.get_structured_record",
+      resultBytes: 120,
+      result: { sourceId: "src_financials_2024", record: { revenue: 1 } },
+    },
+  },
+  {
+    type: "AGENT_COMPLETED",
+    source: "AGENT",
+    payload: { status: "completed", outputBytes: 100 },
+  },
+  { type: "RUN_COMPLETED", source: "RUNNER" },
+]);
+
 // ──────────────────────────────────────────────────────────────
 // Workflow with Information Requests Fixture
 // ──────────────────────────────────────────────────────────────

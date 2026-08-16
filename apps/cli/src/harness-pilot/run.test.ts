@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { HARNESS_PROFILE_IDS } from "@uwbench/harness-adapter";
+import { PILOT_HARNESS_IDS } from "@uwbench/harness-adapter";
 import { runHarnessPilot } from "./run.js";
 import { PILOT_CASES, PILOT_DISCLAIMER, PILOT_TRACKS } from "./types.js";
 
@@ -15,7 +15,7 @@ describe("harness pilot", () => {
       generatedAt: "2026-08-15T00:00:00.000Z",
     });
     expect(report.cells).toHaveLength(
-      PILOT_CASES.length * HARNESS_PROFILE_IDS.length * PILOT_TRACKS.length * 3,
+      PILOT_CASES.length * PILOT_HARNESS_IDS.length * PILOT_TRACKS.length * 3,
     );
     expect(report.cells.every((cell) => cell.creditOpinion === false)).toBe(
       true,
@@ -52,7 +52,7 @@ describe("harness pilot", () => {
     expect(report.tenantConfigured.cells).toEqual([]);
     expect(report.manifest.tracks["tenant-configured"].heldOut).toBe(true);
     expect(report.distributions).toHaveLength(
-      HARNESS_PROFILE_IDS.length * PILOT_TRACKS.length,
+      PILOT_HARNESS_IDS.length * PILOT_TRACKS.length,
     );
     expect(report.manifest.creditOpinion).toBe(false);
     expect(

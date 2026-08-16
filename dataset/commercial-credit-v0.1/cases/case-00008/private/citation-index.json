@@ -1,0 +1,28 @@
+{
+  "citations": [
+    {
+      "citationId": "cite_fraud_revenue",
+      "sourceId": "src_financials_submitted",
+      "fields": ["revenue"],
+      "confidence": 0.1
+    },
+    {
+      "citationId": "cite_verified_revenue",
+      "sourceId": "src_financials_verified",
+      "fields": ["revenue"],
+      "confidence": 1.0
+    },
+    {
+      "citationId": "cite_fraud_ebitda",
+      "sourceId": "src_financials_submitted",
+      "fields": ["ebitda"],
+      "confidence": 0.1
+    },
+    {
+      "citationId": "cite_verified_ebitda",
+      "sourceId": "src_financials_verified",
+      "fields": ["ebitda"],
+      "confidence": 1.0
+    }
+  ]
+}

@@ -1,7 +1,15 @@
-export const HARNESS_PROFILE_IDS = [
+export const PILOT_HARNESS_IDS = [
   "claude-code",
   "codex",
   "gemini-cli",
+] as const;
+
+export const HARNESS_PROFILE_IDS = [
+  ...PILOT_HARNESS_IDS,
+  "pi-nemotron",
+  "pi-glm-5.2",
+  "pi-grok-4.6",
+  "opencode",
 ] as const;
 
 export type HarnessProfileId = (typeof HARNESS_PROFILE_IDS)[number];
