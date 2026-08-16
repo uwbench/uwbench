@@ -56,3 +56,8 @@ benchmark/results/compare/
 dataset/**/private/
 !dataset/commercial-credit-v0.1/cases/*/private/
 !dataset/commercial-credit-v0.1/cases/*/private/**
+
+# Not part of the public alpha cut.
+benchmark/listed-sme-v0.1/
+benchmark/results/harness-pilot-v0.1/
+benchmark/results/harness-gap-suite-v0.1/

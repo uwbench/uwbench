@@ -1,9 +1,0 @@
-ruleId: rule_dscr_minimum
-sourceId: src_policy_dscr
-title: Minimum Debt Service Coverage Ratio
-appliesWhen: term loan requested
-input:
-  ratio: dscr
-operator: ">="
-threshold: 1.25
-onFailure: REFER

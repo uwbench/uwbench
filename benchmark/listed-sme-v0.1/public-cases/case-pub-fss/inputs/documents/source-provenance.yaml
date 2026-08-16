@@ -1,9 +1,0 @@
-type: sec_edgar
-issuer: "Federal Signal Corporation"
-ticker: FSS
-accession: "0000277509-25-000012"
-url: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000277509"
-asOf: "2024-12-31"
-retrieved: "2026-08-16"
-licenseBasis: "SEC public filings; figures are rounded benchmark-frozen summaries"
-note: "Loan request and policy are synthetic."
