@@ -143,6 +143,19 @@ importers:
         specifier: ^2.0.5
         version: 2.1.9(@types/node@20.19.43)
 
+  examples/securelend-adapter:
+    dependencies:
+      '@uwbench/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
+    devDependencies:
+      '@types/node':
+        specifier: ^20.14.10
+        version: 20.19.43
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
   examples/single-prompt-baseline:
     dependencies:
       '@uwbench/protocol':

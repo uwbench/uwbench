@@ -49,10 +49,7 @@ export function jsonError(error: unknown): string {
   );
 }
 
-export function addParticipantOptions(
-  command: Command,
-  suffix = "",
-): Command {
+export function addParticipantOptions(command: Command, suffix = ""): Command {
   const flag = (name: string): string => (suffix ? `${name}-${suffix}` : name);
   return command
     .option(`--${flag("harness")} <id>`, "Participant harness id")
@@ -64,12 +61,12 @@ export function addParticipantOptions(
 }
 
 export function participantFromFlags(flags: {
-  harness?: string;
-  model?: string;
-  provider?: string;
-  harnessVersion?: string;
-  modelVersion?: string;
-  providerVersion?: string;
+  harness?: string | undefined;
+  model?: string | undefined;
+  provider?: string | undefined;
+  harnessVersion?: string | undefined;
+  modelVersion?: string | undefined;
+  providerVersion?: string | undefined;
 }): ParticipantIdentity | undefined {
   if (!flags.harness && !flags.model && !flags.provider) return undefined;
   if (!flags.harness || !flags.model) {

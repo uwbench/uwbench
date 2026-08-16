@@ -3,6 +3,7 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
+import process from "node:process";
 import { HealthResponseSchema } from "@uwbench/protocol";
 import {
   ADAPTER_VERSION,
@@ -56,13 +57,14 @@ async function proxy(
     headers.set(name, Array.isArray(value) ? value.join(", ") : value);
   }
   const method = request.method ?? "GET";
-  const body =
-    method === "GET" || method === "HEAD" ? undefined : await readBody(request);
-  const upstreamResponse = await fetch(`${upstream}${url.pathname}${url.search}`, {
-    method,
-    headers,
-    body,
-  });
+  const init: RequestInit = { method, headers };
+  if (method !== "GET" && method !== "HEAD") {
+    init.body = new Uint8Array(await readBody(request));
+  }
+  const upstreamResponse = await fetch(
+    `${upstream}${url.pathname}${url.search}`,
+    init,
+  );
   response.writeHead(upstreamResponse.status, {
     "content-type":
       upstreamResponse.headers.get("content-type") ?? "application/json",

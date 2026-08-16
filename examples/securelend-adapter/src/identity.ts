@@ -1,3 +1,4 @@
+import process from "node:process";
 import type { ParticipantIdentity } from "@uwbench/protocol";
 
 export const ADAPTER_NAME = "@uwbench/securelend-adapter";

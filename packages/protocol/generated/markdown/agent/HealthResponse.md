@@ -18,6 +18,7 @@ See [HealthResponse.json](../../json-schema/agent/HealthResponse.json) for the c
 | `status` | string | ✓ |  |  |
 | `version` | string | ✓ |  |  |
 | `protocolVersion` | [`__schema0`](#__schema0) | ✓ |  |  |
+| `participant` | object |  |  |  |
 
 ## Definitions
 

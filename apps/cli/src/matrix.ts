@@ -77,7 +77,8 @@ export function collectMatrixCells(dirs: string[]): MatrixCell[] {
       ? (readJson(scorePath) as ScoreLike)
       : {};
     const participant = manifest.participant;
-    const scored = score.status === "scored" && typeof score.finalScore === "number";
+    const scored =
+      score.status === "scored" && typeof score.finalScore === "number";
     const cell: MatrixCell = {
       caseId: manifest.caseId ?? "unknown",
       lane: manifest.lane ?? "unknown",
@@ -90,7 +91,9 @@ export function collectMatrixCells(dirs: string[]): MatrixCell[] {
       runDir,
       agentUrl: manifest.agentUrl ?? "",
     };
-    if (scored) cell.finalScore = score.finalScore;
+    if (scored && score.finalScore !== undefined) {
+      cell.finalScore = score.finalScore;
+    }
     cells.push(cell);
   }
   return cells;
@@ -107,7 +110,8 @@ export function summarizeMatrix(cells: MatrixCell[]): MatrixSummaryRow[] {
   return [...groups.entries()]
     .map(([, group]) => {
       const scored = group.filter(
-        (cell) => cell.scoreStatus === "scored" && cell.finalScore !== undefined,
+        (cell) =>
+          cell.scoreStatus === "scored" && cell.finalScore !== undefined,
       );
       const row: MatrixSummaryRow = {
         harness: group[0]!.harness,
@@ -154,8 +158,7 @@ export function formatMatrixMarkdown(matrix: PublishMatrix): string {
     "| --- | --- | --- | --- | ---: | ---: | ---: |",
   ];
   for (const row of matrix.summary) {
-    const mean =
-      row.mean === undefined ? "—" : row.mean.toFixed(1);
+    const mean = row.mean === undefined ? "—" : row.mean.toFixed(1);
     lines.push(
       `| ${row.harness} | ${row.model} | ${row.provider} | ${row.lane} | ${row.n} | ${row.scored} | ${mean} |`,
     );
@@ -167,7 +170,9 @@ export function formatMatrixMarkdown(matrix: PublishMatrix): string {
   );
   for (const cell of matrix.cells) {
     const score =
-      cell.finalScore === undefined ? cell.scoreStatus : cell.finalScore.toFixed(1);
+      cell.finalScore === undefined
+        ? cell.scoreStatus
+        : cell.finalScore.toFixed(1);
     lines.push(
       `| ${cell.caseId} | ${cell.lane} | ${cell.harness} | ${cell.model} | ${score} |`,
     );
