@@ -17,8 +17,10 @@ This folder is the public practice-analysis record.
 
 **This is not a completed JTA.** Phase 0–1 is a job definition plus a
 handbook-derived draft inventory. Official UWBench scores remain unearned.
-A later reference matrix on the public track, when filled, measures that
-track. It does not measure the occupation.
+The dated public-track reference matrix
+(`benchmark/results/matrix/commercial-credit-v0.1-reasoning/`,
+17 August 2026, `reasoning_only`) measures that track. It does not
+measure the occupation. Official scores remain unearned.
 
 Do not send real borrower files. Do not treat SecureLend review as the
 panel. Show files and the inventory before scorecard weights.
