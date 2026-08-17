@@ -55,5 +55,14 @@ export function startHarnessAdapter(
   port = 0,
   live = false,
 ): HarnessAdapter {
-  return createControlledAdapter(profileId, { port, live });
+  const env: Record<string, string> = {};
+  const model = process.env["UWBENCH_LIVE_MODEL"];
+  const provider = process.env["UWBENCH_LIVE_PROVIDER"];
+  if (model !== undefined) env["UWBENCH_LIVE_MODEL"] = model;
+  if (provider !== undefined) env["UWBENCH_LIVE_PROVIDER"] = provider;
+  return createControlledAdapter(profileId, {
+    port,
+    live,
+    ...(Object.keys(env).length > 0 ? { env } : {}),
+  });
 }

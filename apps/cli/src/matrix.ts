@@ -78,7 +78,7 @@ export function collectMatrixCells(dirs: string[]): MatrixCell[] {
       : {};
     const participant = manifest.participant;
     const scored =
-      score.status === "scored" && typeof score.finalScore === "number";
+      typeof score.finalScore === "number" && score.status !== "not_scored";
     const cell: MatrixCell = {
       caseId: manifest.caseId ?? "unknown",
       lane: manifest.lane ?? "unknown",
