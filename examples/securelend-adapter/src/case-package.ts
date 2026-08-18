@@ -8,6 +8,14 @@ const CANDIDATE_RECORD_IDS = [
   "record_001",
 ];
 
+/** Tool-gateway alias for the stuffed canonical object. Not in the citation catalog. */
+const NON_CATALOG_SOURCE_IDS = new Set(["normalized:canonical-input"]);
+
+const RECORD_CATALOG_SOURCE_IDS: Record<string, string> = {
+  record_financials_2024: "src_financials_2024",
+  record_borrower_profile: "src_borrower_profile",
+};
+
 const POLICY_SEARCH_QUERIES = [
   "term loan",
   "minimum",
@@ -101,11 +109,10 @@ export async function loadCasePackage(
       recordId,
     });
     if (!result.ok) continue;
-    const sourceId = String(result.result["sourceId"] ?? "");
-    if (!sourceId) continue;
+    const toolSourceId = stringField(result.result["sourceId"]);
     records.push({
       recordId,
-      sourceId,
+      sourceId: catalogSourceIdForRecord(recordId, toolSourceId) ?? "",
       record: (result.result["record"] as Record<string, unknown>) ?? {},
     });
   }
@@ -169,11 +176,37 @@ async function loadPublicPolicyRules(
  * Used when `case.list_documents` is empty (reasoning_only). Does not read
  * dataset files from disk.
  */
+export function isCitableSourceId(
+  sourceId: string | undefined,
+): sourceId is string {
+  if (!sourceId || sourceId.trim().length === 0) return false;
+  if (NON_CATALOG_SOURCE_IDS.has(sourceId)) return false;
+  if (sourceId.startsWith("normalized:")) return false;
+  return true;
+}
+
+/**
+ * The runner copies the same canonical object onto every reasoning_only record
+ * and labels `record_canonical_input` as `normalized:canonical-input`. Cite the
+ * catalog sourceId of the record that was used, never that alias.
+ */
+export function catalogSourceIdForRecord(
+  recordId: string,
+  toolSourceId: string | undefined,
+): string | undefined {
+  if (isCitableSourceId(toolSourceId)) return toolSourceId;
+  return RECORD_CATALOG_SOURCE_IDS[recordId];
+}
+
 export function synthesizeFinancialPackage(
   pkg: Pick<CasePackage, "records">,
 ): CaseDocument | undefined {
   if (pkg.records.length === 0) return undefined;
-  const sourceId = pkg.records[0]?.sourceId;
+  const sourceId =
+    pkg.records
+      .map((item) => catalogSourceIdForRecord(item.recordId, item.sourceId))
+      .find(isCitableSourceId) ??
+    catalogSourceIdForRecord("record_financials_2024", undefined);
   if (!sourceId) return undefined;
   const lines = [
     "UWBench public financial package",

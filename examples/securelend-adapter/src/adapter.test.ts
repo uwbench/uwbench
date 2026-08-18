@@ -541,7 +541,10 @@ describe("MCP product chat-path mode", () => {
     expect(status.status).toBe("completed");
     if (status.status !== "completed") return;
     expect(status.result.financialSpread.currency).not.toBe("XXX");
-    expect(status.result.financialSpread.revenue.amount).not.toBe(0);
+    expect(status.result.financialSpread.revenue.amount).toBe(520_000_000);
+    expect(JSON.stringify(status.result)).not.toContain(
+      "normalized:canonical-input",
+    );
     expect(status.result.policyAssessment.evaluations).toHaveLength(
       status.result.policyAssessment.applicableRules.length,
     );

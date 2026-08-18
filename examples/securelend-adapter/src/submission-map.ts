@@ -1,5 +1,6 @@
 import {
   FinancialSpreadSchema,
+  Iso4217CurrencySchema,
   UnderwritingSubmissionSchema,
   type CitedClaim,
   type Condition,
@@ -15,10 +16,12 @@ import {
 } from "@uwbench/protocol";
 import { calculateRatios, validateSpread } from "@uwbench/tool-runtime";
 import { asRecord, firstString } from "./mcp-client.js";
-import type {
-  CasePackage,
-  CasePolicyRule,
-  CaseRecord,
+import {
+  catalogSourceIdForRecord,
+  isCitableSourceId,
+  type CasePackage,
+  type CasePolicyRule,
+  type CaseRecord,
 } from "./case-package.js";
 
 const DECISIONS = [
@@ -57,7 +60,10 @@ export function mapChatPathToSubmission(
     extraction,
   ]);
   const packSpread = spreadFromPackage(pkg);
-  const spread = productSpread ?? packSpread ?? placeholderSpread();
+  // Pack canonical object is the scored cell. Product extract/spread is for
+  // exercising the MCP path, not a substitute when pkg.records already have
+  // financialSpread / normalizedFacts.
+  const spread = packSpread ?? productSpread ?? placeholderSpread();
   const usable = isUsableSpread(spread);
   const ratios = mergeRatios(spread, pkg);
   const memoMarkdown = memoMarkdownFromUnknown(outputs.memo, outputs);
@@ -198,33 +204,63 @@ function firstUsableSpread(values: unknown[]): FinancialSpread | undefined {
 function evidenceFromPackage(pkg: CasePackage): EvidenceReference[] {
   const seen = new Set<string>();
   const refs: EvidenceReference[] = [];
+  const add = (sourceId: string | undefined, documentId?: string): void => {
+    const cited = citableSourceId(pkg, sourceId);
+    if (!cited || seen.has(cited)) return;
+    seen.add(cited);
+    refs.push(
+      documentId ? { sourceId: cited, documentId } : { sourceId: cited },
+    );
+  };
   for (const document of pkg.documents) {
-    if (!document.sourceId || seen.has(document.sourceId)) continue;
-    seen.add(document.sourceId);
-    refs.push({
-      sourceId: document.sourceId,
-      documentId: document.documentId,
-    });
+    add(document.sourceId, document.documentId);
   }
   for (const record of pkg.records) {
-    if (!record.sourceId || seen.has(`record:${record.sourceId}`)) continue;
-    seen.add(`record:${record.sourceId}`);
-    refs.push({ sourceId: record.sourceId });
+    add(catalogSourceIdForRecord(record.recordId, record.sourceId));
   }
   for (const rule of pkg.policies ?? []) {
-    if (!rule.sourceId || seen.has(`policy:${rule.sourceId}`)) continue;
-    seen.add(`policy:${rule.sourceId}`);
-    refs.push({ sourceId: rule.sourceId });
+    add(rule.sourceId);
   }
   return refs;
 }
 
 function knownSourceIds(pkg: CasePackage): Set<string> {
-  return new Set([
-    ...pkg.documents.map((document) => document.sourceId),
-    ...pkg.records.map((record) => record.sourceId),
-    ...(pkg.policies ?? []).map((rule) => rule.sourceId),
-  ]);
+  const ids = new Set<string>();
+  const add = (sourceId: string | undefined): void => {
+    const cited = citableSourceId(pkg, sourceId);
+    if (cited) ids.add(cited);
+  };
+  for (const document of pkg.documents) add(document.sourceId);
+  for (const record of pkg.records) {
+    add(catalogSourceIdForRecord(record.recordId, record.sourceId));
+    add(record.sourceId);
+    const facts = record.record["normalizedFacts"];
+    if (!Array.isArray(facts)) continue;
+    for (const item of facts) {
+      const evidence = asRecord(item)?.["evidence"];
+      if (!Array.isArray(evidence)) continue;
+      for (const ref of evidence) {
+        add(firstString(asRecord(ref), "sourceId"));
+      }
+    }
+  }
+  for (const rule of pkg.policies ?? []) add(rule.sourceId);
+  return ids;
+}
+
+function citableSourceId(
+  pkg: CasePackage,
+  sourceId: string | undefined,
+): string | undefined {
+  if (isCitableSourceId(sourceId)) return sourceId;
+  if (sourceId !== "normalized:canonical-input") return undefined;
+  const financials = pkg.records.find(
+    (record) => record.recordId === "record_financials_2024",
+  );
+  return catalogSourceIdForRecord(
+    "record_financials_2024",
+    financials?.sourceId,
+  );
 }
 
 function cite(
@@ -234,13 +270,21 @@ function cite(
 ): EvidenceReference[] {
   const refs: EvidenceReference[] = [];
   const seen = new Set<string>();
-  for (const sourceId of sourceIds) {
-    if (!sourceId || !knownSources.has(sourceId) || seen.has(sourceId))
-      continue;
+  const add = (sourceId: string | undefined): void => {
+    if (
+      !isCitableSourceId(sourceId) ||
+      !knownSources.has(sourceId) ||
+      seen.has(sourceId)
+    ) {
+      return;
+    }
     seen.add(sourceId);
     refs.push({ sourceId });
-  }
-  return refs.length > 0 ? refs : fallback.slice(0, 2);
+  };
+  for (const sourceId of sourceIds) add(sourceId);
+  if (refs.length > 0) return refs;
+  for (const item of fallback.slice(0, 2)) add(item.sourceId);
+  return refs;
 }
 
 function placeholderSpread(): FinancialSpread {
@@ -489,6 +533,9 @@ function factsFromUnknown(
   spread: FinancialSpread,
   knownSources: Set<string>,
 ): NormalizedFact[] {
+  const packFacts = factsFromPackage(pkg, knownSources);
+  if (packFacts.length > 0) return packFacts;
+
   const fromExtraction = mapFactList(
     Array.isArray(extraction["normalizedFacts"])
       ? extraction["normalizedFacts"]
@@ -499,17 +546,6 @@ function factsFromUnknown(
     knownSources,
   );
   if (fromExtraction.length > 0) return fromExtraction;
-
-  for (const item of pkg.records) {
-    const nested = item.record["normalizedFacts"];
-    if (!Array.isArray(nested)) continue;
-    const mapped = mapFactList(
-      nested,
-      [{ sourceId: item.sourceId }],
-      knownSources,
-    );
-    if (mapped.length > 0) return mapped;
-  }
 
   const facts: NormalizedFact[] = [];
   if (isUsableSpread(spread) && evidence.length > 0) {
@@ -549,6 +585,35 @@ function factsFromUnknown(
   return facts;
 }
 
+function factsFromPackage(
+  pkg: CasePackage,
+  knownSources: Set<string>,
+): NormalizedFact[] {
+  const preferred = [
+    "record_canonical_input",
+    "record_financials_2024",
+    "record_borrower_profile",
+  ];
+  const ordered = [
+    ...preferred
+      .map((id) => pkg.records.find((record) => record.recordId === id))
+      .filter((record): record is CaseRecord => record !== undefined),
+    ...pkg.records.filter((record) => !preferred.includes(record.recordId)),
+  ];
+  for (const item of ordered) {
+    const nested = item.record["normalizedFacts"];
+    if (!Array.isArray(nested)) continue;
+    const fallbackId = catalogSourceIdForRecord(item.recordId, item.sourceId);
+    const mapped = mapFactList(
+      nested,
+      isCitableSourceId(fallbackId) ? [{ sourceId: fallbackId }] : [],
+      knownSources,
+    );
+    if (mapped.length > 0) return mapped;
+  }
+  return [];
+}
+
 function mapFactList(
   items: unknown[],
   fallbackEvidence: EvidenceReference[],
@@ -562,11 +627,26 @@ function mapFactList(
     const cited = sanitizeEvidence(record["evidence"], knownSources);
     const evidence = cited.length > 0 ? cited : fallbackEvidence;
     if (evidence.length === 0) continue;
+    const period = periodFromUnknown(record["period"]);
+    const currency = Iso4217CurrencySchema.safeParse(
+      firstString(record, "currency"),
+    );
     facts.push({
       canonicalKey,
       value: jsonValue(record["value"]),
       type: firstString(record, "type") ?? "string",
       evidence,
+      ...(record["normalizedValue"] !== undefined
+        ? { normalizedValue: jsonValue(record["normalizedValue"]) }
+        : {}),
+      ...(firstString(record, "unit")
+        ? { unit: firstString(record, "unit") }
+        : {}),
+      ...(currency.success ? { currency: currency.data } : {}),
+      ...(typeof record["scale"] === "number"
+        ? { scale: record["scale"] }
+        : {}),
+      ...(period ? { period } : {}),
       ...(typeof record["confidence"] === "number"
         ? { confidence: record["confidence"] }
         : {}),
@@ -583,10 +663,10 @@ function sanitizeEvidence(
   const refs: EvidenceReference[] = [];
   for (const item of value) {
     const record = asRecord(item);
-    const sourceId = firstString(record, "sourceId");
-    if (!sourceId || !knownSources.has(sourceId)) continue;
+    const rewritten = rewriteEvidenceSourceId(firstString(record, "sourceId"));
+    if (!rewritten || !knownSources.has(rewritten)) continue;
     refs.push({
-      sourceId,
+      sourceId: rewritten,
       ...(firstString(record, "documentId")
         ? { documentId: firstString(record, "documentId") }
         : {}),
@@ -595,11 +675,22 @@ function sanitizeEvidence(
   return refs;
 }
 
+function rewriteEvidenceSourceId(
+  sourceId: string | undefined,
+): string | undefined {
+  if (isCitableSourceId(sourceId)) return sourceId;
+  if (sourceId === "normalized:canonical-input") {
+    return catalogSourceIdForRecord("record_financials_2024", undefined);
+  }
+  return undefined;
+}
+
 function sourceIdForRecord(
   pkg: CasePackage,
   recordId: string,
 ): string | undefined {
-  return pkg.records.find((item) => item.recordId === recordId)?.sourceId;
+  const record = pkg.records.find((item) => item.recordId === recordId);
+  return catalogSourceIdForRecord(recordId, record?.sourceId);
 }
 
 function risksFromUnknown(
