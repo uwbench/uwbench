@@ -207,6 +207,10 @@ describe("MCP product chat-path mode", () => {
     expect(names).toContain("submit_documents");
     expect(names).toContain("run_document_intelligence");
     expect(names).toContain("run_data_extraction");
+    const extraction = mcp.calls.find(
+      (call) => call.name === "run_data_extraction",
+    );
+    expect(extraction?.arguments["documentId"]).toBe("sl_doc_1");
     expect(names).toContain("run_financial_statement_spread");
     expect(names).toContain("run_professional_memo");
     expect(names).toContain("get_memo_status");
@@ -219,7 +223,7 @@ describe("MCP product chat-path mode", () => {
     expect(mcp.urls.every((url) => !url.includes("securelend.ai"))).toBe(true);
   });
 
-  it("skips upload for already-extracted cases and feeds the case package", async () => {
+  it("skips extraction on already-extracted packs and still completes a memo", async () => {
     const mcp = new MockSecureLendMcp();
     running.push(mcp);
     await mcp.start();
@@ -287,17 +291,117 @@ describe("MCP product chat-path mode", () => {
     expect(mcp.calls.map((call) => call.name)).not.toContain(
       "submit_documents",
     );
-    expect(mcp.uploads).toEqual([]);
-    const extraction = mcp.calls.find(
-      (call) => call.name === "run_data_extraction",
+    expect(mcp.calls.map((call) => call.name)).not.toContain(
+      "run_data_extraction",
     );
-    expect(extraction?.arguments["blueprintType"]).toBe("financial_statement");
-    expect(extraction?.arguments["casePackage"]).toMatchObject({
+    expect(mcp.uploads).toEqual([]);
+    const created = mcp.calls.find(
+      (call) => call.name === "create_deal_workspace",
+    );
+    expect(created?.arguments["metadata"]).toMatchObject({
       caseId: "case-00001",
-      records: [
-        expect.objectContaining({ recordId: "record_canonical_input" }),
-      ],
+      casePackage: {
+        records: [
+          expect.objectContaining({ recordId: "record_canonical_input" }),
+        ],
+      },
     });
+    const memo = mcp.calls.find(
+      (call) => call.name === "run_professional_memo",
+    );
+    expect(memo?.arguments).toMatchObject({
+      sourceType: "workspace",
+      sourceId: "ws_uwbench_ephemeral",
+    });
+    expect(
+      mcp.calls.some(
+        (call) =>
+          (call.name === "run_data_extraction" ||
+            call.name === "data_extraction_agent") &&
+          typeof call.arguments["documentId"] !== "string",
+      ),
+    ).toBe(false);
+  });
+
+  it("does not call run_data_extraction with undefined documentId on reasoning_only packs", async () => {
+    const mcp = new MockSecureLendMcp();
+    running.push(mcp);
+    await mcp.start();
+    const gateway = new ToolGateway({
+      port: 0,
+      runToken: TOKEN,
+      maxToolCalls: 40,
+      fixtures: {
+        documents: [],
+        records: [
+          {
+            recordId: "record_canonical_input",
+            sourceId: "normalized:canonical-input",
+            record: { legal_name: "Meridian Manufacturing LLC" },
+          },
+        ],
+      },
+    });
+    running.push(gateway);
+    await gateway.start();
+    const adapter = new SecureLendAdapter({
+      port: 0,
+      config: {
+        mode: "mcp",
+        participant: participant(),
+        mcp: {
+          url: mcp.mcpUrl,
+          token: "mcp-secret",
+          pollIntervalMs: 10,
+          pollTimeoutMs: 2_000,
+        },
+      },
+      chatPath: {
+        mcpUrl: mcp.mcpUrl,
+        token: "mcp-secret",
+        pollIntervalMs: 10,
+        pollTimeoutMs: 2_000,
+        fetchImpl: guardedFetch(),
+        now: () => 1,
+      },
+    });
+    running.push(adapter);
+    await adapter.start();
+    const started = await fetch(
+      `http://127.0.0.1:${adapter.portNumber}/v1/runs`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ...runRequest(`http://127.0.0.1:${gateway.port}/v1/tools/call`),
+          lane: "reasoning_only",
+          caseId: "case-00001",
+          idempotencyKey: "reasoning-only-no-docid",
+        }),
+      },
+    );
+    const accepted = (await started.json()) as { agentRunId: string };
+    const status = RunStatusResponseSchema.parse(
+      await pollCompleted(
+        `http://127.0.0.1:${adapter.portNumber}`,
+        accepted.agentRunId,
+      ),
+    );
+    expect(status.status).toBe("completed");
+    const extractionCalls = mcp.calls.filter(
+      (call) =>
+        call.name === "run_data_extraction" ||
+        call.name === "data_extraction_agent",
+    );
+    expect(extractionCalls).toEqual([]);
+    expect(
+      extractionCalls.some(
+        (call) => typeof call.arguments["documentId"] !== "string",
+      ),
+    ).toBe(false);
+    expect(mcp.calls.map((call) => call.name)).toContain(
+      "run_professional_memo",
+    );
   });
 
   it("finalizes uploads only when SECURELEND_DOCUMENT_API_URL is configured", async () => {

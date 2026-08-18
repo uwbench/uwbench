@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { interpretSubmitDocumentsResult } from "./upload.js";
+import { dataExtractionArguments, mcpDocumentId } from "./chat-path.js";
 import {
   assertEphemeralWorkspaceName,
   resolveToolName,
@@ -38,6 +39,17 @@ describe("MCP chat-path helpers", () => {
         "dataExtraction",
       ),
     ).toBe("run_data_extraction");
+  });
+
+  it("omits run_data_extraction unless documentId is a string", () => {
+    expect(mcpDocumentId(undefined)).toBeUndefined();
+    expect(dataExtractionArguments("ws_1", undefined)).toBeUndefined();
+    expect(dataExtractionArguments("ws_1", "")).toBeUndefined();
+    expect(dataExtractionArguments("ws_1", "sl_doc_1")).toEqual({
+      workspaceId: "ws_1",
+      documentId: "sl_doc_1",
+      blueprintType: "financial_statement",
+    });
   });
 
   it("reads uploadUrl/uploadFields from submit_documents shapes", () => {

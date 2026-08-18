@@ -73,6 +73,21 @@ export class MockSecureLendMcp {
     this.server = server;
   }
 
+  private rejectsMissingDocumentId(
+    name: string,
+    args: Record<string, unknown>,
+  ): boolean {
+    if (
+      name !== "run_data_extraction" &&
+      name !== "data_extraction_agent" &&
+      name !== "run_document_intelligence" &&
+      name !== "document_intelligence_agent"
+    ) {
+      return false;
+    }
+    return typeof args["documentId"] !== "string" || args["documentId"] === "";
+  }
+
   async stop(): Promise<void> {
     const server = this.server;
     this.server = null;
@@ -156,6 +171,17 @@ export class MockSecureLendMcp {
     const name = String(body.params?.["name"] ?? "");
     const args = (body.params?.["arguments"] as Record<string, unknown>) ?? {};
     this.calls.push({ name, arguments: args });
+    if (this.rejectsMissingDocumentId(name, args)) {
+      this.sendJson(response, {
+        jsonrpc: "2.0",
+        id,
+        error: {
+          code: -32602,
+          message: `Invalid arguments for tool ${name}: documentId expected string, got ${String(args["documentId"])}`,
+        },
+      });
+      return;
+    }
     this.sendJson(response, {
       jsonrpc: "2.0",
       id,

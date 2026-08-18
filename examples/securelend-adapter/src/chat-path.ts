@@ -81,6 +81,7 @@ export async function runProductChatPath(
     memoStatus: resolveToolName(catalog, "memoStatus"),
   } satisfies Record<ChatPathTool, string>;
 
+  const files = pkg.documents.filter((document) => document.uploadable);
   const workspaceName = workspaceNameForRun(request.caseId, now());
   assertEphemeralWorkspaceName(workspaceName);
   const created = await mcp.callTool(toolNames.createWorkspace, {
@@ -91,11 +92,12 @@ export async function runProductChatPath(
       caseId: request.caseId,
       benchmark: request.benchmark,
       lane: request.lane,
+      ...(files.length === 0
+        ? { casePackage: casePackagePayload(request, pkg) }
+        : {}),
     },
   });
   const workspaceId = extractWorkspaceId(created, workspaceName);
-
-  const files = pkg.documents.filter((document) => document.uploadable);
   let uploaded = false;
   let finalized = false;
   const documentIds: string[] = [];
@@ -118,12 +120,13 @@ export async function runProductChatPath(
         if (!target) continue;
         await uploadBytes(target, file, fetchImpl);
         uploaded = true;
-        if (target.documentId) documentIds.push(target.documentId);
+        const uploadedId = mcpDocumentId(target.documentId);
+        if (uploadedId) documentIds.push(uploadedId);
         if (config.documentApiUrl) {
           await finalizeUploadedDocument(
             config.documentApiUrl,
             {
-              documentId: target.documentId ?? file.documentId,
+              documentId: uploadedId ?? file.documentId,
               workspaceId,
               fileName: file.fileName ?? file.documentId,
               contentType: file.mimeType,
@@ -138,41 +141,45 @@ export async function runProductChatPath(
         }
       }
     } else {
-      const readyId = firstString(asRecord(submitResult), "documentId", "id");
+      const readyId = mcpDocumentId(
+        firstString(asRecord(submitResult), "documentId", "id"),
+      );
       if (readyId) documentIds.push(readyId);
     }
   }
 
   throwIfAborted(signal);
-  const primaryDocumentId = documentIds[0] ?? files[0]?.documentId;
+  // Live MCP schemas require documentId: string on extraction / intelligence.
+  // UWBench case ids are not SecureLend document ids — only submit_documents
+  // return values count. reasoning_only / already-extracted packs often have
+  // empty list_documents; skip those tools rather than send undefined.
+  const primaryDocumentId = mcpDocumentId(documentIds[0]);
   let intelligence: unknown;
-  if (primaryDocumentId || files.length > 0) {
+  let extraction: unknown;
+  let spread: unknown;
+  if (primaryDocumentId) {
     intelligence = await mcp.callTool(toolNames.documentIntelligence, {
       workspaceId,
-      ...(primaryDocumentId ? { documentId: primaryDocumentId } : {}),
+      documentId: primaryDocumentId,
     });
-  }
-
-  throwIfAborted(signal);
-  const extraction = await mcp.callTool(toolNames.dataExtraction, {
-    workspaceId,
-    blueprintType: LENDING_BLUEPRINT_TYPE,
-    ...(primaryDocumentId ? { documentId: primaryDocumentId } : {}),
-    ...(files.length === 0
-      ? { casePackage: casePackagePayload(request, pkg) }
-      : {}),
-  });
-
-  throwIfAborted(signal);
-  let spread: unknown;
-  if (catalog.length === 0 || catalog.includes(toolNames.financialSpread)) {
-    try {
-      spread = await mcp.callTool(toolNames.financialSpread, {
-        workspaceId,
-        ...(primaryDocumentId ? { documentId: primaryDocumentId } : {}),
-      });
-    } catch {
-      spread = undefined;
+    throwIfAborted(signal);
+    const extractionArgs = dataExtractionArguments(
+      workspaceId,
+      primaryDocumentId,
+    );
+    if (extractionArgs) {
+      extraction = await mcp.callTool(toolNames.dataExtraction, extractionArgs);
+    }
+    throwIfAborted(signal);
+    if (catalog.length === 0 || catalog.includes(toolNames.financialSpread)) {
+      try {
+        spread = await mcp.callTool(toolNames.financialSpread, {
+          workspaceId,
+          documentId: primaryDocumentId,
+        });
+      } catch {
+        spread = undefined;
+      }
     }
   }
 
@@ -220,6 +227,24 @@ export async function runProductChatPath(
     toolNames,
     uploaded,
     finalized,
+  };
+}
+
+export function mcpDocumentId(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+/** Live `run_data_extraction` requires documentId: string. Omit the call if missing. */
+export function dataExtractionArguments(
+  workspaceId: string,
+  documentId: unknown,
+): Record<string, unknown> | undefined {
+  const id = mcpDocumentId(documentId);
+  if (!id) return undefined;
+  return {
+    workspaceId,
+    documentId: id,
+    blueprintType: LENDING_BLUEPRINT_TYPE,
   };
 }
 

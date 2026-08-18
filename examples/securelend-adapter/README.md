@@ -6,10 +6,10 @@ UWBench agent protocol locally (`GET /health`, `POST/GET/DELETE /v1/runs`).
 
 It has two modes. Set **one** upstream:
 
-| Mode | When | What it does |
-| --- | --- | --- |
-| **Protocol proxy** | `SECURELEND_AGENT_URL` is set | Forwards `POST/GET/DELETE /v1/runs` to a SecureLend host that already implements ADR-002. `GET /health` stays local so published cells get a harness × model identity. If both URLs are set, this mode wins. |
-| **MCP chat path** | `SECURELEND_MCP_URL` is set and `SECURELEND_AGENT_URL` is not | Serves `/v1/runs` in-process. Each run creates a **new** deal workspace and drives the live product sequence used by `securelend-frontend` agents-chat (`tools/call` on `/mcp`). |
+| Mode               | When                                                          | What it does                                                                                                                                                                                                 |
+| ------------------ | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Protocol proxy** | `SECURELEND_AGENT_URL` is set                                 | Forwards `POST/GET/DELETE /v1/runs` to a SecureLend host that already implements ADR-002. `GET /health` stays local so published cells get a harness × model identity. If both URLs are set, this mode wins. |
+| **MCP chat path**  | `SECURELEND_MCP_URL` is set and `SECURELEND_AGENT_URL` is not | Serves `/v1/runs` in-process. Each run creates a **new** deal workspace and drives the live product sequence used by `securelend-frontend` agents-chat (`tools/call` on `/mcp`).                             |
 
 `SECURELEND_MODEL` is an identity label only. It is written on `GET /health`
 and is not sent as a model picker to SecureLend.
@@ -78,33 +78,39 @@ A run:
    bytes to the returned `uploadUrl` / `uploadFields` (S3 presign, same as the
    site). Original PDF/XLSX/DOCX bytes are not on the UWBench tool surface;
    reconstructed UTF-8 (or any `bytesBase64` / page PNG the gateway returns)
-   is what gets uploaded. Text-only / already-extracted cases skip upload and
-   pass the case package into extraction.
+   is what gets uploaded. Use the **SecureLend** `documentId` from that
+   response for later tools — not the UWBench case document id.
 4. Optional finalize: only if `SECURELEND_DOCUMENT_API_URL` is set (prod shape
    `https://api.securelend.ai/api/document/internal/process-uploaded-document`).
-5. Frontend lending sequence (or public-catalog aliases if `tools/list` has
-   those instead):
+5. Frontend lending sequence **only after a string `documentId` exists**
+   (or public-catalog aliases if `tools/list` has those instead):
    `run_document_intelligence` → `run_data_extraction`
-   (`blueprintType=financial_statement`) → optional
+   (`blueprintType=financial_statement`, `documentId` required) → optional
    `run_financial_statement_spread` → `run_professional_memo`
    (`sourceType=workspace`, `sourceId=workspaceId`) → poll `get_memo_status`.
-6. Maps the memo / extraction onto a UWBench `UnderwritingSubmission`.
+6. **reasoning_only / already-extracted packs:** `case.list_documents` is often
+   empty (commercial-credit-v0.1 does not load PDFs on that lane). Live MCP
+   `run_data_extraction` rejects a missing `documentId` (`-32602`). The adapter
+   does **not** call extraction, intelligence, or spread in that case. It
+   stores the UWBench case package on the new workspace's `metadata` and goes
+   to `run_professional_memo` with `sourceType=workspace`.
+7. Maps the memo / extraction onto a UWBench `UnderwritingSubmission`.
 
 This is **not** SecureLend's planned local sidecar
 (`mcp-agents/src/benchmark/`). That lives in the product repo.
 
 ### MCP-mode environment
 
-| Variable | Required | Role |
-| --- | --- | --- |
-| `SECURELEND_MCP_URL` | yes (MCP mode) | MCP endpoint, e.g. `https://agents.securelend.ai/mcp` |
-| `SECURELEND_MCP_TOKEN` or `SECURELEND_MCP_TOKEN_FILE` | yes (MCP mode) | Bearer **value only** (a leading `Bearer ` is stripped) |
-| `SECURELEND_MODEL` | yes | Identity label on `/health` |
-| `SECURELEND_DOCUMENT_API_URL` | no | Finalize after presigned upload; unused when unset |
-| `SECURELEND_MCP_POLL_INTERVAL_MS` | no | `get_memo_status` poll interval (default `2000`) |
-| `SECURELEND_MCP_POLL_TIMEOUT_MS` | no | Memo poll timeout (default `180000`) |
-| `SECURELEND_MODEL_VERSION` / `SECURELEND_PROVIDER` / `SECURELEND_PROVIDER_VERSION` / `SECURELEND_HARNESS_VERSION` | no | Extra identity fields (default `undeclared`) |
-| `PORT` | no | Listen port (default `9200`) |
+| Variable                                                                                                          | Required       | Role                                                    |
+| ----------------------------------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------- |
+| `SECURELEND_MCP_URL`                                                                                              | yes (MCP mode) | MCP endpoint, e.g. `https://agents.securelend.ai/mcp`   |
+| `SECURELEND_MCP_TOKEN` or `SECURELEND_MCP_TOKEN_FILE`                                                             | yes (MCP mode) | Bearer **value only** (a leading `Bearer ` is stripped) |
+| `SECURELEND_MODEL`                                                                                                | yes            | Identity label on `/health`                             |
+| `SECURELEND_DOCUMENT_API_URL`                                                                                     | no             | Finalize after presigned upload; unused when unset      |
+| `SECURELEND_MCP_POLL_INTERVAL_MS`                                                                                 | no             | `get_memo_status` poll interval (default `2000`)        |
+| `SECURELEND_MCP_POLL_TIMEOUT_MS`                                                                                  | no             | Memo poll timeout (default `180000`)                    |
+| `SECURELEND_MODEL_VERSION` / `SECURELEND_PROVIDER` / `SECURELEND_PROVIDER_VERSION` / `SECURELEND_HARNESS_VERSION` | no             | Extra identity fields (default `undeclared`)            |
+| `PORT`                                                                                                            | no             | Listen port (default `9200`)                            |
 
 ## Tests
 
