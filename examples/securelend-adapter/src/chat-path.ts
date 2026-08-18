@@ -1,6 +1,7 @@
 import type { RunRequest, UnderwritingSubmission } from "@uwbench/protocol";
 import {
   loadCasePackage,
+  synthesizeFinancialPackage,
   type CaseDocument,
   type CasePackage,
 } from "./case-package.js";
@@ -81,7 +82,10 @@ export async function runProductChatPath(
     memoStatus: resolveToolName(catalog, "memoStatus"),
   } satisfies Record<ChatPathTool, string>;
 
-  const files = pkg.documents.filter((document) => document.uploadable);
+  const gatewayFiles = pkg.documents.filter((document) => document.uploadable);
+  const synthesized =
+    gatewayFiles.length === 0 ? synthesizeFinancialPackage(pkg) : undefined;
+  const files = synthesized ? [synthesized] : gatewayFiles;
   const workspaceName = workspaceNameForRun(request.caseId, now());
   assertEphemeralWorkspaceName(workspaceName);
   const created = await mcp.callTool(toolNames.createWorkspace, {
@@ -92,7 +96,7 @@ export async function runProductChatPath(
       caseId: request.caseId,
       benchmark: request.benchmark,
       lane: request.lane,
-      ...(files.length === 0
+      ...(gatewayFiles.length === 0
         ? { casePackage: casePackagePayload(request, pkg) }
         : {}),
     },
@@ -151,8 +155,9 @@ export async function runProductChatPath(
   throwIfAborted(signal);
   // Live MCP schemas require documentId: string on extraction / intelligence.
   // UWBench case ids are not SecureLend document ids — only submit_documents
-  // return values count. reasoning_only / already-extracted packs often have
-  // empty list_documents; skip those tools rather than send undefined.
+  // return values count. reasoning_only packs often have empty list_documents;
+  // synthesize a package from already-loaded public records and upload it so
+  // extract/spread can run. Never send undefined documentId.
   const primaryDocumentId = mcpDocumentId(documentIds[0]);
   let intelligence: unknown;
   let extraction: unknown;

@@ -223,7 +223,7 @@ describe("MCP product chat-path mode", () => {
     expect(mcp.urls.every((url) => !url.includes("securelend.ai"))).toBe(true);
   });
 
-  it("skips extraction on already-extracted packs and still completes a memo", async () => {
+  it("synthesizes a pack upload and still completes a memo when list_documents is empty", async () => {
     const mcp = new MockSecureLendMcp();
     running.push(mcp);
     await mcp.start();
@@ -288,13 +288,9 @@ describe("MCP product chat-path mode", () => {
       ),
     );
     expect(status.status).toBe("completed");
-    expect(mcp.calls.map((call) => call.name)).not.toContain(
-      "submit_documents",
-    );
-    expect(mcp.calls.map((call) => call.name)).not.toContain(
-      "run_data_extraction",
-    );
-    expect(mcp.uploads).toEqual([]);
+    expect(mcp.calls.map((call) => call.name)).toContain("submit_documents");
+    expect(mcp.calls.map((call) => call.name)).toContain("run_data_extraction");
+    expect(mcp.uploads.length).toBeGreaterThan(0);
     const created = mcp.calls.find(
       (call) => call.name === "create_deal_workspace",
     );
@@ -313,6 +309,12 @@ describe("MCP product chat-path mode", () => {
       sourceType: "workspace",
       sourceId: "ws_uwbench_ephemeral",
     });
+    const extraction = mcp.calls.find(
+      (call) =>
+        call.name === "run_data_extraction" ||
+        call.name === "data_extraction_agent",
+    );
+    expect(typeof extraction?.arguments["documentId"]).toBe("string");
     expect(
       mcp.calls.some(
         (call) =>
@@ -393,7 +395,8 @@ describe("MCP product chat-path mode", () => {
         call.name === "run_data_extraction" ||
         call.name === "data_extraction_agent",
     );
-    expect(extractionCalls).toEqual([]);
+    expect(extractionCalls).toHaveLength(1);
+    expect(typeof extractionCalls[0]?.arguments["documentId"]).toBe("string");
     expect(
       extractionCalls.some(
         (call) => typeof call.arguments["documentId"] !== "string",
@@ -401,6 +404,162 @@ describe("MCP product chat-path mode", () => {
     ).toBe(false);
     expect(mcp.calls.map((call) => call.name)).toContain(
       "run_professional_memo",
+    );
+  });
+
+  it("maps reasoning_only pack records to a non-placeholder UWBench submission", async () => {
+    const mcp = new MockSecureLendMcp();
+    running.push(mcp);
+    await mcp.start();
+    const gateway = new ToolGateway({
+      port: 0,
+      runToken: TOKEN,
+      maxToolCalls: 40,
+      fixtures: {
+        documents: [],
+        records: [
+          {
+            recordId: "record_financials_2024",
+            sourceId: "src_financials_2024",
+            record: {
+              revenue: 520_000_000,
+              ebitda: 104_000_000,
+              debt_service: 38_000_000,
+              total_debt: 210_000_000,
+              current_assets: 135_000_000,
+              current_liabilities: 100_000_000,
+              total_assets: 480_000_000,
+              equity: 200_000_000,
+              interest_expense: 12_000_000,
+            },
+          },
+          {
+            recordId: "record_borrower_profile",
+            sourceId: "src_borrower_profile",
+            record: { legal_name: "Meridian Manufacturing LLC" },
+          },
+        ],
+        policies: [
+          {
+            ruleId: "rule_dscr_minimum",
+            sourceId: "src_policy_dscr",
+            title: "Minimum Debt Service Coverage Ratio",
+            appliesWhen: "term loan requested",
+            input: { ratio: "dscr" },
+            operator: ">=",
+            threshold: 1.25,
+            onFailure: "REFER",
+          },
+          {
+            ruleId: "rule_leverage_maximum",
+            sourceId: "src_policy_leverage",
+            title: "Maximum Leverage Ratio",
+            appliesWhen: "term loan requested",
+            input: { ratio: "leverage_ratio" },
+            operator: "<=",
+            threshold: 4.0,
+            onFailure: "REFER",
+          },
+          {
+            ruleId: "rule_interest_coverage_minimum",
+            sourceId: "src_policy_interest_coverage",
+            title: "Minimum Interest Coverage Ratio",
+            appliesWhen: "term loan requested",
+            input: { ratio: "interest_coverage" },
+            operator: ">=",
+            threshold: 3.0,
+            onFailure: "REFER",
+          },
+          {
+            ruleId: "rule_liquidity_minimum",
+            sourceId: "src_policy_liquidity",
+            title: "Minimum Liquidity Ratio",
+            appliesWhen: "term loan requested",
+            input: { ratio: "current_ratio" },
+            operator: ">=",
+            threshold: 1.2,
+            onFailure: "CONDITION",
+          },
+          {
+            ruleId: "rule_equity_cushion_minimum",
+            sourceId: "src_policy_equity_cushion",
+            title: "Minimum Equity Cushion",
+            appliesWhen: "term loan requested",
+            input: { ratio: "equity_to_assets" },
+            operator: ">=",
+            threshold: 0.25,
+            onFailure: "REFER",
+          },
+        ],
+      },
+    });
+    running.push(gateway);
+    await gateway.start();
+    const adapter = new SecureLendAdapter({
+      port: 0,
+      config: {
+        mode: "mcp",
+        participant: participant(),
+        mcp: {
+          url: mcp.mcpUrl,
+          token: "mcp-secret",
+          pollIntervalMs: 10,
+          pollTimeoutMs: 2_000,
+        },
+      },
+      chatPath: {
+        mcpUrl: mcp.mcpUrl,
+        token: "mcp-secret",
+        pollIntervalMs: 10,
+        pollTimeoutMs: 2_000,
+        fetchImpl: guardedFetch(),
+        now: () => 2,
+      },
+    });
+    running.push(adapter);
+    await adapter.start();
+    const started = await fetch(
+      `http://127.0.0.1:${adapter.portNumber}/v1/runs`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ...runRequest(`http://127.0.0.1:${gateway.port}/v1/tools/call`),
+          lane: "reasoning_only",
+          caseId: "case-00001",
+          idempotencyKey: "reasoning-only-pack-spread",
+        }),
+      },
+    );
+    const accepted = (await started.json()) as { agentRunId: string };
+    const status = RunStatusResponseSchema.parse(
+      await pollCompleted(
+        `http://127.0.0.1:${adapter.portNumber}`,
+        accepted.agentRunId,
+      ),
+    );
+    expect(status.status).toBe("completed");
+    if (status.status !== "completed") return;
+    expect(status.result.financialSpread.currency).not.toBe("XXX");
+    expect(status.result.financialSpread.revenue.amount).not.toBe(0);
+    expect(status.result.policyAssessment.evaluations).toHaveLength(
+      status.result.policyAssessment.applicableRules.length,
+    );
+    expect(status.result.policyAssessment.applicableRules).toEqual(
+      expect.arrayContaining([
+        "rule_dscr_minimum",
+        "rule_leverage_maximum",
+        "rule_liquidity_minimum",
+      ]),
+    );
+    expect(JSON.stringify(status.result.memo.claims)).not.toMatch(
+      /Mapped from SecureLend workspace|SecureLend product chat path produced a professional memo/,
+    );
+    expect(status.result.confidence.overall).toBeGreaterThan(0);
+    expect(status.result.risks.length).toBeGreaterThan(0);
+    expect(mcp.calls.map((call) => call.name)).toContain("submit_documents");
+    expect(mcp.calls.map((call) => call.name)).toContain(
+      "run_financial_statement_spread",
     );
   });
 

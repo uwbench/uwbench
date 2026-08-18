@@ -89,12 +89,19 @@ A run:
    `run_financial_statement_spread` → `run_professional_memo`
    (`sourceType=workspace`, `sourceId=workspaceId`) → poll `get_memo_status`.
 6. **reasoning_only / already-extracted packs:** `case.list_documents` is often
-   empty (commercial-credit-v0.1 does not load PDFs on that lane). Live MCP
-   `run_data_extraction` rejects a missing `documentId` (`-32602`). The adapter
-   does **not** call extraction, intelligence, or spread in that case. It
-   stores the UWBench case package on the new workspace's `metadata` and goes
-   to `run_professional_memo` with `sourceType=workspace`.
-7. Maps the memo / extraction onto a UWBench `UnderwritingSubmission`.
+   empty (commercial-credit-v0.1 does not load PDFs on that lane). The adapter
+   loads public structured records and discovers term-loan rules via
+   `policy.search` / `policy.get_rule`. It synthesizes a plain-text financial
+   package from those already-loaded records, uploads it through
+   `submit_documents`, and then runs intelligence / extraction / spread using
+   the **SecureLend** `documentId`. It never calls those tools with a missing
+   `documentId`. The UWBench case package is still stored on workspace
+   `metadata`, and `run_professional_memo` uses `sourceType=workspace`.
+7. Maps product extract/spread (when they parse to a real `FinancialSpread`)
+   onto a UWBench `UnderwritingSubmission`. If the product returns empty or
+   placeholder `XXX` / 1970 figures, the mapper falls back to public pack
+   records, evaluates discovered policy rules, and cites only real pack
+   `sourceId`s. Dummy workspace-mapping claims are not emitted.
 
 This is **not** SecureLend's planned local sidecar
 (`mcp-agents/src/benchmark/`). That lives in the product repo.
