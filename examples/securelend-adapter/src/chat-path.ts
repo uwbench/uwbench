@@ -107,16 +107,10 @@ export async function runProductChatPath(
   const documentIds: string[] = [];
 
   if (files.length > 0) {
-    const submitResult = await mcp.callTool(toolNames.submitDocuments, {
-      workspaceId,
-      documentType: "financial-statement",
-      documents: files.map((file) => ({
-        fileName: file.fileName ?? `${file.documentId}.txt`,
-        contentType: file.mimeType,
-        sizeBytes: file.bytes.length,
-        documentId: file.documentId,
-      })),
-    });
+    const submitResult = await mcp.callTool(
+      toolNames.submitDocuments,
+      submitDocumentsArguments(workspaceId, files),
+    );
     const uploads = interpretSubmitDocumentsResult(submitResult);
     if (uploads.length > 0) {
       for (const [index, file] of files.entries()) {
@@ -163,17 +157,28 @@ export async function runProductChatPath(
   let extraction: unknown;
   let spread: unknown;
   if (primaryDocumentId) {
-    intelligence = await mcp.callTool(toolNames.documentIntelligence, {
-      workspaceId,
-      documentId: primaryDocumentId,
-    });
+    try {
+      intelligence = await mcp.callTool(toolNames.documentIntelligence, {
+        workspaceId,
+        documentId: primaryDocumentId,
+      });
+    } catch {
+      intelligence = undefined;
+    }
     throwIfAborted(signal);
     const extractionArgs = dataExtractionArguments(
       workspaceId,
       primaryDocumentId,
     );
     if (extractionArgs) {
-      extraction = await mcp.callTool(toolNames.dataExtraction, extractionArgs);
+      try {
+        extraction = await mcp.callTool(
+          toolNames.dataExtraction,
+          extractionArgs,
+        );
+      } catch {
+        extraction = undefined;
+      }
     }
     throwIfAborted(signal);
     if (catalog.length === 0 || catalog.includes(toolNames.financialSpread)) {
@@ -237,6 +242,29 @@ export async function runProductChatPath(
 
 export function mcpDocumentId(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+/** Live `submit_documents` validates top-level filename + contentType. */
+export function submitDocumentsArguments(
+  workspaceId: string,
+  files: Pick<CaseDocument, "documentId" | "fileName" | "mimeType" | "bytes">[],
+): Record<string, unknown> {
+  const primary = files[0];
+  const filename =
+    primary?.fileName ?? `${primary?.documentId ?? "document"}.txt`;
+  const contentType = primary?.mimeType ?? "text/plain";
+  return {
+    workspaceId,
+    documentType: "financial-statement",
+    filename,
+    contentType,
+    documents: files.map((file) => ({
+      fileName: file.fileName ?? `${file.documentId}.txt`,
+      contentType: file.mimeType,
+      sizeBytes: file.bytes.length,
+      documentId: file.documentId,
+    })),
+  };
 }
 
 /** Live `run_data_extraction` requires documentId: string. Omit the call if missing. */

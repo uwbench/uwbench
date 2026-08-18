@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { interpretSubmitDocumentsResult } from "./upload.js";
-import { dataExtractionArguments, mcpDocumentId } from "./chat-path.js";
+import {
+  dataExtractionArguments,
+  mcpDocumentId,
+  submitDocumentsArguments,
+} from "./chat-path.js";
 import {
   assertEphemeralWorkspaceName,
   resolveToolName,
@@ -268,6 +272,29 @@ describe("MCP chat-path helpers", () => {
         "dataExtraction",
       ),
     ).toBe("run_data_extraction");
+  });
+
+  it("sends live submit_documents top-level filename and contentType", () => {
+    const args = submitDocumentsArguments("ws_1", [
+      {
+        documentId: "pack_financial_package",
+        fileName: "financial-package.txt",
+        mimeType: "text/plain",
+        bytes: Buffer.from("revenue 520000000"),
+      },
+    ]);
+    expect(args).toMatchObject({
+      workspaceId: "ws_1",
+      filename: "financial-package.txt",
+      contentType: "text/plain",
+      documents: [
+        expect.objectContaining({
+          fileName: "financial-package.txt",
+          contentType: "text/plain",
+          documentId: "pack_financial_package",
+        }),
+      ],
+    });
   });
 
   it("omits run_data_extraction unless documentId is a string", () => {

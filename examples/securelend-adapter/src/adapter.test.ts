@@ -291,6 +291,14 @@ describe("MCP product chat-path mode", () => {
     expect(mcp.calls.map((call) => call.name)).toContain("submit_documents");
     expect(mcp.calls.map((call) => call.name)).toContain("run_data_extraction");
     expect(mcp.uploads.length).toBeGreaterThan(0);
+    expect(mcp.finalizeBodies).toEqual([]);
+    const submitted = mcp.calls.find(
+      (call) => call.name === "submit_documents",
+    );
+    expect(submitted?.arguments).toMatchObject({
+      filename: "financial-package.txt",
+      contentType: "text/plain",
+    });
     const created = mcp.calls.find(
       (call) => call.name === "create_deal_workspace",
     );
@@ -402,6 +410,94 @@ describe("MCP product chat-path mode", () => {
         (call) => typeof call.arguments["documentId"] !== "string",
       ),
     ).toBe(false);
+    expect(mcp.calls.map((call) => call.name)).toContain(
+      "run_professional_memo",
+    );
+  });
+
+  it("completes runProductChatPath when intelligence and extraction throw on a pack spread", async () => {
+    const mcp = new MockSecureLendMcp({
+      throwOn: ["run_document_intelligence", "run_data_extraction"],
+    });
+    running.push(mcp);
+    await mcp.start();
+    const gateway = new ToolGateway({
+      port: 0,
+      runToken: TOKEN,
+      maxToolCalls: 40,
+      fixtures: {
+        documents: [],
+        records: [
+          {
+            recordId: "record_financials_2024",
+            sourceId: "src_financials_2024",
+            record: {
+              financialSpread: {
+                revenue: { amount: 520_000_000, currency: "USD" },
+                period: { start: "2024-01-01", end: "2024-12-31" },
+                currency: "USD",
+                scale: "units",
+                signConvention: "all_positive",
+              },
+            },
+          },
+        ],
+      },
+    });
+    running.push(gateway);
+    await gateway.start();
+    const adapter = new SecureLendAdapter({
+      port: 0,
+      config: {
+        mode: "mcp",
+        participant: participant(),
+        mcp: {
+          url: mcp.mcpUrl,
+          token: "mcp-secret",
+          pollIntervalMs: 10,
+          pollTimeoutMs: 2_000,
+        },
+      },
+      chatPath: {
+        mcpUrl: mcp.mcpUrl,
+        token: "mcp-secret",
+        pollIntervalMs: 10,
+        pollTimeoutMs: 2_000,
+        fetchImpl: guardedFetch(),
+        now: () => 3,
+      },
+    });
+    running.push(adapter);
+    await adapter.start();
+    const started = await fetch(
+      `http://127.0.0.1:${adapter.portNumber}/v1/runs`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ...runRequest(`http://127.0.0.1:${gateway.port}/v1/tools/call`),
+          lane: "reasoning_only",
+          caseId: "case-00001",
+          idempotencyKey: "reasoning-only-extract-throws",
+        }),
+      },
+    );
+    const accepted = (await started.json()) as { agentRunId: string };
+    const status = RunStatusResponseSchema.parse(
+      await pollCompleted(
+        `http://127.0.0.1:${adapter.portNumber}`,
+        accepted.agentRunId,
+      ),
+    );
+    expect(status.status).toBe("completed");
+    if (status.status !== "completed") return;
+    expect(status.result.financialSpread.revenue.amount).toBe(520_000_000);
+    expect(status.result.confidence.overall).toBeGreaterThan(0);
+    expect(mcp.finalizeBodies).toEqual([]);
+    expect(mcp.calls.map((call) => call.name)).toContain(
+      "run_document_intelligence",
+    );
+    expect(mcp.calls.map((call) => call.name)).toContain("run_data_extraction");
     expect(mcp.calls.map((call) => call.name)).toContain(
       "run_professional_memo",
     );

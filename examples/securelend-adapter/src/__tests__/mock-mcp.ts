@@ -14,6 +14,7 @@ export interface MockMcpOptions {
   catalog?: string[];
   uploadStyle?: "put" | "post";
   memoDelayPolls?: number;
+  throwOn?: string[];
 }
 
 export class MockSecureLendMcp {
@@ -25,7 +26,7 @@ export class MockSecureLendMcp {
   private server: ReturnType<typeof createServer> | null = null;
   private readonly options: Required<
     Pick<MockMcpOptions, "uploadStyle" | "memoDelayPolls">
-  > & { catalog: string[] };
+  > & { catalog: string[]; throwOn: string[] };
 
   constructor(options: MockMcpOptions = {}) {
     this.options = {
@@ -40,6 +41,7 @@ export class MockSecureLendMcp {
       ],
       uploadStyle: options.uploadStyle ?? "put",
       memoDelayPolls: options.memoDelayPolls ?? 1,
+      throwOn: options.throwOn ?? [],
     };
   }
 
@@ -171,6 +173,17 @@ export class MockSecureLendMcp {
     const name = String(body.params?.["name"] ?? "");
     const args = (body.params?.["arguments"] as Record<string, unknown>) ?? {};
     this.calls.push({ name, arguments: args });
+    if (this.options.throwOn.includes(name)) {
+      this.sendJson(response, {
+        jsonrpc: "2.0",
+        id,
+        error: {
+          code: -32000,
+          message: `${name} failed on synthesized pack`,
+        },
+      });
+      return;
+    }
     if (this.rejectsMissingDocumentId(name, args)) {
       this.sendJson(response, {
         jsonrpc: "2.0",
