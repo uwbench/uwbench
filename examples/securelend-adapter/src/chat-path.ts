@@ -1,9 +1,9 @@
 import type { RunRequest, UnderwritingSubmission } from "@uwbench/protocol";
 import {
+  casePackagePayload,
   loadCasePackage,
   synthesizeFinancialPackage,
   type CaseDocument,
-  type CasePackage,
 } from "./case-package.js";
 import {
   asRecord,
@@ -278,29 +278,6 @@ export function dataExtractionArguments(
     workspaceId,
     documentId: id,
     blueprintType: LENDING_BLUEPRINT_TYPE,
-  };
-}
-
-function casePackagePayload(
-  request: RunRequest,
-  pkg: CasePackage,
-): Record<string, unknown> {
-  return {
-    caseId: request.caseId,
-    objective: request.objective,
-    lane: request.lane,
-    documents: pkg.documents.map((document: CaseDocument) => ({
-      documentId: document.documentId,
-      sourceId: document.sourceId,
-      title: document.title,
-      mimeType: document.mimeType,
-      text: document.text,
-    })),
-    records: pkg.records.map((record) => ({
-      recordId: record.recordId,
-      sourceId: record.sourceId,
-      record: record.record,
-    })),
   };
 }
 

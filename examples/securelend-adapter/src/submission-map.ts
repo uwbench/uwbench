@@ -102,16 +102,20 @@ export function mapChatPathToSubmission(
     knownSources,
     pkg,
   });
-  const claims = buildClaims({
-    pkg,
-    spread,
-    usable,
-    ratios,
-    policyAssessment,
-    recommendation,
-    evidence,
-    knownSources,
-  });
+  const productClaims = claimsFromUnknown(outputs, knownSources);
+  const claims =
+    productClaims.length > 0
+      ? productClaims
+      : buildClaims({
+          pkg,
+          spread,
+          usable,
+          ratios,
+          policyAssessment,
+          recommendation,
+          evidence,
+          knownSources,
+        });
   const rationale =
     recommendation.rationale.length > 0
       ? recommendation.rationale
@@ -238,6 +242,48 @@ function evidenceFromPackage(
     add(rule.sourceId);
   }
   return refs;
+}
+
+const FINANCIAL_SOURCE_PATTERN = /financial|gaap|tax|reconcil|spread/i;
+const POLICY_SOURCE_PATTERN = /policy/i;
+
+function financialSourceIds(
+  pkg: CasePackage,
+  knownSources: Set<string>,
+): string[] {
+  const ids: string[] = [];
+  const add = (sourceId: string | undefined): void => {
+    if (
+      !isCitableSourceId(sourceId) ||
+      !knownSources.has(sourceId) ||
+      POLICY_SOURCE_PATTERN.test(sourceId) ||
+      ids.includes(sourceId)
+    ) {
+      return;
+    }
+    ids.push(sourceId);
+  };
+  for (const record of pkg.records) {
+    const blob = `${record.recordId} ${record.sourceId}`;
+    if (FINANCIAL_SOURCE_PATTERN.test(blob)) add(record.sourceId);
+    for (const sourceId of record.nestedSourceIds ?? []) {
+      if (FINANCIAL_SOURCE_PATTERN.test(sourceId)) add(sourceId);
+    }
+  }
+  for (const document of pkg.documents) {
+    const blob = `${document.documentId} ${document.sourceId} ${document.title}`;
+    if (FINANCIAL_SOURCE_PATTERN.test(blob)) add(document.sourceId);
+  }
+  return ids;
+}
+
+function financialEvidence(
+  pkg: CasePackage,
+  knownSources: Set<string>,
+): EvidenceReference[] {
+  return financialSourceIds(pkg, knownSources).map((sourceId) => ({
+    sourceId,
+  }));
 }
 
 function cite(
@@ -649,12 +695,7 @@ function factsFromUnknown(
 
   const facts: NormalizedFact[] = [];
   if (isUsableSpread(spread) && evidence.length > 0) {
-    const financials = cite(
-      knownSources,
-      evidence,
-      sourceIdForRecord(pkg, "record_financials_2024"),
-      sourceIdForRecord(pkg, "record_canonical_input"),
-    );
+    const financials = financialEvidence(pkg, knownSources);
     facts.push({
       canonicalKey: "revenue",
       value: spread.revenue.amount,
@@ -790,7 +831,8 @@ function sourceIdForRecord(
   if (fromRecord) return fromRecord;
   const financial = pkg.records.find(
     (item) =>
-      /financial/i.test(item.recordId) && isCitableSourceId(item.sourceId),
+      /financial|gaap|tax/i.test(item.recordId) &&
+      isCitableSourceId(item.sourceId),
   );
   return financial?.sourceId;
 }
@@ -837,12 +879,7 @@ function deriveRisksAndDiscrepancies(
 ): { risks: RiskFinding[]; discrepancies: Discrepancy[] } {
   const risks: RiskFinding[] = [];
   const discrepancies: Discrepancy[] = [];
-  const financials = cite(
-    knownSources,
-    evidence,
-    sourceIdForRecord(pkg, "record_financials_2024"),
-    sourceIdForRecord(pkg, "record_canonical_input"),
-  );
+  const financials = financialEvidence(pkg, knownSources);
   const sourceA = financials[0]?.sourceId ?? evidence[0]?.sourceId ?? "";
 
   if (isUsableSpread(spread)) {
@@ -998,7 +1035,7 @@ function buildRecommendation(args: {
       description: `Maintain current ratio at or above ${formatRatio(liquidity.threshold)}x (latest ${formatRatio(liquidity.value)}x).`,
       evidence: cite(
         args.knownSources,
-        args.evidence,
+        financialEvidence(args.pkg, args.knownSources),
         sourceIdForRecord(args.pkg, "record_financials_2024"),
         args.policies.find((rule) => /liquidity/i.test(rule.ruleId))?.sourceId,
       ),
@@ -1017,17 +1054,12 @@ function buildRecommendation(args: {
     }
   }
 
-  const financials = cite(
-    args.knownSources,
-    args.evidence,
-    sourceIdForRecord(args.pkg, "record_financials_2024"),
-    sourceIdForRecord(args.pkg, "record_canonical_input"),
-  );
+  const financials = financialEvidence(args.pkg, args.knownSources);
   const rationale: CitedClaim[] = [];
-  if (args.usable) {
+  if (args.usable && financials.length > 0) {
     rationale.push({
       claim: `Recommendation is ${decision} on a ${args.spread.currency} FY spread with revenue ${formatMoney(args.spread.revenue.amount, args.spread.currency)}.`,
-      evidence: financials.length > 0 ? financials : args.evidence,
+      evidence: financials,
       confidence: 0.7,
     });
   }
@@ -1069,12 +1101,7 @@ function buildClaims(args: {
   knownSources: Set<string>;
 }): CitedClaim[] {
   const claims: CitedClaim[] = [];
-  const financials = cite(
-    args.knownSources,
-    args.evidence,
-    sourceIdForRecord(args.pkg, "record_financials_2024"),
-    sourceIdForRecord(args.pkg, "record_canonical_input"),
-  );
+  const financials = financialEvidence(args.pkg, args.knownSources);
   if (args.usable && financials.length > 0) {
     claims.push({
       claim: `Revenue is ${formatMoney(args.spread.revenue.amount, args.spread.currency)} for ${args.spread.period.start} to ${args.spread.period.end}.`,
@@ -1130,6 +1157,47 @@ function buildClaims(args: {
       (item) =>
         !DUMMY_CLAIM_PATTERNS.some((pattern) => pattern.test(item.claim)),
     );
+  }
+  return [];
+}
+
+function claimsFromUnknown(
+  outputs: ChatPathOutputs,
+  knownSources: Set<string>,
+): CitedClaim[] {
+  const sources = [outputs.memo, outputs.extraction, outputs.intelligence];
+  for (const source of sources) {
+    const record = asRecord(source);
+    const lists = [
+      record?.["claims"],
+      record?.["citedClaims"],
+      asRecord(record?.["memo"])?.["claims"],
+    ];
+    for (const list of lists) {
+      if (!Array.isArray(list)) continue;
+      const mapped: CitedClaim[] = [];
+      for (const item of list) {
+        const claimRecord = asRecord(item);
+        const claim = firstString(claimRecord, "claim", "text", "statement");
+        if (!claimRecord || !claim) continue;
+        if (DUMMY_CLAIM_PATTERNS.some((pattern) => pattern.test(claim))) {
+          continue;
+        }
+        const evidence = sanitizeEvidence(
+          claimRecord["evidence"],
+          knownSources,
+        );
+        if (evidence.length === 0) continue;
+        mapped.push({
+          claim,
+          evidence,
+          ...(typeof claimRecord["confidence"] === "number"
+            ? { confidence: claimRecord["confidence"] }
+            : { confidence: 0.7 }),
+        });
+      }
+      if (mapped.length > 0) return mapped;
+    }
   }
   return [];
 }
