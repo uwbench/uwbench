@@ -107,20 +107,26 @@ export async function runProductChatPath(
   let finalized = false;
   const documentIds: string[] = [];
 
+  const uploadedDocs: UploadedCaseDocument[] = [];
   if (files.length > 0) {
-    const submitResult = await mcp.callTool(
-      toolNames.submitDocuments,
-      submitDocumentsArguments(workspaceId, files),
-    );
-    const uploads = interpretSubmitDocumentsResult(submitResult);
-    if (uploads.length > 0) {
-      for (const [index, file] of files.entries()) {
-        const target = matchUpload(uploads, file, index);
+    // Live submit_documents reserves one S3 object. One call per file so a
+    // later letter / workbook / AR-aging body cannot overwrite the scan.
+    for (const file of files) {
+      const submitResult = await mcp.callTool(
+        toolNames.submitDocuments,
+        submitDocumentsArguments(workspaceId, [file]),
+      );
+      const uploads = interpretSubmitDocumentsResult(submitResult);
+      if (uploads.length > 0) {
+        const target = matchUpload(uploads, file, 0);
         if (!target) continue;
         await uploadBytes(target, file, fetchImpl);
         uploaded = true;
         const uploadedId = mcpDocumentId(target.documentId);
-        if (uploadedId) documentIds.push(uploadedId);
+        if (uploadedId) {
+          documentIds.push(uploadedId);
+          uploadedDocs.push({ file, documentId: uploadedId });
+        }
         if (config.documentApiUrl) {
           await finalizeUploadedDocument(
             config.documentApiUrl,
@@ -138,12 +144,15 @@ export async function runProductChatPath(
           );
           finalized = true;
         }
+      } else {
+        const readyId = mcpDocumentId(
+          firstString(asRecord(submitResult), "documentId", "id"),
+        );
+        if (readyId) {
+          documentIds.push(readyId);
+          uploadedDocs.push({ file, documentId: readyId });
+        }
       }
-    } else {
-      const readyId = mcpDocumentId(
-        firstString(asRecord(submitResult), "documentId", "id"),
-      );
-      if (readyId) documentIds.push(readyId);
     }
   }
 
@@ -153,7 +162,10 @@ export async function runProductChatPath(
   // return values count. reasoning_only packs often have empty list_documents;
   // synthesize a package from already-loaded public records and upload it so
   // extract/spread can run. Never send undefined documentId.
-  const primaryDocumentId = mcpDocumentId(documentIds[0]);
+  const primaryDocumentId = primaryUploadedDocumentId(
+    uploadedDocs,
+    documentIds,
+  );
   let intelligence: unknown;
   let extraction: unknown;
   let spread: unknown;
@@ -173,10 +185,15 @@ export async function runProductChatPath(
     );
     if (extractionArgs) {
       try {
-        extraction = await mcp.callTool(
-          toolNames.dataExtraction,
+        extraction = await readOrPollExtraction({
+          mcp,
+          toolName: toolNames.dataExtraction,
           extractionArgs,
-        );
+          intervalMs: config.pollIntervalMs,
+          timeoutMs: config.pollTimeoutMs,
+          sleep,
+          signal,
+        });
       } catch {
         extraction = undefined;
       }
@@ -223,6 +240,7 @@ export async function runProductChatPath(
     intelligence,
     spread,
     memo,
+    lane: request.lane,
   });
 
   await pkg.client.tryCall("submission.save_artifact", {
@@ -280,6 +298,105 @@ export function dataExtractionArguments(
     documentId: id,
     blueprintType: LENDING_BLUEPRINT_TYPE,
   };
+}
+
+export interface UploadedCaseDocument {
+  file: CaseDocument;
+  documentId: string;
+}
+
+/**
+ * Keep extraction on the financials PNG / statement, not AR, letter, or workbook.
+ */
+export function primaryUploadedDocumentId(
+  uploaded: UploadedCaseDocument[],
+  fallbackIds: string[],
+): string | undefined {
+  const ranked = [...uploaded]
+    .map((item) => ({ item, score: financialUploadScore(item.file) }))
+    .filter((entry) => entry.score > 0)
+    .sort((left, right) => right.score - left.score);
+  if (ranked[0]) return ranked[0].item.documentId;
+  return mcpDocumentId(fallbackIds[0]);
+}
+
+function financialUploadScore(file: CaseDocument): number {
+  const blob = [
+    file.sourceId,
+    file.documentId,
+    file.fileName ?? "",
+    file.title,
+    file.mimeType,
+  ].join(" ");
+  if (
+    /ar[-_ ]?aging|accounts receivable|src_ar_|src_doc_letter|src_doc_workbook/i.test(
+      blob,
+    )
+  ) {
+    return 0;
+  }
+  if (
+    /letter|workbook|working[-_ ]capital|\.xlsx|\.docx/i.test(blob) &&
+    !/financial/i.test(blob)
+  ) {
+    return 0;
+  }
+  let score = 1;
+  if (/src_doc_financials/i.test(file.sourceId)) score += 100;
+  if (/financials/i.test(blob)) score += 50;
+  if (file.mimeType === "image/png") score += 20;
+  if (file.mimeType === "application/pdf") score += 10;
+  return score;
+}
+
+/**
+ * Product `run_data_extraction` often returns `ready: false` / "no normalized
+ * financial facts" while `extractedData` already has period maps. Treat that
+ * as ready. Do not stop on `ready === false` alone.
+ */
+export function isExtractionReady(result: unknown): boolean {
+  const record = asRecord(result);
+  if (!record) return false;
+  if (hasExtractedFinancialData(record)) return true;
+  const facts = record["facts"] ?? record["normalizedFacts"];
+  if (Array.isArray(facts) && facts.length > 0) return true;
+  if (record["ready"] === true) return true;
+  const status = firstString(record, "status")?.toUpperCase();
+  if (status === "READY" || status === "COMPLETED" || status === "COMPLETE") {
+    return true;
+  }
+  return false;
+}
+
+function hasExtractedFinancialData(record: Record<string, unknown>): boolean {
+  const extracted =
+    asRecord(record["extractedData"]) ??
+    asRecord(asRecord(record["result"])?.["extractedData"]) ??
+    asRecord(asRecord(record["structuredContent"])?.["extractedData"]);
+  if (!extracted) return false;
+  return Object.keys(extracted).length > 0;
+}
+
+export async function readOrPollExtraction(args: {
+  mcp: Pick<McpClient, "callTool">;
+  toolName: string;
+  extractionArgs: Record<string, unknown>;
+  intervalMs: number;
+  timeoutMs: number;
+  sleep: (ms: number) => Promise<void>;
+  signal?: AbortSignal;
+}): Promise<unknown> {
+  let last = await args.mcp.callTool(args.toolName, args.extractionArgs);
+  if (isExtractionReady(last)) return last;
+  const started = Date.now();
+  while (Date.now() - started < args.timeoutMs) {
+    throwIfAborted(args.signal);
+    await args.sleep(args.intervalMs);
+    throwIfAborted(args.signal);
+    last = await args.mcp.callTool(args.toolName, args.extractionArgs);
+    if (isExtractionReady(last)) return last;
+  }
+  return last;
 }
 
 function extractWorkspaceId(result: unknown, fallbackName: string): string {

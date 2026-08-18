@@ -726,6 +726,142 @@ describe("MCP product chat-path mode", () => {
     ]);
   });
 
+  it("submits each file once and extracts the financials PNG", async () => {
+    const mcp = new MockSecureLendMcp({
+      extractionDelayPolls: 1,
+      extractionResult: {
+        ready: false,
+        message:
+          "Document has an IDP extraction result but no normalized financial facts",
+        extractedData: {
+          incomeStatement: {
+            revenue: { "2024": "1640000" },
+            cogs: { "2024": "560000" },
+            ebitda: { "2024": "220000" },
+            interestExpense: { "2024": "28000" },
+            netIncome: { "2024": "98000" },
+          },
+          balanceSheet: {
+            cash: { "2024": "95000" },
+            currentAssets: { "2024": "210000" },
+            currentLiabilities: { "2024": "145000" },
+            totalAssets: { "2024": "780000" },
+            totalDebt: { "2024": "410000" },
+            equity: { "2024": "290000" },
+            debtService: { "2024": "72000" },
+          },
+        },
+        rawText:
+          "REVENUE USD 1640000 COGS USD 560000 EBITDA USD 220000 BENCHMARK-FROZEN FIGURES. NOT A CREDIT OPINION.",
+      },
+    });
+    running.push(mcp);
+    await mcp.start();
+    const gateway = new ToolGateway({
+      port: 0,
+      runToken: TOKEN,
+      maxToolCalls: 40,
+      fixtures: {
+        documents: [
+          documentFixture({
+            documentId: "doc_request_letter",
+            sourceId: "src_doc_letter",
+            title: "Credit request letter",
+            fileName: "request-letter.docx",
+            mimeType:
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            content: "Please underwrite a synthetic term loan.",
+          }),
+          documentFixture({
+            documentId: "doc_financials_2024",
+            sourceId: "src_doc_financials",
+            title: "FY2024 financial statements",
+            fileName: "doc_financials_2024.png",
+            mimeType: "image/png",
+            content: "png-scan-bytes",
+          }),
+          documentFixture({
+            documentId: "doc_ar_aging_2024",
+            sourceId: "src_ar_aging_2024",
+            title: "AR aging",
+            fileName: "ar-aging.txt",
+            mimeType: "text/plain",
+            content:
+              "Accounts receivable aging as of 2024-09-28\nCurrent: 72%.",
+          }),
+        ],
+        records: [
+          {
+            recordId: "record_borrower_profile",
+            sourceId: "src_borrower_profile",
+            record: { legal_name: "Hearth & Ember LLC" },
+          },
+        ],
+      },
+    });
+    running.push(gateway);
+    await gateway.start();
+    const adapter = new SecureLendAdapter({
+      port: 0,
+      config: {
+        mode: "mcp",
+        participant: participant(),
+        mcp: {
+          url: mcp.mcpUrl,
+          token: "mcp-secret",
+          pollIntervalMs: 10,
+          pollTimeoutMs: 2_000,
+        },
+      },
+      chatPath: {
+        mcpUrl: mcp.mcpUrl,
+        token: "mcp-secret",
+        pollIntervalMs: 10,
+        pollTimeoutMs: 2_000,
+        fetchImpl: guardedFetch(),
+        now: () => 11,
+      },
+    });
+    running.push(adapter);
+    await adapter.start();
+    const started = await fetch(
+      `http://127.0.0.1:${adapter.portNumber}/v1/runs`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ...runRequest(`http://127.0.0.1:${gateway.port}/v1/tools/call`),
+          caseId: "case-raw-hearth",
+          idempotencyKey: "hearth-per-file-idp",
+        }),
+      },
+    );
+    const accepted = (await started.json()) as { agentRunId: string };
+    const status = RunStatusResponseSchema.parse(
+      await pollCompleted(
+        `http://127.0.0.1:${adapter.portNumber}`,
+        accepted.agentRunId,
+      ),
+    );
+    expect(status.status).toBe("completed");
+    if (status.status !== "completed") return;
+    expect(
+      mcp.calls.filter((call) => call.name === "submit_documents"),
+    ).toHaveLength(3);
+    expect(mcp.uploads).toHaveLength(3);
+    expect(mcp.uploads[0]?.equals(mcp.uploads[1] ?? Buffer.alloc(0))).toBe(
+      false,
+    );
+    const extraction = mcp.calls.filter(
+      (call) => call.name === "run_data_extraction",
+    );
+    expect(extraction.length).toBeGreaterThan(1);
+    expect(extraction.at(-1)?.arguments["documentId"]).toBe("sl_doc_2");
+    expect(status.result.financialSpread.revenue.amount).toBe(164_000_000);
+    expect(status.result.financialSpread.currency).not.toBe("XXX");
+    expect(status.result.financialSpread.period.start).not.toMatch(/^1970/);
+  });
+
   it("uses public catalog aliases when frontend run_* names are absent", async () => {
     const mcp = new MockSecureLendMcp({
       catalog: [

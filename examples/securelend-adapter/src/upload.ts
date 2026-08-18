@@ -170,5 +170,8 @@ export function matchUpload(
   if (byName) return byName;
   const byId = uploads.find((item) => item.documentId === file.documentId);
   if (byId) return byId;
-  return uploads[index] ?? uploads[0];
+  // Live submit_documents reserves one S3 object per call. Never map a later
+  // file onto another file's presign — that overwrites the financials scan.
+  if (index >= 0 && index < uploads.length) return uploads[index];
+  return undefined;
 }

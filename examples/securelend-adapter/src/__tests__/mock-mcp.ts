@@ -15,6 +15,8 @@ export interface MockMcpOptions {
   uploadStyle?: "put" | "post";
   memoDelayPolls?: number;
   throwOn?: string[];
+  extractionDelayPolls?: number;
+  extractionResult?: Record<string, unknown>;
 }
 
 export class MockSecureLendMcp {
@@ -23,10 +25,19 @@ export class MockSecureLendMcp {
   readonly finalizeBodies: unknown[] = [];
   readonly urls: string[] = [];
   memoPolls = 0;
+  extractionPolls = 0;
+  submitCount = 0;
   private server: ReturnType<typeof createServer> | null = null;
   private readonly options: Required<
-    Pick<MockMcpOptions, "uploadStyle" | "memoDelayPolls">
-  > & { catalog: string[]; throwOn: string[] };
+    Pick<
+      MockMcpOptions,
+      "uploadStyle" | "memoDelayPolls" | "extractionDelayPolls"
+    >
+  > & {
+    catalog: string[];
+    throwOn: string[];
+    extractionResult?: Record<string, unknown>;
+  };
 
   constructor(options: MockMcpOptions = {}) {
     this.options = {
@@ -41,7 +52,11 @@ export class MockSecureLendMcp {
       ],
       uploadStyle: options.uploadStyle ?? "put",
       memoDelayPolls: options.memoDelayPolls ?? 1,
+      extractionDelayPolls: options.extractionDelayPolls ?? 0,
       throwOn: options.throwOn ?? [],
+      ...(options.extractionResult
+        ? { extractionResult: options.extractionResult }
+        : {}),
     };
   }
 
@@ -111,7 +126,7 @@ export class MockSecureLendMcp {
     }
     const raw = Buffer.concat(chunks);
 
-    if (url.pathname === "/upload") {
+    if (url.pathname === "/upload" || url.pathname.startsWith("/upload/")) {
       this.uploads.push(raw);
       response.writeHead(200, { "content-type": "application/json" });
       response.end(JSON.stringify({ ok: true }));
@@ -218,14 +233,22 @@ export class MockSecureLendMcp {
       };
     }
     if (name === "submit_documents") {
+      this.submitCount += 1;
+      const documentId = `sl_doc_${this.submitCount}`;
       const fields =
         this.options.uploadStyle === "post"
-          ? { key: "uwbench/doc-1", policy: "test", "x-amz-signature": "sig" }
+          ? {
+              key: `uwbench/${documentId}`,
+              policy: "test",
+              "x-amz-signature": "sig",
+            }
           : undefined;
       return {
-        documentId: "sl_doc_1",
+        documentId,
         status: "PENDING_UPLOAD",
-        uploadUrl: this.uploadUrl,
+        uploadUrl: `${this.uploadUrl}/${documentId}`,
+        fileName:
+          typeof args["filename"] === "string" ? args["filename"] : undefined,
         ...(fields ? { uploadFields: fields, method: "POST" } : {}),
       };
     }
@@ -239,6 +262,21 @@ export class MockSecureLendMcp {
       };
     }
     if (name === "run_data_extraction" || name === "data_extraction_agent") {
+      this.extractionPolls += 1;
+      if (this.extractionPolls <= this.options.extractionDelayPolls) {
+        return {
+          ready: false,
+          message: "no IDP extraction result yet",
+          documentId: args["documentId"],
+        };
+      }
+      if (this.options.extractionResult) {
+        return {
+          documentId: args["documentId"],
+          blueprintType: args["blueprintType"],
+          ...this.options.extractionResult,
+        };
+      }
       return {
         blueprintType: args["blueprintType"],
         casePackage: args["casePackage"],

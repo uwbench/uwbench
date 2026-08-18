@@ -157,6 +157,11 @@ async function loadAllStructuredRecords(
     ...collectRecordIds(request),
     ...collectRecordIds(discoveryHint),
   ]);
+  // raw_documents must score the uploaded file / IDP extract, not the
+  // stuffed reasoning_only canonical object.
+  if (request.lane === "raw_documents") {
+    pending.delete("record_canonical_input");
+  }
   const records: CaseRecord[] = [];
   const loaded = new Set<string>();
   while (pending.size > 0) {

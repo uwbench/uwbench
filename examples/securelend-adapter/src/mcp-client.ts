@@ -170,6 +170,21 @@ const MEMO_SIBLING_KEYS = [
   "memoId",
 ] as const;
 
+const EXTRACTION_SIBLING_KEYS = [
+  "extractedData",
+  "ready",
+  "facts",
+  "normalizedFacts",
+  "financialSpread",
+  "spread",
+  "rawText",
+  "ocrText",
+  "text",
+  "message",
+  "blueprintType",
+  "documentId",
+] as const;
+
 export function unwrapMcpToolResult(result: unknown): unknown {
   const record = asRecord(result);
   if (!record) return result;
@@ -180,23 +195,32 @@ export function unwrapMcpToolResult(result: unknown): unknown {
     throw new McpClientError(message);
   }
   const structured = record["structuredContent"];
-  const fromText = parseJsonText(textFromMcpContent(record["content"]));
+  const text = textFromMcpContent(record["content"]);
+  const fromText = parseJsonText(text);
   const siblings: Record<string, unknown> = {};
-  for (const key of MEMO_SIBLING_KEYS) {
+  for (const key of [...MEMO_SIBLING_KEYS, ...EXTRACTION_SIBLING_KEYS]) {
     if (record[key] !== undefined) siblings[key] = record[key];
   }
   const structuredRecord = asRecord(structured);
   const textRecord = asRecord(fromText);
   if (structuredRecord || textRecord || Object.keys(siblings).length > 0) {
-    return {
-      ...(structuredRecord ?? {}),
+    const merged: Record<string, unknown> = {
       ...(textRecord ?? {}),
+      ...(structuredRecord ?? {}),
       ...siblings,
     };
+    // Text JSON from the wrapper can omit extractedData / ready facts.
+    // structuredContent wins for those keys so IDP period maps survive.
+    if (structuredRecord?.["extractedData"] !== undefined) {
+      merged["extractedData"] = structuredRecord["extractedData"];
+    }
+    if (!textRecord && text && merged["message"] === undefined) {
+      merged["message"] = text;
+    }
+    return merged;
   }
   if (structured !== undefined) return structured;
   if (fromText !== undefined) return fromText;
-  const text = textFromMcpContent(record["content"]);
   if (text !== undefined) return text;
   return result;
 }
