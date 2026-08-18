@@ -17,6 +17,7 @@ import {
 import { calculateRatios, validateSpread } from "@uwbench/tool-runtime";
 import { asRecord, firstString } from "./mcp-client.js";
 import {
+  caseCatalogSourceIds,
   catalogSourceIdForRecord,
   isCitableSourceId,
   type CasePackage,
@@ -50,8 +51,8 @@ export function mapChatPathToSubmission(
   pkg: CasePackage,
   outputs: ChatPathOutputs,
 ): UnderwritingSubmission {
-  const knownSources = knownSourceIds(pkg);
-  const evidence = evidenceFromPackage(pkg);
+  const knownSources = caseCatalogSourceIds(pkg);
+  const evidence = evidenceFromPackage(pkg, knownSources);
   const extraction = asRecord(outputs.extraction) ?? {};
   const productSpread = firstUsableSpread([
     outputs.spread,
@@ -75,7 +76,7 @@ export function mapChatPathToSubmission(
     spread,
     knownSources,
   );
-  const productRisks = risksFromUnknown(outputs, evidence);
+  const productRisks = risksFromUnknown(outputs, evidence, knownSources);
   const derived = deriveRisksAndDiscrepancies(
     pkg,
     spread,
@@ -84,8 +85,6 @@ export function mapChatPathToSubmission(
     evidence,
     knownSources,
   );
-  const risks = productRisks.length > 0 ? productRisks : derived.risks;
-  const discrepancies = derived.discrepancies;
   const parsedDecision = decisionFromUnknown(
     outputs.memo,
     extraction,
@@ -113,27 +112,36 @@ export function mapChatPathToSubmission(
     evidence,
     knownSources,
   });
+  const rationale =
+    recommendation.rationale.length > 0
+      ? recommendation.rationale
+      : claims.slice(0, 4);
   const parsed = UnderwritingSubmissionSchema.safeParse({
     schemaVersion: "1.0",
     financialSpread: spread,
-    normalizedFacts: facts,
-    risks,
-    discrepancies,
+    normalizedFacts: keepFactsWithCatalogEvidence(facts, knownSources),
+    risks: keepRisksWithCatalogEvidence(
+      productRisks.length > 0 ? productRisks : derived.risks,
+      derived.risks,
+      knownSources,
+    ),
+    discrepancies: derived.discrepancies.filter(
+      (item) =>
+        knownSources.has(item.sourceA) && knownSources.has(item.sourceB),
+    ),
     complianceFindings: [],
     followUpRequests: [],
     policyAssessment,
     recommendation: {
       ...recommendation,
-      rationale:
-        recommendation.rationale.length > 0
-          ? recommendation.rationale
-          : claims.slice(0, 4),
+      rationale: keepClaimsWithCatalogEvidence(rationale, knownSources),
+      conditions: scrubConditions(recommendation.conditions, knownSources),
     },
     memo: {
       markdown:
         memoMarkdown ||
         `# UWBench credit memo\n\nWorkspace ${outputs.workspaceName}.`,
-      claims,
+      claims: keepClaimsWithCatalogEvidence(claims, knownSources),
     },
     confidence: {
       overall: usable ? 0.72 : 0,
@@ -145,9 +153,16 @@ export function mapChatPathToSubmission(
       },
     },
   });
-  if (parsed.success) return parsed.data;
+  if (parsed.success) {
+    return UnderwritingSubmissionSchema.parse(
+      scrubAgainstCatalog(parsed.data, knownSources),
+    );
+  }
   return UnderwritingSubmissionSchema.parse(
-    fallbackSubmission(outputs, evidence, packSpread ?? productSpread),
+    scrubAgainstCatalog(
+      fallbackSubmission(outputs, evidence, packSpread ?? productSpread),
+      knownSources,
+    ),
   );
 }
 
@@ -201,15 +216,18 @@ function firstUsableSpread(values: unknown[]): FinancialSpread | undefined {
   return undefined;
 }
 
-function evidenceFromPackage(pkg: CasePackage): EvidenceReference[] {
+function evidenceFromPackage(
+  pkg: CasePackage,
+  knownSources: Set<string>,
+): EvidenceReference[] {
   const seen = new Set<string>();
   const refs: EvidenceReference[] = [];
   const add = (sourceId: string | undefined, documentId?: string): void => {
-    const cited = citableSourceId(pkg, sourceId);
-    if (!cited || seen.has(cited)) return;
-    seen.add(cited);
+    if (!isCitableSourceId(sourceId) || !knownSources.has(sourceId)) return;
+    if (seen.has(sourceId)) return;
+    seen.add(sourceId);
     refs.push(
-      documentId ? { sourceId: cited, documentId } : { sourceId: cited },
+      documentId ? { sourceId, documentId } : { sourceId },
     );
   };
   for (const document of pkg.documents) {
@@ -222,45 +240,6 @@ function evidenceFromPackage(pkg: CasePackage): EvidenceReference[] {
     add(rule.sourceId);
   }
   return refs;
-}
-
-function knownSourceIds(pkg: CasePackage): Set<string> {
-  const ids = new Set<string>();
-  const add = (sourceId: string | undefined): void => {
-    const cited = citableSourceId(pkg, sourceId);
-    if (cited) ids.add(cited);
-  };
-  for (const document of pkg.documents) add(document.sourceId);
-  for (const record of pkg.records) {
-    add(catalogSourceIdForRecord(record.recordId, record.sourceId));
-    add(record.sourceId);
-    const facts = record.record["normalizedFacts"];
-    if (!Array.isArray(facts)) continue;
-    for (const item of facts) {
-      const evidence = asRecord(item)?.["evidence"];
-      if (!Array.isArray(evidence)) continue;
-      for (const ref of evidence) {
-        add(firstString(asRecord(ref), "sourceId"));
-      }
-    }
-  }
-  for (const rule of pkg.policies ?? []) add(rule.sourceId);
-  return ids;
-}
-
-function citableSourceId(
-  pkg: CasePackage,
-  sourceId: string | undefined,
-): string | undefined {
-  if (isCitableSourceId(sourceId)) return sourceId;
-  if (sourceId !== "normalized:canonical-input") return undefined;
-  const financials = pkg.records.find(
-    (record) => record.recordId === "record_financials_2024",
-  );
-  return catalogSourceIdForRecord(
-    "record_financials_2024",
-    financials?.sourceId,
-  );
 }
 
 function cite(
@@ -285,6 +264,133 @@ function cite(
   if (refs.length > 0) return refs;
   for (const item of fallback.slice(0, 2)) add(item.sourceId);
   return refs;
+}
+
+function filterEvidence(
+  refs: EvidenceReference[],
+  knownSources: Set<string>,
+): EvidenceReference[] {
+  const seen = new Set<string>();
+  const out: EvidenceReference[] = [];
+  for (const ref of refs) {
+    if (
+      !isCitableSourceId(ref.sourceId) ||
+      !knownSources.has(ref.sourceId) ||
+      seen.has(ref.sourceId)
+    ) {
+      continue;
+    }
+    seen.add(ref.sourceId);
+    out.push({ sourceId: ref.sourceId });
+  }
+  return out;
+}
+
+function keepFactsWithCatalogEvidence(
+  facts: NormalizedFact[],
+  knownSources: Set<string>,
+): NormalizedFact[] {
+  return facts.flatMap((fact) => {
+    const evidence = filterEvidence(fact.evidence, knownSources);
+    return evidence.length > 0 ? [{ ...fact, evidence }] : [];
+  });
+}
+
+function keepClaimsWithCatalogEvidence(
+  claims: CitedClaim[],
+  knownSources: Set<string>,
+): CitedClaim[] {
+  return claims.flatMap((claim) => {
+    const evidence = filterEvidence(claim.evidence, knownSources);
+    return evidence.length > 0 ? [{ ...claim, evidence }] : [];
+  });
+}
+
+function scrubConditions(
+  conditions: Condition[],
+  knownSources: Set<string>,
+): Condition[] {
+  return conditions
+    .map((condition) => ({
+      ...condition,
+      ...(condition.evidence
+        ? { evidence: filterEvidence(condition.evidence, knownSources) }
+        : {}),
+    }))
+    .map((condition) =>
+      condition.evidence && condition.evidence.length === 0
+        ? { description: condition.description }
+        : condition,
+    );
+}
+
+function scrubAgainstCatalog(
+  submission: UnderwritingSubmission,
+  knownSources: Set<string>,
+): UnderwritingSubmission {
+  return {
+    ...submission,
+    normalizedFacts: keepFactsWithCatalogEvidence(
+      submission.normalizedFacts,
+      knownSources,
+    ),
+    risks: keepRisksWithCatalogEvidence(
+      submission.risks,
+      [],
+      knownSources,
+    ),
+    discrepancies: submission.discrepancies.filter(
+      (item) =>
+        knownSources.has(item.sourceA) && knownSources.has(item.sourceB),
+    ),
+    recommendation: {
+      ...submission.recommendation,
+      rationale: keepClaimsWithCatalogEvidence(
+        submission.recommendation.rationale,
+        knownSources,
+      ),
+      conditions: scrubConditions(
+        submission.recommendation.conditions,
+        knownSources,
+      ),
+    },
+    memo: {
+      ...submission.memo,
+      claims: keepClaimsWithCatalogEvidence(
+        submission.memo.claims,
+        knownSources,
+      ),
+    },
+  };
+}
+
+function keepRisksWithCatalogEvidence(
+  preferred: RiskFinding[],
+  fallback: RiskFinding[],
+  knownSources: Set<string>,
+): RiskFinding[] {
+  const keep = (risks: RiskFinding[]): RiskFinding[] =>
+    risks.flatMap((risk) => {
+      const evidence = filterEvidence(risk.evidence, knownSources);
+      return evidence.length > 0 ? [{ ...risk, evidence }] : [];
+    });
+  const fromPreferred = keep(preferred);
+  if (fromPreferred.length > 0) return fromPreferred;
+  const fromFallback = keep(fallback);
+  if (fromFallback.length > 0) return fromFallback;
+  const catalog = [...knownSources];
+  if (catalog.length === 0) return [];
+  return [
+    {
+      riskId: "risk_catalog_review",
+      category: "FINANCIAL",
+      severity: "LOW",
+      statement:
+        "Credit file reviewed against the reachable case catalog; no structured product risks were returned.",
+      evidence: [{ sourceId: catalog[0] as string }],
+      confidence: 0.5,
+    },
+  ];
 }
 
 function placeholderSpread(): FinancialSpread {
@@ -592,6 +698,10 @@ function factsFromPackage(
   const preferred = [
     "record_canonical_input",
     "record_financials_2024",
+    "record_financials_2024_partial",
+    "record_financials_2024_gaap",
+    "record_financials_primary",
+    "record_financials_submitted",
     "record_borrower_profile",
   ];
   const ordered = [
@@ -663,10 +773,15 @@ function sanitizeEvidence(
   const refs: EvidenceReference[] = [];
   for (const item of value) {
     const record = asRecord(item);
-    const rewritten = rewriteEvidenceSourceId(firstString(record, "sourceId"));
-    if (!rewritten || !knownSources.has(rewritten)) continue;
+    const sourceId = firstString(record, "sourceId");
+    if (
+      !isCitableSourceId(sourceId) ||
+      !knownSources.has(sourceId)
+    ) {
+      continue;
+    }
     refs.push({
-      sourceId: rewritten,
+      sourceId,
       ...(firstString(record, "documentId")
         ? { documentId: firstString(record, "documentId") }
         : {}),
@@ -675,27 +790,24 @@ function sanitizeEvidence(
   return refs;
 }
 
-function rewriteEvidenceSourceId(
-  sourceId: string | undefined,
-): string | undefined {
-  if (isCitableSourceId(sourceId)) return sourceId;
-  if (sourceId === "normalized:canonical-input") {
-    return catalogSourceIdForRecord("record_financials_2024", undefined);
-  }
-  return undefined;
-}
-
 function sourceIdForRecord(
   pkg: CasePackage,
   recordId: string,
 ): string | undefined {
   const record = pkg.records.find((item) => item.recordId === recordId);
-  return catalogSourceIdForRecord(recordId, record?.sourceId);
+  const fromRecord = catalogSourceIdForRecord(recordId, record?.sourceId);
+  if (fromRecord) return fromRecord;
+  const financial = pkg.records.find(
+    (item) =>
+      /financial/i.test(item.recordId) && isCitableSourceId(item.sourceId),
+  );
+  return financial?.sourceId;
 }
 
 function risksFromUnknown(
   outputs: ChatPathOutputs,
   evidence: EvidenceReference[],
+  knownSources: Set<string>,
 ): RiskFinding[] {
   const sources = [outputs.intelligence, outputs.extraction, outputs.memo];
   for (const source of sources) {
@@ -707,12 +819,15 @@ function risksFromUnknown(
       const risk = asRecord(item);
       const statement = firstString(risk, "statement", "description", "text");
       if (!statement) continue;
+      const cited = sanitizeEvidence(risk["evidence"], knownSources);
+      const riskEvidence = cited.length > 0 ? cited : evidence;
+      if (riskEvidence.length === 0) continue;
       mapped.push({
         riskId: firstString(risk, "riskId", "id") ?? `risk_${index + 1}`,
         category: firstString(risk, "category") ?? "FINANCIAL",
         severity: coerceSeverity(firstString(risk, "severity")),
         statement,
-        evidence,
+        evidence: riskEvidence,
         confidence: 0.5,
       });
     }
