@@ -16,7 +16,7 @@ import {
 } from "./__tests__/mock-mcp.js";
 
 const TOKEN = "uwbench-mcp-test-token";
-const running: Array<{ stop: () => Promise<void> }> = [];
+const running: { stop: () => Promise<void> }[] = [];
 
 afterEach(async () => {
   await Promise.all(running.splice(0).map((item) => item.stop()));

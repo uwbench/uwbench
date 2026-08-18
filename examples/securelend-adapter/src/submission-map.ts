@@ -15,7 +15,11 @@ import {
 } from "@uwbench/protocol";
 import { calculateRatios, validateSpread } from "@uwbench/tool-runtime";
 import { asRecord, firstString } from "./mcp-client.js";
-import type { CasePackage, CasePolicyRule, CaseRecord } from "./case-package.js";
+import type {
+  CasePackage,
+  CasePolicyRule,
+  CaseRecord,
+} from "./case-package.js";
 
 const DECISIONS = [
   "APPROVE_WITH_CONDITIONS",
@@ -58,7 +62,13 @@ export function mapChatPathToSubmission(
   const ratios = mergeRatios(spread, pkg);
   const memoMarkdown = memoMarkdownFromUnknown(outputs.memo, outputs);
   const policyAssessment = evaluatePublicPolicies(pkg.policies ?? [], ratios);
-  const facts = factsFromUnknown(extraction, evidence, pkg, spread, knownSources);
+  const facts = factsFromUnknown(
+    extraction,
+    evidence,
+    pkg,
+    spread,
+    knownSources,
+  );
   const productRisks = risksFromUnknown(outputs, evidence);
   const derived = deriveRisksAndDiscrepancies(
     pkg,
@@ -70,7 +80,11 @@ export function mapChatPathToSubmission(
   );
   const risks = productRisks.length > 0 ? productRisks : derived.risks;
   const discrepancies = derived.discrepancies;
-  const parsedDecision = decisionFromUnknown(outputs.memo, extraction, memoMarkdown);
+  const parsedDecision = decisionFromUnknown(
+    outputs.memo,
+    extraction,
+    memoMarkdown,
+  );
   const recommendation = buildRecommendation({
     parsedDecision,
     spread,
@@ -148,9 +162,9 @@ export function isPlaceholderSpread(spread: FinancialSpread): boolean {
   );
 }
 
-export function spreadFromPackage(pkg: Pick<CasePackage, "records">):
-  | FinancialSpread
-  | undefined {
+export function spreadFromPackage(
+  pkg: Pick<CasePackage, "records">,
+): FinancialSpread | undefined {
   const preferred = [
     "record_canonical_input",
     "record_financials_2024",
@@ -216,12 +230,13 @@ function knownSourceIds(pkg: CasePackage): Set<string> {
 function cite(
   knownSources: Set<string>,
   fallback: EvidenceReference[],
-  ...sourceIds: Array<string | undefined>
+  ...sourceIds: (string | undefined)[]
 ): EvidenceReference[] {
   const refs: EvidenceReference[] = [];
   const seen = new Set<string>();
   for (const sourceId of sourceIds) {
-    if (!sourceId || !knownSources.has(sourceId) || seen.has(sourceId)) continue;
+    if (!sourceId || !knownSources.has(sourceId) || seen.has(sourceId))
+      continue;
     seen.add(sourceId);
     refs.push({ sourceId });
   }
@@ -257,10 +272,9 @@ function spreadFromUnknown(value: unknown): FinancialSpread | undefined {
     },
     currency: revenue.currency,
     scale: firstString(nested, "scale") ?? "units",
-    signConvention:
-      firstString(nested, "signConvention") ?? "all_positive",
+    signConvention: firstString(nested, "signConvention") ?? "all_positive",
   };
-  const optional: Array<[string, unknown]> = [
+  const optional: [string, unknown][] = [
     ["cogs", nested["cogs"] ?? nested["COGS"]],
     ["grossProfit", nested["grossProfit"] ?? nested["gross_profit"]],
     [
@@ -346,9 +360,7 @@ function evaluatePublicPolicies(
 ): PolicyAssessment {
   const evaluations = policies.map((rule) => {
     const ratioKey =
-      typeof rule.input["ratio"] === "string"
-        ? rule.input["ratio"]
-        : undefined;
+      typeof rule.input["ratio"] === "string" ? rule.input["ratio"] : undefined;
     const inputValue =
       ratioKey && typeof ratios[ratioKey] === "number"
         ? ratios[ratioKey]
@@ -357,8 +369,8 @@ function evaluatePublicPolicies(
     return {
       ruleId: rule.ruleId,
       passed,
-      input: inputValue ?? rule.input,
-      threshold: rule.threshold as string | number | boolean | null,
+      input: inputValue ?? jsonValue(rule.input),
+      threshold: jsonValue(rule.threshold),
       operator: rule.operator,
       exceptionDisclosed: false,
     };
@@ -722,11 +734,10 @@ function liquidityState(
 ):
   | { value: number; threshold: number; passed: boolean; tight: boolean }
   | undefined {
-  const rule = policies.find(
-    (item) =>
-      /liquidity|current_ratio/i.test(
-        `${item.ruleId} ${item.title} ${JSON.stringify(item.input)}`,
-      ),
+  const rule = policies.find((item) =>
+    /liquidity|current_ratio/i.test(
+      `${item.ruleId} ${item.title} ${JSON.stringify(item.input)}`,
+    ),
   );
   const value = ratios["current_ratio"];
   if (typeof value !== "number") return undefined;
@@ -799,7 +810,9 @@ function buildRecommendation(args: {
 
   for (const item of failed) {
     if (decision === "APPROVE" || decision === "APPROVE_WITH_CONDITIONS") {
-      const rule = args.policies.find((policy) => policy.ruleId === item.ruleId);
+      const rule = args.policies.find(
+        (policy) => policy.ruleId === item.ruleId,
+      );
       policyExceptions.push({
         ruleId: item.ruleId,
         justification: `${rule?.title ?? item.ruleId} input ${String(item.input)} vs ${String(item.threshold)} (${item.operator}).`,
@@ -987,7 +1000,8 @@ function fallbackSubmission(
   evidence: EvidenceReference[],
   spread: FinancialSpread | undefined,
 ): UnderwritingSubmission {
-  const financialSpread = spread && isUsableSpread(spread) ? spread : placeholderSpread();
+  const financialSpread =
+    spread && isUsableSpread(spread) ? spread : placeholderSpread();
   return {
     schemaVersion: "1.0",
     financialSpread,

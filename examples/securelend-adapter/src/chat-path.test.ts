@@ -304,14 +304,10 @@ describe("MCP chat-path helpers", () => {
     expect(
       submission.policyAssessment.evaluations.map((item) => item.ruleId),
     ).toEqual(submission.policyAssessment.applicableRules);
-    expect(
-      JSON.stringify(submission.memo.claims),
-    ).not.toMatch(
+    expect(JSON.stringify(submission.memo.claims)).not.toMatch(
       /Mapped from SecureLend workspace|SecureLend product chat path produced a professional memo/,
     );
-    expect(
-      JSON.stringify(submission.recommendation.rationale),
-    ).not.toMatch(
+    expect(JSON.stringify(submission.recommendation.rationale)).not.toMatch(
       /Mapped from SecureLend workspace|SecureLend product chat path produced a professional memo/,
     );
     expect(submission.confidence.overall).toBeGreaterThan(0);

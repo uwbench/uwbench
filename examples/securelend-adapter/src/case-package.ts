@@ -70,13 +70,13 @@ export async function loadCasePackage(
   if (listed.ok) {
     const items =
       (listed.result["documents"] as
-        | Array<{
+        | {
             documentId?: string;
             sourceId?: string;
             title?: string;
             mimeType?: string;
             fileName?: string;
-          }>
+          }[]
         | undefined) ?? [];
     for (const item of items) {
       if (!item.documentId) continue;
