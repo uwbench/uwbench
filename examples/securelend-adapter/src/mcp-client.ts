@@ -156,6 +156,20 @@ export class McpClient {
   }
 }
 
+const MEMO_SIBLING_KEYS = [
+  "claims",
+  "citedClaims",
+  "risks",
+  "riskFindings",
+  "recommendation",
+  "decision",
+  "sections",
+  "markdown",
+  "memo",
+  "status",
+  "memoId",
+] as const;
+
 export function unwrapMcpToolResult(result: unknown): unknown {
   const record = asRecord(result);
   if (!record) return result;
@@ -165,22 +179,37 @@ export function unwrapMcpToolResult(result: unknown): unknown {
       stringifyUnknown(record["error"] ?? result);
     throw new McpClientError(message);
   }
-  if (record["structuredContent"] !== undefined) {
-    return record["structuredContent"];
+  const structured = record["structuredContent"];
+  const fromText = parseJsonText(textFromMcpContent(record["content"]));
+  const siblings: Record<string, unknown> = {};
+  for (const key of MEMO_SIBLING_KEYS) {
+    if (record[key] !== undefined) siblings[key] = record[key];
   }
+  const structuredRecord = asRecord(structured);
+  const textRecord = asRecord(fromText);
+  if (structuredRecord || textRecord || Object.keys(siblings).length > 0) {
+    return {
+      ...(structuredRecord ?? {}),
+      ...(textRecord ?? {}),
+      ...siblings,
+    };
+  }
+  if (structured !== undefined) return structured;
+  if (fromText !== undefined) return fromText;
   const text = textFromMcpContent(record["content"]);
-  if (text !== undefined) {
-    const trimmed = text.trim();
-    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-      try {
-        return JSON.parse(trimmed) as unknown;
-      } catch {
-        return text;
-      }
-    }
-    return text;
-  }
+  if (text !== undefined) return text;
   return result;
+}
+
+function parseJsonText(text: string | undefined): unknown {
+  if (!text) return undefined;
+  const trimmed = text.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return undefined;
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch {
+    return undefined;
+  }
 }
 
 export function asRecord(value: unknown): Record<string, unknown> | undefined {

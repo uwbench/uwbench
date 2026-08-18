@@ -281,6 +281,23 @@ export class MockSecureLendMcp {
         progress: 100,
         memoId: "memo_1",
         decision: "REFER",
+        recommendation: { decision: "REFER" },
+        claims: [
+          {
+            claim: "REFER pending additional tax returns.",
+            evidence: [{ sourceId: "src_001" }],
+          },
+        ],
+        risks: [
+          {
+            riskId: "risk_tax_returns",
+            category: "FINANCIAL",
+            severity: "MEDIUM",
+            statement:
+              "Tax returns are incomplete relative to the credit file.",
+            evidence: [{ sourceId: "src_001" }],
+          },
+        ],
         sections: [
           {
             sectionType: "recommendation",

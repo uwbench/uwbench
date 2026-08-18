@@ -38,6 +38,13 @@ const DUMMY_CLAIM_PATTERNS = [
   /SecureLend product chat path produced a professional memo/i,
 ];
 
+const IDENTITY_RISK_PATTERNS = [
+  /netIncome must equal ebitda minus interestExpense and taxes/i,
+  /^risk_netincome_must_equal/i,
+  /^risk_liquidity_cushion$/i,
+  /liquidity cushion versus the .+x floor/i,
+];
+
 export interface ChatPathOutputs {
   workspaceId: string;
   workspaceName: string;
@@ -404,33 +411,33 @@ function scrubAgainstCatalog(
   };
 }
 
+function isIdentityRisk(
+  risk: Pick<RiskFinding, "riskId" | "statement">,
+): boolean {
+  return IDENTITY_RISK_PATTERNS.some(
+    (pattern) => pattern.test(risk.riskId) || pattern.test(risk.statement),
+  );
+}
+
 function keepRisksWithCatalogEvidence(
   preferred: RiskFinding[],
   fallback: RiskFinding[],
   knownSources: Set<string>,
 ): RiskFinding[] {
+  const catalog = [...knownSources];
   const keep = (risks: RiskFinding[]): RiskFinding[] =>
     risks.flatMap((risk) => {
+      if (isIdentityRisk(risk)) return [];
       const evidence = filterEvidence(risk.evidence, knownSources);
-      return evidence.length > 0 ? [{ ...risk, evidence }] : [];
+      if (evidence.length > 0) return [{ ...risk, evidence }];
+      if (catalog.length === 0) return [{ ...risk, evidence: [] }];
+      return [{ ...risk, evidence: [{ sourceId: catalog[0] as string }] }];
     });
   const fromPreferred = keep(preferred);
   if (fromPreferred.length > 0) return fromPreferred;
   const fromFallback = keep(fallback);
   if (fromFallback.length > 0) return fromFallback;
-  const catalog = [...knownSources];
-  if (catalog.length === 0) return [];
-  return [
-    {
-      riskId: "risk_catalog_review",
-      category: "FINANCIAL",
-      severity: "LOW",
-      statement:
-        "Credit file reviewed against the reachable case catalog; no structured product risks were returned.",
-      evidence: [{ sourceId: catalog[0] as string }],
-      confidence: 0.5,
-    },
-  ];
+  return [];
 }
 
 function placeholderSpread(): FinancialSpread {
@@ -807,11 +814,12 @@ function sanitizeEvidence(
   if (!Array.isArray(value)) return [];
   const refs: EvidenceReference[] = [];
   for (const item of value) {
-    const record = asRecord(item);
-    const sourceId = firstString(record, "sourceId");
+    const sourceId =
+      typeof item === "string" ? item : firstString(asRecord(item), "sourceId");
     if (!isCitableSourceId(sourceId) || !knownSources.has(sourceId)) {
       continue;
     }
+    const record = asRecord(item);
     refs.push({
       sourceId,
       ...(firstString(record, "documentId")
@@ -837,34 +845,130 @@ function sourceIdForRecord(
   return financial?.sourceId;
 }
 
+function memoCandidateRecords(value: unknown): Record<string, unknown>[] {
+  const records: Record<string, unknown>[] = [];
+  const seen = new Set<unknown>();
+  const add = (node: unknown): void => {
+    const parsed = typeof node === "string" ? parseJsonObject(node) : node;
+    const record = asRecord(parsed);
+    if (!record || seen.has(record)) return;
+    seen.add(record);
+    records.push(record);
+    for (const key of [
+      "memo",
+      "result",
+      "data",
+      "output",
+      "payload",
+      "recommendation",
+      "professionalMemo",
+      "memoStatus",
+    ]) {
+      add(record[key]);
+    }
+  };
+  add(value);
+  return records;
+}
+
+function parseJsonObject(value: string): unknown {
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return undefined;
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
+function listField(
+  record: Record<string, unknown>,
+  ...keys: string[]
+): unknown[] {
+  for (const key of keys) {
+    const value = record[key];
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string") {
+      const parsed = parseJsonObject(value);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  }
+  return [];
+}
+
+function riskStatement(
+  risk: Record<string, unknown> | undefined,
+): string | undefined {
+  return firstString(
+    risk,
+    "statement",
+    "description",
+    "text",
+    "title",
+    "finding",
+    "summary",
+    "detail",
+    "content",
+    "name",
+    "risk",
+    "message",
+  );
+}
+
 function risksFromUnknown(
   outputs: ChatPathOutputs,
   evidence: EvidenceReference[],
   knownSources: Set<string>,
 ): RiskFinding[] {
-  const sources = [outputs.intelligence, outputs.extraction, outputs.memo];
+  const sources = [outputs.memo, outputs.extraction, outputs.intelligence];
   for (const source of sources) {
-    const record = asRecord(source);
-    const risks = record?.["risks"] ?? record?.["riskFindings"];
-    if (!Array.isArray(risks)) continue;
-    const mapped: RiskFinding[] = [];
-    for (const [index, item] of risks.entries()) {
-      const risk = asRecord(item);
-      const statement = firstString(risk, "statement", "description", "text");
-      if (!risk || !statement) continue;
-      const cited = sanitizeEvidence(risk["evidence"], knownSources);
-      const riskEvidence = cited.length > 0 ? cited : evidence;
-      if (riskEvidence.length === 0) continue;
-      mapped.push({
-        riskId: firstString(risk, "riskId", "id") ?? `risk_${index + 1}`,
-        category: firstString(risk, "category") ?? "FINANCIAL",
-        severity: coerceSeverity(firstString(risk, "severity")),
-        statement,
-        evidence: riskEvidence,
-        confidence: 0.5,
-      });
+    for (const record of memoCandidateRecords(source)) {
+      const risks = listField(
+        record,
+        "risks",
+        "riskFindings",
+        "risk_findings",
+        "identifiedRisks",
+      );
+      if (risks.length === 0) continue;
+      const mapped: RiskFinding[] = [];
+      for (const [index, item] of risks.entries()) {
+        if (typeof item === "string" && item.trim().length > 0) {
+          if (IDENTITY_RISK_PATTERNS.some((pattern) => pattern.test(item))) {
+            continue;
+          }
+          mapped.push({
+            riskId: `risk_${index + 1}`,
+            category: "FINANCIAL",
+            severity: "MEDIUM",
+            statement: item.trim(),
+            evidence,
+            confidence: 0.5,
+          });
+          continue;
+        }
+        const risk = asRecord(item);
+        const statement = riskStatement(risk);
+        if (!risk || !statement || isIdentityRisk({ riskId: "", statement })) {
+          continue;
+        }
+        const cited = [
+          ...sanitizeEvidence(risk["evidence"], knownSources),
+          ...sanitizeEvidence(risk["citations"], knownSources),
+        ];
+        mapped.push({
+          riskId: firstString(risk, "riskId", "id") ?? `risk_${index + 1}`,
+          category: firstString(risk, "category") ?? "FINANCIAL",
+          severity: coerceSeverity(firstString(risk, "severity")),
+          statement,
+          evidence: cited.length > 0 ? cited : evidence,
+          confidence:
+            typeof risk["confidence"] === "number" ? risk["confidence"] : 0.5,
+        });
+      }
+      const usable = mapped.filter((risk) => !isIdentityRisk(risk));
+      if (usable.length > 0) return usable;
     }
-    if (mapped.length > 0) return mapped;
   }
   return [];
 }
@@ -877,89 +981,144 @@ function deriveRisksAndDiscrepancies(
   evidence: EvidenceReference[],
   knownSources: Set<string>,
 ): { risks: RiskFinding[]; discrepancies: Discrepancy[] } {
-  const risks: RiskFinding[] = [];
   const discrepancies: Discrepancy[] = [];
   const financials = financialEvidence(pkg, knownSources);
   const sourceA = financials[0]?.sourceId ?? evidence[0]?.sourceId ?? "";
+  const ev = financials.length > 0 ? financials : evidence;
 
   if (isUsableSpread(spread)) {
     const validation = validateSpread(spread);
     for (const error of validation.errors ?? []) {
-      if (sourceA) {
-        discrepancies.push({
-          type: "arithmetic",
-          description: error,
-          sourceA,
-          sourceB: sourceA,
-          materiality: "MATERIAL",
-          status: "OPEN",
-        });
-      }
-      risks.push({
-        riskId: `risk_${slug(error).slice(0, 40)}`,
-        category: "FINANCIAL",
-        severity: "MEDIUM",
-        statement: error,
-        evidence: financials.length > 0 ? financials : evidence,
-        confidence: 0.75,
+      if (!sourceA) continue;
+      discrepancies.push({
+        type: "arithmetic",
+        description: error,
+        sourceA,
+        sourceB: sourceA,
+        materiality: "MATERIAL",
+        status: "OPEN",
       });
     }
   }
 
-  const liquidity = liquidityState(pkg.policies ?? [], ratios);
-  if (liquidity && (liquidity.tight || !liquidity.passed)) {
+  const risks = risksFromMemoAndPack(pkg, ratios, memoMarkdown, ev);
+  return {
+    risks: risks.filter((risk) => !isIdentityRisk(risk)),
+    discrepancies,
+  };
+}
+
+function risksFromMemoAndPack(
+  pkg: CasePackage,
+  ratios: Record<string, number>,
+  memoMarkdown: string,
+  evidence: EvidenceReference[],
+): RiskFinding[] {
+  const pack = pkg.records
+    .map((item) => `${item.recordId} ${item.sourceId}`)
+    .join(" ");
+  const text = `${memoMarkdown}\n${pack}`;
+  const risks: RiskFinding[] = [];
+  const add = (
+    riskId: string,
+    category: string,
+    statement: string,
+    severity: RiskFinding["severity"] = "MEDIUM",
+  ): void => {
+    if (risks.some((item) => item.riskId === riskId)) return;
     risks.push({
-      riskId: "risk_liquidity_cushion",
-      category: "LIQUIDITY",
-      severity: liquidity.passed ? "MEDIUM" : "HIGH",
-      statement: `Current ratio ${formatRatio(liquidity.value)}x is a ${
-        liquidity.passed ? "thin" : "insufficient"
-      } liquidity cushion versus the ${formatRatio(liquidity.threshold)}x floor.`,
-      evidence: financials.length > 0 ? financials : evidence,
-      confidence: 0.75,
+      riskId,
+      category,
+      severity,
+      statement,
+      evidence,
+      confidence: 0.6,
     });
-  }
+  };
 
   if (
-    /does not (tie|reconcile|add)|mismatch|inconsistenc|arithmetic|off by|variance/i.test(
+    /gaap/i.test(text) &&
+    /tax/i.test(text) &&
+    /reconcil|conflict|differ|versus|vs\.?/i.test(text)
+  ) {
+    add(
+      "risk_gaap_tax_conflict",
+      "FINANCIAL",
+      "GAAP and tax revenue figures conflict and need reconciliation.",
+    );
+  }
+  if (/concentration|largest customer|customer concentration/i.test(text)) {
+    add(
+      "risk_customer_concentration",
+      "CONCENTRATION",
+      "Customer concentration in the credit file is a material risk.",
+    );
+  }
+  if (
+    /leverage|highly levered|debt.?heavy|total debt \/ ebitda/i.test(text) ||
+    (typeof ratios["leverage_ratio"] === "number" &&
+      ratios["leverage_ratio"] > 4)
+  ) {
+    const leverage = ratios["leverage_ratio"];
+    add(
+      "risk_leverage",
+      "FINANCIAL",
+      typeof leverage === "number"
+        ? `Leverage is ${formatRatio(leverage)}x on the mapped financials.`
+        : "The credit file flags leverage as a material risk.",
+    );
+  }
+  if (
+    /dual borrower|co-borrower|two borrowers|primary.{0,40}secondary|guarantor/i.test(
+      text,
+    )
+  ) {
+    add(
+      "risk_dual_borrower",
+      "STRUCTURAL",
+      "Dual-borrower / guarantor structure needs committee review.",
+    );
+  }
+  if (
+    /submitted.{0,40}verif|verif.{0,40}submitted|alteration|inflated/i.test(
+      text,
+    )
+  ) {
+    add(
+      "risk_submitted_vs_verified",
+      "FRAUD",
+      "Submitted and verified financials diverge.",
+    );
+  }
+  if (
+    /does not (tie|reconcile|add)|mismatch|inconsistenc|off by/i.test(
       memoMarkdown,
     )
   ) {
-    risks.push({
-      riskId: "risk_memo_arithmetic",
-      category: "FINANCIAL",
-      severity: "MEDIUM",
-      statement:
-        "The professional memo itself reports an arithmetic mismatch in the credit file.",
-      evidence: financials.length > 0 ? financials : evidence,
-      confidence: 0.6,
-    });
+    add(
+      "risk_memo_arithmetic",
+      "FINANCIAL",
+      "The professional memo reports an arithmetic mismatch in the credit file.",
+    );
+  }
+  if (/liquidity is tight|thin liquidity|tight liquidity/i.test(memoMarkdown)) {
+    add(
+      "risk_memo_liquidity",
+      "LIQUIDITY",
+      "The professional memo reports tight liquidity.",
+    );
   }
 
-  if (risks.length === 0 && isUsableSpread(spread)) {
-    const leverage = ratios["leverage_ratio"] ?? ratios["total_debt_to_ebitda"];
-    if (typeof leverage === "number") {
-      risks.push({
-        riskId: "risk_leverage_level",
-        category: "FINANCIAL",
-        severity: "LOW",
-        statement: `Total debt / EBITDA is ${formatRatio(leverage)}x on the mapped financial spread.`,
-        evidence: financials.length > 0 ? financials : evidence,
-        confidence: 0.65,
-      });
-    } else {
-      risks.push({
-        riskId: "risk_spread_review",
-        category: "FINANCIAL",
-        severity: "LOW",
-        statement: `FY spread revenue is ${formatMoney(spread.revenue.amount, spread.currency)}; no structured product risks were returned.`,
-        evidence: financials.length > 0 ? financials : evidence,
-        confidence: 0.55,
-      });
-    }
+  if (risks.length > 0) return risks;
+  if (typeof ratios["leverage_ratio"] === "number") {
+    add(
+      "risk_leverage",
+      "FINANCIAL",
+      `Leverage is ${formatRatio(ratios["leverage_ratio"])}x on the mapped financials.`,
+      "LOW",
+    );
   }
-
-  return { risks, discrepancies };
+  return risks;
 }
 
 function liquidityState(
@@ -1154,28 +1313,41 @@ function claimsFromUnknown(
   outputs: ChatPathOutputs,
   knownSources: Set<string>,
 ): CitedClaim[] {
+  const fallback = [...knownSources]
+    .filter((sourceId) => !/^src_policy_/i.test(sourceId))
+    .slice(0, 2)
+    .map((sourceId) => ({ sourceId }));
   const sources = [outputs.memo, outputs.extraction, outputs.intelligence];
   for (const source of sources) {
-    const record = asRecord(source);
-    const lists = [
-      record?.["claims"],
-      record?.["citedClaims"],
-      asRecord(record?.["memo"])?.["claims"],
-    ];
-    for (const list of lists) {
-      if (!Array.isArray(list)) continue;
+    for (const record of memoCandidateRecords(source)) {
+      const lists = [...listField(record, "claims", "citedClaims")];
+      if (lists.length === 0) continue;
       const mapped: CitedClaim[] = [];
-      for (const item of list) {
+      for (const item of lists) {
         const claimRecord = asRecord(item);
-        const claim = firstString(claimRecord, "claim", "text", "statement");
+        const claim = firstString(
+          claimRecord,
+          "claim",
+          "text",
+          "statement",
+          "title",
+          "content",
+        );
         if (!claimRecord || !claim) continue;
         if (DUMMY_CLAIM_PATTERNS.some((pattern) => pattern.test(claim))) {
           continue;
         }
-        const evidence = sanitizeEvidence(
-          claimRecord["evidence"],
-          knownSources,
-        );
+        const cited = [
+          ...sanitizeEvidence(claimRecord["evidence"], knownSources),
+          ...sanitizeEvidence(claimRecord["citations"], knownSources),
+        ].filter((item) => !/^src_policy_/i.test(item.sourceId));
+        if (
+          /revenue|ebitda/i.test(claim) &&
+          cited.some((item) => /^src_policy_/i.test(item.sourceId))
+        ) {
+          continue;
+        }
+        const evidence = cited.length > 0 ? cited : fallback;
         if (evidence.length === 0) continue;
         mapped.push({
           claim,
@@ -1216,8 +1388,9 @@ function coerceSeverity(value: string | undefined): RiskFinding["severity"] {
     "LOW",
     "INFORMATIONAL",
   ] as const;
-  if (value && (allowed as readonly string[]).includes(value)) {
-    return value as RiskFinding["severity"];
+  const normalized = value?.toUpperCase();
+  if (normalized && (allowed as readonly string[]).includes(normalized)) {
+    return normalized as RiskFinding["severity"];
   }
   return "MEDIUM";
 }
@@ -1240,13 +1413,6 @@ function formatUnknown(value: unknown): string {
   } catch {
     return String(value);
   }
-}
-
-function slug(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
 }
 
 function fallbackSubmission(
