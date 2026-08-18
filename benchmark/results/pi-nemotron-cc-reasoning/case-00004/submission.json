@@ -1,0 +1,422 @@
+{
+  "schemaVersion": "1.0",
+  "financialSpread": {
+    "revenue": {
+      "amount": 1850000000,
+      "currency": "USD"
+    },
+    "cogs": {
+      "amount": 925000000,
+      "currency": "USD"
+    },
+    "grossProfit": {
+      "amount": 925000000,
+      "currency": "USD"
+    },
+    "operatingExpenses": {
+      "amount": 647500000,
+      "currency": "USD"
+    },
+    "ebitda": {
+      "amount": 277500000,
+      "currency": "USD"
+    },
+    "interestExpense": {
+      "amount": 22000000,
+      "currency": "USD"
+    },
+    "debtService": {
+      "amount": 95000000,
+      "currency": "USD"
+    },
+    "totalDebt": {
+      "amount": 620000000,
+      "currency": "USD"
+    },
+    "cash": {
+      "amount": 110000000,
+      "currency": "USD"
+    },
+    "currentAssets": {
+      "amount": 380000000,
+      "currency": "USD"
+    },
+    "currentLiabilities": {
+      "amount": 330000000,
+      "currency": "USD"
+    },
+    "totalAssets": {
+      "amount": 1450000000,
+      "currency": "USD"
+    },
+    "totalLiabilities": {
+      "amount": 820000000,
+      "currency": "USD"
+    },
+    "equity": {
+      "amount": 630000000,
+      "currency": "USD"
+    },
+    "taxes": {
+      "amount": 55000000,
+      "currency": "USD"
+    },
+    "netIncome": {
+      "amount": 200500000,
+      "currency": "USD"
+    },
+    "period": {
+      "start": "2024-01-01",
+      "end": "2024-12-31"
+    },
+    "currency": "USD",
+    "scale": "units",
+    "signConvention": "positive_revenue_negative_expense"
+  },
+  "normalizedFacts": [
+    {
+      "canonicalKey": "revenue",
+      "value": 1850000000,
+      "type": "currency",
+      "currency": "USD",
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "cogs",
+      "value": 925000000,
+      "type": "currency",
+      "currency": "USD",
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "ebitda",
+      "value": 277500000,
+      "type": "currency",
+      "currency": "USD",
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "interest_expense",
+      "value": 22000000,
+      "type": "currency",
+      "currency": "USD",
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "total_debt",
+      "value": 620000000,
+      "type": "currency",
+      "currency": "USD",
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "cash",
+      "value": 110000000,
+      "type": "currency",
+      "currency": "USD",
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "total_assets",
+      "value": 1450000000,
+      "type": "currency",
+      "currency": "USD",
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "current_assets",
+      "value": 380000000,
+      "type": "currency",
+      "currency": "USD",
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "equity",
+      "value": 630000000,
+      "type": "currency",
+      "currency": "USD",
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "dscr",
+      "value": 2.9210526315789473,
+      "type": "ratio",
+      "unit": "multiple",
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "leverage_ratio",
+      "value": 2.234234234234234,
+      "type": "ratio",
+      "unit": "multiple",
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "interest_coverage",
+      "value": 12.613636363636363,
+      "type": "ratio",
+      "unit": "multiple",
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "current_ratio",
+      "value": 1.1515151515151516,
+      "type": "ratio",
+      "unit": "multiple",
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "equity_to_assets",
+      "value": 0.43448275862068964,
+      "type": "ratio",
+      "unit": "percentage",
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "entity_type",
+      "value": "LLC",
+      "type": "categorical",
+      "unit": "none",
+      "evidence": [
+        {
+          "sourceId": "src_borrower_profile"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "naics_code",
+      "value": "621111",
+      "type": "categorical",
+      "unit": "none",
+      "evidence": [
+        {
+          "sourceId": "src_borrower_profile"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "years_in_business",
+      "value": 22,
+      "type": "integer",
+      "unit": "years",
+      "evidence": [
+        {
+          "sourceId": "src_borrower_profile"
+        }
+      ],
+      "confidence": 1
+    }
+  ],
+  "risks": [
+    {
+      "riskId": "risk_liquidity_current_ratio",
+      "category": "LIQUIDITY",
+      "severity": "MEDIUM",
+      "statement": "Current ratio of 1.15 indicates limited short-term liquidity buffer.",
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 0.85
+    },
+    {
+      "riskId": "risk_leverage_moderate",
+      "category": "LEVERAGE",
+      "severity": "LOW",
+      "statement": "Leverage ratio of 2.23 indicates moderate debt levels relative to EBITDA.",
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 0.8
+    }
+  ],
+  "discrepancies": [],
+  "complianceFindings": [],
+  "followUpRequests": [
+    {
+      "requestId": "fu_tax_returns",
+      "concept": "tax_returns",
+      "status": "PENDING"
+    },
+    {
+      "requestId": "fu_interim_financials",
+      "concept": "interim_financials",
+      "status": "PENDING"
+    },
+    {
+      "requestId": "fu_collateral_details",
+      "concept": "collateral_details",
+      "status": "PENDING"
+    }
+  ],
+  "policyAssessment": {
+    "applicableRules": [
+      "rule_dscr_minimum",
+      "rule_leverage_maximum",
+      "rule_interest_coverage_minimum"
+    ],
+    "evaluations": [
+      {
+        "ruleId": "rule_dscr_minimum",
+        "passed": true,
+        "input": {
+          "dscr": 2.9210526315789473
+        },
+        "threshold": 1.25,
+        "operator": ">=",
+        "exceptionDisclosed": false
+      },
+      {
+        "ruleId": "rule_leverage_maximum",
+        "passed": true,
+        "input": {
+          "leverage_ratio": 2.234234234234234
+        },
+        "threshold": 4,
+        "operator": "<=",
+        "exceptionDisclosed": false
+      },
+      {
+        "ruleId": "rule_interest_coverage_minimum",
+        "passed": true,
+        "input": {
+          "interest_coverage": 12.613636363636363
+        },
+        "threshold": 3,
+        "operator": ">=",
+        "exceptionDisclosed": false
+      }
+    ]
+  },
+  "recommendation": {
+    "decision": "APPROVE",
+    "confidence": 0.88,
+    "conditions": [],
+    "policyExceptions": [],
+    "rationale": [
+      {
+        "claim": "DSCR of 2.92 exceeds policy minimum of 1.25, indicating strong ability to service debt.",
+        "evidence": [
+          {
+            "sourceId": "src_financials_2024"
+          }
+        ],
+        "confidence": 0.95
+      },
+      {
+        "claim": "Leverage ratio of 2.23 is below policy maximum of 4, indicating moderate leverage.",
+        "evidence": [
+          {
+            "sourceId": "src_financials_2024"
+          }
+        ],
+        "confidence": 0.9
+      },
+      {
+        "claim": "Interest coverage ratio of 12.61 exceeds policy minimum of 3, showing strong capacity to cover interest expenses.",
+        "evidence": [
+          {
+            "sourceId": "src_financials_2024"
+          }
+        ],
+        "confidence": 0.95
+      }
+    ]
+  },
+  "memo": {
+    "markdown": "Credit memo for Meridian Health Services LLC term loan request.",
+    "claims": [
+      {
+        "claim": "Financial ratios indicate strong credit capacity to support the requested $3,000,000 term loan.",
+        "evidence": [
+          {
+            "sourceId": "src_financials_2024"
+          }
+        ],
+        "confidence": 0.9
+      }
+    ]
+  },
+  "confidence": {
+    "overall": 0.88,
+    "byComponent": {
+      "financial": 0.92,
+      "policy": 0.85
+    }
+  }
+}

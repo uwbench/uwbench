@@ -1,0 +1,88 @@
+{
+  "schemaVersion": "1.0",
+  "financialSpread": {
+    "revenue": {
+      "amount": 0,
+      "currency": "USD"
+    },
+    "cogs": {
+      "amount": 0,
+      "currency": "USD"
+    },
+    "ebitda": {
+      "amount": 0,
+      "currency": "USD"
+    },
+    "interestExpense": {
+      "amount": 0,
+      "currency": "USD"
+    },
+    "debtService": {
+      "amount": 0,
+      "currency": "USD"
+    },
+    "totalDebt": {
+      "amount": 0,
+      "currency": "USD"
+    },
+    "cash": {
+      "amount": 0,
+      "currency": "USD"
+    },
+    "currentAssets": {
+      "amount": 0,
+      "currency": "USD"
+    },
+    "currentLiabilities": {
+      "amount": 0,
+      "currency": "USD"
+    },
+    "totalAssets": {
+      "amount": 0,
+      "currency": "USD"
+    },
+    "totalLiabilities": {
+      "amount": 0,
+      "currency": "USD"
+    },
+    "equity": {
+      "amount": 0,
+      "currency": "USD"
+    },
+    "netIncome": {
+      "amount": 0,
+      "currency": "USD"
+    },
+    "period": {
+      "start": "2024-01-01",
+      "end": "2024-12-31"
+    },
+    "currency": "USD",
+    "scale": "units",
+    "signConvention": "positive_revenue_negative_expense"
+  },
+  "normalizedFacts": [],
+  "risks": [],
+  "discrepancies": [],
+  "complianceFindings": [],
+  "followUpRequests": [],
+  "policyAssessment": {
+    "applicableRules": [],
+    "evaluations": []
+  },
+  "recommendation": {
+    "decision": "INSUFFICIENT_INFORMATION",
+    "confidence": 0,
+    "conditions": [],
+    "policyExceptions": [],
+    "rationale": []
+  },
+  "memo": {
+    "markdown": "Insufficient information to underwrite.",
+    "claims": []
+  },
+  "confidence": {
+    "overall": 0,
+    "byComponent": {}
+  }
+}
