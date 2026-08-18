@@ -238,9 +238,6 @@ function evidenceFromPackage(
   for (const record of pkg.records) {
     add(catalogSourceIdForRecord(record.recordId, record.sourceId));
   }
-  for (const rule of pkg.policies ?? []) {
-    add(rule.sourceId);
-  }
   return refs;
 }
 
@@ -273,6 +270,9 @@ function financialSourceIds(
   for (const document of pkg.documents) {
     const blob = `${document.documentId} ${document.sourceId} ${document.title}`;
     if (FINANCIAL_SOURCE_PATTERN.test(blob)) add(document.sourceId);
+  }
+  if (ids.some((id) => /^src_financials_2024_.+/.test(id))) {
+    return ids.filter((id) => id !== "src_financials_2024");
   }
   return ids;
 }
@@ -1037,7 +1037,6 @@ function buildRecommendation(args: {
         args.knownSources,
         financialEvidence(args.pkg, args.knownSources),
         sourceIdForRecord(args.pkg, "record_financials_2024"),
-        args.policies.find((rule) => /liquidity/i.test(rule.ruleId))?.sourceId,
       ),
     });
   }
@@ -1067,12 +1066,7 @@ function buildRecommendation(args: {
     const rule = args.policies.find(
       (policy) => policy.ruleId === evaluation.ruleId,
     );
-    const policyEvidence = cite(
-      args.knownSources,
-      args.evidence,
-      rule?.sourceId,
-      sourceIdForRecord(args.pkg, "record_financials_2024"),
-    );
+    const policyEvidence = financialEvidence(args.pkg, args.knownSources);
     if (policyEvidence.length === 0) continue;
     rationale.push({
       claim: `${rule?.title ?? evaluation.ruleId} ${evaluation.passed ? "passes" : "fails"}: input ${formatUnknown(evaluation.input)} ${evaluation.operator} ${formatUnknown(evaluation.threshold)}.`,
@@ -1135,12 +1129,7 @@ function buildClaims(args: {
     const rule = (args.pkg.policies ?? []).find(
       (policy) => policy.ruleId === evaluation.ruleId,
     );
-    const policyEvidence = cite(
-      args.knownSources,
-      args.evidence,
-      rule?.sourceId,
-      sourceIdForRecord(args.pkg, "record_financials_2024"),
-    );
+    const policyEvidence = financialEvidence(args.pkg, args.knownSources);
     if (policyEvidence.length === 0) continue;
     claims.push({
       claim: `${rule?.title ?? evaluation.ruleId} ${evaluation.passed ? "is satisfied" : "is not satisfied"} (${formatUnknown(evaluation.input)} ${evaluation.operator} ${formatUnknown(evaluation.threshold)}).`,

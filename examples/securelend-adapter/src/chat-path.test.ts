@@ -438,11 +438,9 @@ describe("MCP chat-path helpers", () => {
         claim.evidence.some((item) => item.sourceId === "src_financials_2024"),
       ),
     ).toBe(true);
-    expect(
-      submission.memo.claims.some((claim) =>
-        claim.evidence.some((item) => item.sourceId === "src_policy_dscr"),
-      ),
-    ).toBe(true);
+    expect(JSON.stringify(submission.memo.claims)).not.toContain(
+      "src_policy_dscr",
+    );
     expect(JSON.stringify(submission.memo.claims)).not.toMatch(
       /src_invented|workspace-mapping/,
     );
@@ -530,11 +528,9 @@ describe("MCP chat-path helpers", () => {
         claim.evidence.some((item) => item.sourceId === "src_financials_2024"),
       ),
     ).toBe(true);
-    expect(
-      submission.memo.claims.some((claim) =>
-        claim.evidence.some((item) => item.sourceId === "src_policy_dscr"),
-      ),
-    ).toBe(true);
+    expect(JSON.stringify(submission.memo.claims)).not.toContain(
+      "src_policy_dscr",
+    );
   });
 
   it("does not emit src_debt_schedule_2024 when that id is absent from the pack catalog", () => {
@@ -738,6 +734,7 @@ describe("MCP chat-path helpers", () => {
           value: 4_200_000_000,
           type: "currency",
           evidence: [
+            { sourceId: "src_financials_2024" },
             { sourceId: "src_financials_2024_gaap" },
             { sourceId: "src_tax_returns_2024" },
             { sourceId: "src_revenue_reconciliation" },
@@ -806,6 +803,8 @@ describe("MCP chat-path helpers", () => {
         "src_revenue_reconciliation",
       ]),
     );
+    expect(payloadIds).not.toContain("src_financials_2024");
+    expect(payloadIds).not.toContain("src_policy_dscr");
     expect(payload["records"]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -849,7 +848,9 @@ describe("MCP chat-path helpers", () => {
       ]),
     );
     expect(revenueIds).not.toContain("src_policy_dscr");
+    expect(revenueIds).not.toContain("src_financials_2024");
     expect(JSON.stringify(revenueClaim)).not.toContain("src_policy_dscr");
+    expect(JSON.stringify(submission)).not.toContain('"src_financials_2024"');
   });
 
   it("prefers structured product memo claims and risks over stub mapping", () => {
@@ -892,6 +893,11 @@ describe("MCP chat-path helpers", () => {
     expect(submission.risks.map((item) => item.statement)).toEqual([
       "Product memo: liquidity is tight versus policy.",
     ]);
+    expect(
+      submission.risks.every((risk) =>
+        risk.evidence.every((item) => !item.sourceId.startsWith("src_policy_")),
+      ),
+    ).toBe(true);
     expect(JSON.stringify(submission.memo.claims)).not.toMatch(
       /Revenue is USD/,
     );

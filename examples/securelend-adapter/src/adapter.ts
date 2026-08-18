@@ -26,6 +26,7 @@ interface RunState {
   agentRunId: string;
   status: RunStatus;
   request: RunRequest;
+  discoveryHint?: unknown;
   controller: AbortController;
   submission?: UnderwritingSubmission;
   error?: ReturnType<typeof protocolError>;
@@ -155,6 +156,7 @@ export class SecureLendAdapter {
         agentRunId,
         status: "accepted",
         request: parsed.data,
+        discoveryHint: body,
         controller: new AbortController(),
       };
       this.runs.set(agentRunId, run);
@@ -251,6 +253,7 @@ export class SecureLendAdapter {
         run.request,
         this.chatPath,
         run.controller.signal,
+        run.discoveryHint,
       );
       if (this.runs.get(run.agentRunId)?.status === "cancelled") return;
       run.submission = result.submission;

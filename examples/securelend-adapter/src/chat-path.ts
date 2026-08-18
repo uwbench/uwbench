@@ -51,12 +51,13 @@ export async function runProductChatPath(
   request: RunRequest,
   config: ChatPathConfig,
   signal?: AbortSignal,
+  discoveryHint?: unknown,
 ): Promise<ChatPathRunResult> {
   throwIfAborted(signal);
   const fetchImpl = config.fetchImpl ?? fetch;
   const now = config.now ?? Date.now;
   const sleep = config.sleep ?? defaultSleep;
-  const pkg = await loadCasePackage(request, fetchImpl);
+  const pkg = await loadCasePackage(request, fetchImpl, discoveryHint);
   throwIfAborted(signal);
 
   const clientOptions: McpClientOptions = {
