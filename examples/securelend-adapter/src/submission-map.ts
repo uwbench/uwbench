@@ -226,9 +226,7 @@ function evidenceFromPackage(
     if (!isCitableSourceId(sourceId) || !knownSources.has(sourceId)) return;
     if (seen.has(sourceId)) return;
     seen.add(sourceId);
-    refs.push(
-      documentId ? { sourceId, documentId } : { sourceId },
-    );
+    refs.push(documentId ? { sourceId, documentId } : { sourceId });
   };
   for (const document of pkg.documents) {
     add(document.sourceId, document.documentId);
@@ -334,11 +332,7 @@ function scrubAgainstCatalog(
       submission.normalizedFacts,
       knownSources,
     ),
-    risks: keepRisksWithCatalogEvidence(
-      submission.risks,
-      [],
-      knownSources,
-    ),
+    risks: keepRisksWithCatalogEvidence(submission.risks, [], knownSources),
     discrepancies: submission.discrepancies.filter(
       (item) =>
         knownSources.has(item.sourceA) && knownSources.has(item.sourceB),
@@ -774,10 +768,7 @@ function sanitizeEvidence(
   for (const item of value) {
     const record = asRecord(item);
     const sourceId = firstString(record, "sourceId");
-    if (
-      !isCitableSourceId(sourceId) ||
-      !knownSources.has(sourceId)
-    ) {
+    if (!isCitableSourceId(sourceId) || !knownSources.has(sourceId)) {
       continue;
     }
     refs.push({
@@ -818,7 +809,7 @@ function risksFromUnknown(
     for (const [index, item] of risks.entries()) {
       const risk = asRecord(item);
       const statement = firstString(risk, "statement", "description", "text");
-      if (!statement) continue;
+      if (!risk || !statement) continue;
       const cited = sanitizeEvidence(risk["evidence"], knownSources);
       const riskEvidence = cited.length > 0 ? cited : evidence;
       if (riskEvidence.length === 0) continue;

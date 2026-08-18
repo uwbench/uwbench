@@ -519,7 +519,10 @@ describe("MCP chat-path helpers", () => {
     ).not.toEqual(
       expect.arrayContaining(['"sourceId":"normalized:canonical-input"']),
     );
-    expectSourceIdsSubset(submission, caseCatalogSourceIds(runnerStuffedPackage()));
+    expectSourceIdsSubset(
+      submission,
+      caseCatalogSourceIds(runnerStuffedPackage()),
+    );
     expect(submission.risks.length).toBeGreaterThan(0);
     expect(
       submission.memo.claims.some((claim) =>
@@ -587,7 +590,8 @@ describe("MCP chat-path helpers", () => {
             riskId: "risk_debt_schedule",
             category: "FINANCIAL",
             severity: "MEDIUM",
-            statement: "Debt service depends on a schedule that is not in catalog.",
+            statement:
+              "Debt service depends on a schedule that is not in catalog.",
             evidence: [{ sourceId: "src_debt_schedule_2024" }],
           },
         ],
@@ -609,7 +613,9 @@ describe("MCP chat-path helpers", () => {
       submission.normalizedFacts.some(
         (fact) =>
           fact.canonicalKey === "debt_service" &&
-          fact.evidence.every((item) => item.sourceId === "src_financials_2024"),
+          fact.evidence.every(
+            (item) => item.sourceId === "src_financials_2024",
+          ),
       ),
     ).toBe(true);
   });
@@ -723,9 +729,9 @@ function evidenceSourceIds(submission: UnderwritingSubmission): string[] {
     }
     if (!value || typeof value !== "object") return;
     const record = value as Record<string, unknown>;
-    if (typeof record.sourceId === "string") ids.push(record.sourceId);
-    if (typeof record.sourceA === "string") ids.push(record.sourceA);
-    if (typeof record.sourceB === "string") ids.push(record.sourceB);
+    if (typeof record["sourceId"] === "string") ids.push(record["sourceId"]);
+    if (typeof record["sourceA"] === "string") ids.push(record["sourceA"]);
+    if (typeof record["sourceB"] === "string") ids.push(record["sourceB"]);
     for (const item of Object.values(record)) visit(item);
   };
   visit(submission);
