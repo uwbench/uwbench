@@ -83,7 +83,7 @@ export function mapChatPathToSubmission(
     spread,
     knownSources,
   );
-  const productRisks = risksFromUnknown(outputs, evidence, knownSources);
+  const productRisks = risksFromUnknown(outputs, evidence, knownSources, pkg);
   const derived = deriveRisksAndDiscrepancies(
     pkg,
     spread,
@@ -109,7 +109,7 @@ export function mapChatPathToSubmission(
     knownSources,
     pkg,
   });
-  const productClaims = claimsFromUnknown(outputs, knownSources);
+  const productClaims = claimsFromUnknown(outputs, pkg, knownSources);
   const claims =
     productClaims.length > 0
       ? productClaims
@@ -248,49 +248,106 @@ function evidenceFromPackage(
   return refs;
 }
 
-const FINANCIAL_SOURCE_PATTERN = /financial|gaap|tax|reconcil|spread/i;
-const POLICY_SOURCE_PATTERN = /policy/i;
+const STATEMENT_RECORD_RANK = [
+  "record_financials_2024_gaap",
+  "record_financials_2024",
+  "record_financials_primary",
+  "record_financials_submitted",
+  "record_financials_verified",
+  "record_financials_2024_partial",
+  "record_001",
+];
 
-function financialSourceIds(
-  pkg: CasePackage,
-  knownSources: Set<string>,
-): string[] {
-  const ids: string[] = [];
-  const add = (sourceId: string | undefined): void => {
-    if (
-      !isCitableSourceId(sourceId) ||
-      !knownSources.has(sourceId) ||
-      POLICY_SOURCE_PATTERN.test(sourceId) ||
-      ids.includes(sourceId)
-    ) {
-      return;
-    }
-    ids.push(sourceId);
-  };
-  for (const record of pkg.records) {
-    const blob = `${record.recordId} ${record.sourceId}`;
-    if (FINANCIAL_SOURCE_PATTERN.test(blob)) add(record.sourceId);
-    for (const sourceId of record.nestedSourceIds ?? []) {
-      if (FINANCIAL_SOURCE_PATTERN.test(sourceId)) add(sourceId);
-    }
-  }
-  for (const document of pkg.documents) {
-    const blob = `${document.documentId} ${document.sourceId} ${document.title}`;
-    if (FINANCIAL_SOURCE_PATTERN.test(blob)) add(document.sourceId);
-  }
-  if (ids.some((id) => /^src_financials_2024_.+/.test(id))) {
-    return ids.filter((id) => id !== "src_financials_2024");
-  }
-  return ids;
+function isBlockedStatementSource(sourceId: string, recordId = ""): boolean {
+  const blob = `${sourceId} ${recordId}`;
+  return /tax|reconcil|borrower|policy|2023|canonical-input/i.test(blob);
 }
 
-function financialEvidence(
+/**
+ * The single live financial-statement sourceId that supplied the spread
+ * numbers. Never tax returns, prior-year financials, reconciliation, or
+ * borrower/policy ids.
+ */
+function primaryStatementSourceId(
+  pkg: CasePackage,
+  knownSources: Set<string>,
+): string | undefined {
+  const ranked = [
+    ...STATEMENT_RECORD_RANK.map((id) =>
+      pkg.records.find((item) => item.recordId === id),
+    ),
+    ...pkg.records.filter(
+      (item) =>
+        /financial/i.test(item.recordId) &&
+        !STATEMENT_RECORD_RANK.includes(item.recordId),
+    ),
+  ];
+  for (const record of ranked) {
+    if (!record) continue;
+    if (isBlockedStatementSource(record.sourceId, record.recordId)) continue;
+    const sourceId = catalogSourceIdForRecord(record.recordId, record.sourceId);
+    if (
+      !sourceId ||
+      !knownSources.has(sourceId) ||
+      isBlockedStatementSource(sourceId, record.recordId)
+    ) {
+      continue;
+    }
+    return sourceId;
+  }
+  return undefined;
+}
+
+function citeStatement(
   pkg: CasePackage,
   knownSources: Set<string>,
 ): EvidenceReference[] {
-  return financialSourceIds(pkg, knownSources).map((sourceId) => ({
-    sourceId,
-  }));
+  return cite(knownSources, [], primaryStatementSourceId(pkg, knownSources));
+}
+
+function isRevenueOrEbitdaText(value: string): boolean {
+  return /revenue|ebitda/i.test(value);
+}
+
+/** Prefer one product citation when it is the statement record; never tax/2023/reconcil. */
+function evidenceForStatementClaim(
+  pkg: CasePackage,
+  knownSources: Set<string>,
+  productEvidence: EvidenceReference[],
+): EvidenceReference[] {
+  const allowed = productEvidence.filter(
+    (item) =>
+      !isBlockedStatementSource(item.sourceId) &&
+      !/^src_policy_/i.test(item.sourceId),
+  );
+  const primary = primaryStatementSourceId(pkg, knownSources);
+  if (primary && allowed.some((item) => item.sourceId === primary)) {
+    return [{ sourceId: primary }];
+  }
+  if (allowed.length === 1) return allowed;
+  if (primary) return cite(knownSources, [], primary);
+  if (allowed.length > 0) return [allowed[0]!];
+  return [];
+}
+
+function catalogStatementFallback(
+  knownSources: Set<string>,
+): string | undefined {
+  const preferred = [
+    "src_financials_2024_gaap",
+    "src_financials_2024",
+    "src_financials_primary",
+    "src_financials_submitted",
+    "src_financials_verified",
+    "src_financials_2024_partial",
+  ];
+  for (const id of preferred) {
+    if (knownSources.has(id) && !isBlockedStatementSource(id)) return id;
+  }
+  for (const id of knownSources) {
+    if (/financial/i.test(id) && !isBlockedStatementSource(id)) return id;
+  }
+  return undefined;
 }
 
 function cite(
@@ -424,14 +481,14 @@ function keepRisksWithCatalogEvidence(
   fallback: RiskFinding[],
   knownSources: Set<string>,
 ): RiskFinding[] {
-  const catalog = [...knownSources];
+  const statementFallback = catalogStatementFallback(knownSources);
   const keep = (risks: RiskFinding[]): RiskFinding[] =>
     risks.flatMap((risk) => {
       if (isIdentityRisk(risk)) return [];
       const evidence = filterEvidence(risk.evidence, knownSources);
       if (evidence.length > 0) return [{ ...risk, evidence }];
-      if (catalog.length === 0) return [{ ...risk, evidence: [] }];
-      return [{ ...risk, evidence: [{ sourceId: catalog[0] as string }] }];
+      if (!statementFallback) return [{ ...risk, evidence: [] }];
+      return [{ ...risk, evidence: [{ sourceId: statementFallback }] }];
     });
   const fromPreferred = keep(preferred);
   if (fromPreferred.length > 0) return fromPreferred;
@@ -696,20 +753,21 @@ function factsFromUnknown(
         ? extraction["facts"]
         : [],
     evidence,
+    pkg,
     knownSources,
   );
   if (fromExtraction.length > 0) return fromExtraction;
 
   const facts: NormalizedFact[] = [];
-  if (isUsableSpread(spread) && evidence.length > 0) {
-    const financials = financialEvidence(pkg, knownSources);
+  const statement = citeStatement(pkg, knownSources);
+  if (isUsableSpread(spread) && statement.length > 0) {
     facts.push({
       canonicalKey: "revenue",
       value: spread.revenue.amount,
       type: "currency",
       currency: spread.currency === "XXX" ? undefined : spread.currency,
       period: spread.period,
-      evidence: financials.length > 0 ? financials : evidence,
+      evidence: statement,
       confidence: 0.8,
     });
   }
@@ -718,7 +776,7 @@ function factsFromUnknown(
     .find((value) => typeof value === "string");
   const borrowerEvidence = cite(
     knownSources,
-    evidence,
+    [],
     sourceIdForRecord(pkg, "record_borrower_profile"),
   );
   if (typeof borrower === "string" && borrowerEvidence.length > 0) {
@@ -759,6 +817,7 @@ function factsFromPackage(
     const mapped = mapFactList(
       nested,
       isCitableSourceId(fallbackId) ? [{ sourceId: fallbackId }] : [],
+      pkg,
       knownSources,
     );
     if (mapped.length > 0) return mapped;
@@ -769,6 +828,7 @@ function factsFromPackage(
 function mapFactList(
   items: unknown[],
   fallbackEvidence: EvidenceReference[],
+  pkg: CasePackage,
   knownSources: Set<string>,
 ): NormalizedFact[] {
   const facts: NormalizedFact[] = [];
@@ -777,7 +837,11 @@ function mapFactList(
     const canonicalKey = firstString(record, "canonicalKey", "key");
     if (!record || !canonicalKey) continue;
     const cited = sanitizeEvidence(record["evidence"], knownSources);
-    const evidence = cited.length > 0 ? cited : fallbackEvidence;
+    const evidence = isRevenueOrEbitdaText(canonicalKey)
+      ? evidenceForStatementClaim(pkg, knownSources, cited)
+      : cited.length > 0
+        ? cited
+        : fallbackEvidence;
     if (evidence.length === 0) continue;
     const period = periodFromUnknown(record["period"]);
     const currency = Iso4217CurrencySchema.safeParse(
@@ -839,8 +903,9 @@ function sourceIdForRecord(
   if (fromRecord) return fromRecord;
   const financial = pkg.records.find(
     (item) =>
-      /financial|gaap|tax/i.test(item.recordId) &&
-      isCitableSourceId(item.sourceId),
+      /financial|gaap/i.test(item.recordId) &&
+      isCitableSourceId(item.sourceId) &&
+      !isBlockedStatementSource(item.sourceId, item.recordId),
   );
   return financial?.sourceId;
 }
@@ -919,7 +984,10 @@ function risksFromUnknown(
   outputs: ChatPathOutputs,
   evidence: EvidenceReference[],
   knownSources: Set<string>,
+  pkg: CasePackage,
 ): RiskFinding[] {
+  const statement = citeStatement(pkg, knownSources);
+  const riskFallback = statement.length > 0 ? statement : evidence;
   const sources = [outputs.memo, outputs.extraction, outputs.intelligence];
   for (const source of sources) {
     for (const record of memoCandidateRecords(source)) {
@@ -942,7 +1010,7 @@ function risksFromUnknown(
             category: "FINANCIAL",
             severity: "MEDIUM",
             statement: item.trim(),
-            evidence,
+            evidence: riskFallback,
             confidence: 0.5,
           });
           continue;
@@ -961,7 +1029,7 @@ function risksFromUnknown(
           category: firstString(risk, "category") ?? "FINANCIAL",
           severity: coerceSeverity(firstString(risk, "severity")),
           statement,
-          evidence: cited.length > 0 ? cited : evidence,
+          evidence: cited.length > 0 ? cited : riskFallback,
           confidence:
             typeof risk["confidence"] === "number" ? risk["confidence"] : 0.5,
         });
@@ -982,9 +1050,9 @@ function deriveRisksAndDiscrepancies(
   knownSources: Set<string>,
 ): { risks: RiskFinding[]; discrepancies: Discrepancy[] } {
   const discrepancies: Discrepancy[] = [];
-  const financials = financialEvidence(pkg, knownSources);
-  const sourceA = financials[0]?.sourceId ?? evidence[0]?.sourceId ?? "";
-  const ev = financials.length > 0 ? financials : evidence;
+  const statement = citeStatement(pkg, knownSources);
+  const sourceA = statement[0]?.sourceId ?? evidence[0]?.sourceId ?? "";
+  const ev = statement.length > 0 ? statement : evidence;
 
   if (isUsableSpread(spread)) {
     const validation = validateSpread(spread);
@@ -1192,11 +1260,7 @@ function buildRecommendation(args: {
   if (decision === "APPROVE_WITH_CONDITIONS" && liquidity) {
     conditions.push({
       description: `Maintain current ratio at or above ${formatRatio(liquidity.threshold)}x (latest ${formatRatio(liquidity.value)}x).`,
-      evidence: cite(
-        args.knownSources,
-        financialEvidence(args.pkg, args.knownSources),
-        sourceIdForRecord(args.pkg, "record_financials_2024"),
-      ),
+      evidence: citeStatement(args.pkg, args.knownSources),
     });
   }
 
@@ -1212,12 +1276,12 @@ function buildRecommendation(args: {
     }
   }
 
-  const financials = financialEvidence(args.pkg, args.knownSources);
+  const statement = citeStatement(args.pkg, args.knownSources);
   const rationale: CitedClaim[] = [];
-  if (args.usable && financials.length > 0) {
+  if (args.usable && statement.length > 0) {
     rationale.push({
       claim: `Recommendation is ${decision} on a ${args.spread.currency} FY spread with revenue ${formatMoney(args.spread.revenue.amount, args.spread.currency)}.`,
-      evidence: financials,
+      evidence: statement,
       confidence: 0.7,
     });
   }
@@ -1225,7 +1289,7 @@ function buildRecommendation(args: {
     const rule = args.policies.find(
       (policy) => policy.ruleId === evaluation.ruleId,
     );
-    const policyEvidence = financialEvidence(args.pkg, args.knownSources);
+    const policyEvidence = citeStatement(args.pkg, args.knownSources);
     if (policyEvidence.length === 0) continue;
     rationale.push({
       claim: `${rule?.title ?? evaluation.ruleId} ${evaluation.passed ? "passes" : "fails"}: input ${formatUnknown(evaluation.input)} ${evaluation.operator} ${formatUnknown(evaluation.threshold)}.`,
@@ -1254,17 +1318,17 @@ function buildClaims(args: {
   knownSources: Set<string>;
 }): CitedClaim[] {
   const claims: CitedClaim[] = [];
-  const financials = financialEvidence(args.pkg, args.knownSources);
-  if (args.usable && financials.length > 0) {
+  const statement = citeStatement(args.pkg, args.knownSources);
+  if (args.usable && statement.length > 0) {
     claims.push({
       claim: `Revenue is ${formatMoney(args.spread.revenue.amount, args.spread.currency)} for ${args.spread.period.start} to ${args.spread.period.end}.`,
-      evidence: financials,
+      evidence: statement,
       confidence: 0.8,
     });
     if (args.spread.ebitda) {
       claims.push({
         claim: `EBITDA is ${formatMoney(args.spread.ebitda.amount, args.spread.currency)}.`,
-        evidence: financials,
+        evidence: statement,
         confidence: 0.75,
       });
     }
@@ -1274,7 +1338,7 @@ function buildClaims(args: {
     .find((value) => typeof value === "string");
   const borrowerEvidence = cite(
     args.knownSources,
-    args.evidence,
+    [],
     sourceIdForRecord(args.pkg, "record_borrower_profile"),
   );
   if (typeof borrower === "string" && borrowerEvidence.length > 0) {
@@ -1288,7 +1352,7 @@ function buildClaims(args: {
     const rule = (args.pkg.policies ?? []).find(
       (policy) => policy.ruleId === evaluation.ruleId,
     );
-    const policyEvidence = financialEvidence(args.pkg, args.knownSources);
+    const policyEvidence = citeStatement(args.pkg, args.knownSources);
     if (policyEvidence.length === 0) continue;
     claims.push({
       claim: `${rule?.title ?? evaluation.ruleId} ${evaluation.passed ? "is satisfied" : "is not satisfied"} (${formatUnknown(evaluation.input)} ${evaluation.operator} ${formatUnknown(evaluation.threshold)}).`,
@@ -1311,12 +1375,10 @@ function buildClaims(args: {
 
 function claimsFromUnknown(
   outputs: ChatPathOutputs,
+  pkg: CasePackage,
   knownSources: Set<string>,
 ): CitedClaim[] {
-  const fallback = [...knownSources]
-    .filter((sourceId) => !/^src_policy_/i.test(sourceId))
-    .slice(0, 2)
-    .map((sourceId) => ({ sourceId }));
+  const statementFallback = citeStatement(pkg, knownSources);
   const sources = [outputs.memo, outputs.extraction, outputs.intelligence];
   for (const source of sources) {
     for (const record of memoCandidateRecords(source)) {
@@ -1341,13 +1403,11 @@ function claimsFromUnknown(
           ...sanitizeEvidence(claimRecord["evidence"], knownSources),
           ...sanitizeEvidence(claimRecord["citations"], knownSources),
         ].filter((item) => !/^src_policy_/i.test(item.sourceId));
-        if (
-          /revenue|ebitda/i.test(claim) &&
-          cited.some((item) => /^src_policy_/i.test(item.sourceId))
-        ) {
-          continue;
-        }
-        const evidence = cited.length > 0 ? cited : fallback;
+        const evidence = isRevenueOrEbitdaText(claim)
+          ? evidenceForStatementClaim(pkg, knownSources, cited)
+          : cited.length > 0
+            ? cited
+            : statementFallback;
         if (evidence.length === 0) continue;
         mapped.push({
           claim,
