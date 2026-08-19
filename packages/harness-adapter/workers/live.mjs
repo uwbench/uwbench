@@ -176,11 +176,7 @@ const model = process.env.UWBENCH_LIVE_MODEL;
 
 function liveArgs() {
   if (binary === "codex") {
-    const args = [
-      "exec",
-      "--skip-git-repo-check",
-      "--approve-for-me",
-    ];
+    const args = ["exec", "--skip-git-repo-check", "--approve-for-me"];
     if (model) args.push("-m", model);
     args.push(prompt);
     return args;

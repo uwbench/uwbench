@@ -100,7 +100,10 @@ describe("scoreCompletedRun", () => {
       ],
       {
         citations: [
-          { citationId: "cite_revenue", sourceId: "src_financials_2024_partial" },
+          {
+            citationId: "cite_revenue",
+            sourceId: "src_financials_2024_partial",
+          },
         ],
       },
     );
