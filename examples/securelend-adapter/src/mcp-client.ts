@@ -177,6 +177,12 @@ export function unwrapMcpToolResult(result: unknown): unknown {
     const message =
       textFromMcpContent(record["content"]) ??
       stringifyUnknown(record["error"] ?? result);
+    // Live run_data_extraction used to fail closed on AI GET 401/500.
+    // That is a lookup miss, not a Textract failure — keep polling.
+    if (/extraction service unavailable/i.test(message)) {
+      const structured = asRecord(record["structuredContent"]) ?? {};
+      return { ready: false, message, ...structured };
+    }
     throw new McpClientError(message);
   }
   const structured = record["structuredContent"];

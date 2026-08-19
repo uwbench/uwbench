@@ -17,7 +17,13 @@ import {
   workspaceNameForRun,
   type ChatPathTool,
 } from "./mcp-tools.js";
-import { mapChatPathToSubmission } from "./submission-map.js";
+import {
+  isUsableSpread,
+  mapChatPathToSubmission,
+  needsProductOcr,
+  spreadFromIdpExtraction,
+  spreadFromUnknown,
+} from "./submission-map.js";
 import {
   finalizeUploadedDocument,
   interpretSubmitDocumentsResult,
@@ -108,15 +114,17 @@ export async function runProductChatPath(
   const documentIds: string[] = [];
 
   if (files.length > 0) {
-    const submitResult = await mcp.callTool(
-      toolNames.submitDocuments,
-      submitDocumentsArguments(workspaceId, files),
-    );
-    const uploads = interpretSubmitDocumentsResult(submitResult);
-    if (uploads.length > 0) {
-      for (const [index, file] of files.entries()) {
-        const target = matchUpload(uploads, file, index);
-        if (!target) continue;
+    // Live submit_documents reserves one S3 object. Reusing that URL for every
+    // case file overwrites the statement scan with later letter/AR text, and
+    // Textract then fails (UnsupportedDocumentException).
+    for (const file of files) {
+      const submitResult = await mcp.callTool(
+        toolNames.submitDocuments,
+        submitDocumentsArguments(workspaceId, [file]),
+      );
+      const uploads = interpretSubmitDocumentsResult(submitResult);
+      const target = matchUpload(uploads, file, 0);
+      if (target) {
         await uploadBytes(target, file, fetchImpl);
         uploaded = true;
         const uploadedId = mcpDocumentId(target.documentId);
@@ -138,8 +146,8 @@ export async function runProductChatPath(
           );
           finalized = true;
         }
+        continue;
       }
-    } else {
       const readyId = mcpDocumentId(
         firstString(asRecord(submitResult), "documentId", "id"),
       );
@@ -153,7 +161,10 @@ export async function runProductChatPath(
   // return values count. reasoning_only packs often have empty list_documents;
   // synthesize a package from already-loaded public records and upload it so
   // extract/spread can run. Never send undefined documentId.
-  const primaryDocumentId = mcpDocumentId(documentIds[0]);
+  // Prefer the statement scan (PNG/PDF financials) over letter/workbook so
+  // Textract/IDP runs on the page that actually has the P&L.
+  const primaryDocumentId = primaryUploadedDocumentId(files, documentIds);
+  const waitForIdp = needsProductOcr(pkg);
   let intelligence: unknown;
   let extraction: unknown;
   let spread: unknown;
@@ -167,20 +178,17 @@ export async function runProductChatPath(
       intelligence = undefined;
     }
     throwIfAborted(signal);
-    const extractionArgs = dataExtractionArguments(
+    extraction = await readOrPollExtraction(
+      mcp,
+      toolNames.dataExtraction,
       workspaceId,
       primaryDocumentId,
+      waitForIdp,
+      config.pollIntervalMs,
+      config.pollTimeoutMs,
+      sleep,
+      signal,
     );
-    if (extractionArgs) {
-      try {
-        extraction = await mcp.callTool(
-          toolNames.dataExtraction,
-          extractionArgs,
-        );
-      } catch {
-        extraction = undefined;
-      }
-    }
     throwIfAborted(signal);
     if (catalog.length === 0 || catalog.includes(toolNames.financialSpread)) {
       try {
@@ -195,26 +203,31 @@ export async function runProductChatPath(
   }
 
   throwIfAborted(signal);
-  const memoJob = await mcp.callTool(toolNames.professionalMemo, {
-    workspaceId,
-    sourceType: "workspace",
-    sourceId: workspaceId,
-    templateId: "default-credit-memo-template",
-  });
-  const jobId =
-    firstString(asRecord(memoJob), "jobId", "id", "memoJobId") ??
-    firstString(asRecord(asRecord(memoJob)?.["job"]), "id", "jobId");
-  const memo = await pollMemo(
-    mcp,
-    toolNames.memoStatus,
-    jobId,
-    workspaceId,
-    memoJob,
-    config.pollIntervalMs,
-    config.pollTimeoutMs,
-    sleep,
-    signal,
-  );
+  let memo: unknown;
+  try {
+    const memoJob = await mcp.callTool(toolNames.professionalMemo, {
+      workspaceId,
+      sourceType: "workspace",
+      sourceId: workspaceId,
+      templateId: "default-credit-memo-template",
+    });
+    const jobId =
+      firstString(asRecord(memoJob), "jobId", "id", "memoJobId") ??
+      firstString(asRecord(asRecord(memoJob)?.["job"]), "id", "jobId");
+    memo = await pollMemo(
+      mcp,
+      toolNames.memoStatus,
+      jobId,
+      workspaceId,
+      memoJob,
+      config.pollIntervalMs,
+      config.pollTimeoutMs,
+      sleep,
+      signal,
+    );
+  } catch {
+    memo = undefined;
+  }
 
   const submission = mapChatPathToSubmission(pkg, {
     workspaceId,
@@ -272,6 +285,7 @@ export function submitDocumentsArguments(
 export function dataExtractionArguments(
   workspaceId: string,
   documentId: unknown,
+  confirm = false,
 ): Record<string, unknown> | undefined {
   const id = mcpDocumentId(documentId);
   if (!id) return undefined;
@@ -279,7 +293,143 @@ export function dataExtractionArguments(
     workspaceId,
     documentId: id,
     blueprintType: LENDING_BLUEPRINT_TYPE,
+    ...(confirm ? { confirm: true } : {}),
   };
+}
+
+export function primaryUploadedDocumentId(
+  files: Pick<CaseDocument, "sourceId" | "title" | "mimeType" | "fileName">[],
+  documentIds: string[],
+): string | undefined {
+  if (documentIds.length === 0) return undefined;
+  let bestIndex = 0;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  for (const [index, file] of files.entries()) {
+    if (!documentIds[index]) continue;
+    const score = uploadExtractPriority(file);
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = index;
+    }
+  }
+  return mcpDocumentId(documentIds[bestIndex] ?? documentIds[0]);
+}
+
+function uploadExtractPriority(
+  file: Pick<CaseDocument, "sourceId" | "title" | "mimeType" | "fileName">,
+): number {
+  const blob = `${file.sourceId} ${file.title} ${file.mimeType} ${file.fileName ?? ""}`;
+  let score = 0;
+  if (/financial|statement/i.test(blob)) score += 5;
+  if (/image\/(png|jpeg|jpg|tiff)/i.test(file.mimeType)) score += 4;
+  if (file.mimeType === "application/pdf") score += 2;
+  if (/workbook|spreadsheet/i.test(blob)) score -= 1;
+  if (/letter|tax|aging|reconcil/i.test(blob)) score -= 6;
+  return score;
+}
+
+async function readOrPollExtraction(
+  mcp: McpClient,
+  toolName: string,
+  workspaceId: string,
+  documentId: string,
+  waitForIdp: boolean,
+  intervalMs: number,
+  timeoutMs: number,
+  sleep: (ms: number) => Promise<void>,
+  signal?: AbortSignal,
+): Promise<unknown> {
+  const call = async (confirm: boolean): Promise<unknown> => {
+    const args = dataExtractionArguments(workspaceId, documentId, confirm);
+    if (!args) return undefined;
+    return mcp.callTool(toolName, args);
+  };
+  let last: unknown;
+  try {
+    last = await call(false);
+  } catch {
+    last = undefined;
+  }
+  last = await confirmExtractionIfQuoted(last, call);
+  if (!waitForIdp || isExtractionReady(last) || isExtractionFailed(last)) {
+    return last;
+  }
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    throwIfAborted(signal);
+    await sleep(intervalMs);
+    throwIfAborted(signal);
+    try {
+      last = await call(false);
+    } catch {
+      last = undefined;
+    }
+    last = await confirmExtractionIfQuoted(last, call);
+    if (isExtractionReady(last) || isExtractionFailed(last)) return last;
+  }
+  return last;
+}
+
+async function confirmExtractionIfQuoted(
+  result: unknown,
+  call: (confirm: boolean) => Promise<unknown>,
+): Promise<unknown> {
+  if (!extractionNeedsConfirm(result)) return result;
+  try {
+    return await call(true);
+  } catch {
+    return result;
+  }
+}
+
+export function isExtractionReady(value: unknown): boolean {
+  if (typeof value === "string") {
+    if (/no IDP extraction result yet|still be processing/i.test(value)) {
+      return false;
+    }
+    return /structured financial facts found/i.test(value);
+  }
+  const record = asRecord(value);
+  if (!record) return false;
+  // Live run_data_extraction sets ready:false when `facts` is empty even
+  // though extractedData already has incomeStatement period maps.
+  if (
+    isUsableSpread(
+      spreadFromUnknown(record) ?? spreadFromIdpExtraction(record),
+    )
+  ) {
+    return true;
+  }
+  if (record["ready"] === true) return true;
+  if (record["ready"] === false) return false;
+  const text = firstString(record, "message", "text") ?? "";
+  if (/no IDP extraction result yet|still be processing/i.test(text)) {
+    return false;
+  }
+  return /structured financial facts found/i.test(text);
+}
+
+export function isExtractionFailed(value: unknown): boolean {
+  if (typeof value === "string") {
+    return /document text extraction failed|unsupporteddocument/i.test(value);
+  }
+  const record = asRecord(value);
+  if (!record) return false;
+  const status = firstString(record, "status")?.toUpperCase();
+  if (status === "FAILED" || status === "ERROR") return true;
+  const text = firstString(record, "message", "text") ?? "";
+  return /document text extraction failed|unsupporteddocument/i.test(text);
+}
+
+function extractionNeedsConfirm(value: unknown): boolean {
+  if (typeof value === "string") {
+    return /price quote|confirm and authorize/i.test(value);
+  }
+  const record = asRecord(value);
+  if (!record) return false;
+  if (record["paymentRequired"] !== undefined) return true;
+  const text = firstString(record, "message", "text") ?? "";
+  return /price quote|confirm and authorize/i.test(text);
 }
 
 function extractWorkspaceId(result: unknown, fallbackName: string): string {

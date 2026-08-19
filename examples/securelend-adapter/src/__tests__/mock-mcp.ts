@@ -14,6 +14,7 @@ export interface MockMcpOptions {
   catalog?: string[];
   uploadStyle?: "put" | "post";
   memoDelayPolls?: number;
+  extractionDelayPolls?: number;
   throwOn?: string[];
 }
 
@@ -23,9 +24,14 @@ export class MockSecureLendMcp {
   readonly finalizeBodies: unknown[] = [];
   readonly urls: string[] = [];
   memoPolls = 0;
+  extractionPolls = 0;
+  private submitCount = 0;
   private server: ReturnType<typeof createServer> | null = null;
   private readonly options: Required<
-    Pick<MockMcpOptions, "uploadStyle" | "memoDelayPolls">
+    Pick<
+      MockMcpOptions,
+      "uploadStyle" | "memoDelayPolls" | "extractionDelayPolls"
+    >
   > & { catalog: string[]; throwOn: string[] };
 
   constructor(options: MockMcpOptions = {}) {
@@ -41,6 +47,7 @@ export class MockSecureLendMcp {
       ],
       uploadStyle: options.uploadStyle ?? "put",
       memoDelayPolls: options.memoDelayPolls ?? 1,
+      extractionDelayPolls: options.extractionDelayPolls ?? 0,
       throwOn: options.throwOn ?? [],
     };
   }
@@ -218,12 +225,17 @@ export class MockSecureLendMcp {
       };
     }
     if (name === "submit_documents") {
+      this.submitCount += 1;
       const fields =
         this.options.uploadStyle === "post"
-          ? { key: "uwbench/doc-1", policy: "test", "x-amz-signature": "sig" }
+          ? {
+              key: `uwbench/doc-${this.submitCount}`,
+              policy: "test",
+              "x-amz-signature": "sig",
+            }
           : undefined;
       return {
-        documentId: "sl_doc_1",
+        documentId: `sl_doc_${this.submitCount}`,
         status: "PENDING_UPLOAD",
         uploadUrl: this.uploadUrl,
         ...(fields ? { uploadFields: fields, method: "POST" } : {}),
@@ -239,9 +251,24 @@ export class MockSecureLendMcp {
       };
     }
     if (name === "run_data_extraction" || name === "data_extraction_agent") {
+      this.extractionPolls += 1;
+      if (this.extractionPolls <= this.options.extractionDelayPolls) {
+        return {
+          ready: false,
+          status: "PROCESSING",
+          message: `Document ${args["documentId"]} has no IDP extraction result yet. It may still be processing.`,
+        };
+      }
       return {
+        ready: true,
         blueprintType: args["blueprintType"],
         casePackage: args["casePackage"],
+        extractedData: {
+          incomeStatement: {
+            revenue: { "2024": 5_000_000 },
+            ebitda: { "2024": 2_000_000 },
+          },
+        },
         financialSpread: {
           revenue: { amount: 5_000_000, currency: "USD" },
           ebitda: { amount: 2_000_000, currency: "USD" },

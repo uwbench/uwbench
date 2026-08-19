@@ -223,6 +223,97 @@ describe("MCP product chat-path mode", () => {
     expect(mcp.urls.every((url) => !url.includes("securelend.ai"))).toBe(true);
   });
 
+  it("reserves a distinct upload for each case file instead of overwriting one object", async () => {
+    const mcp = new MockSecureLendMcp({ uploadStyle: "put" });
+    running.push(mcp);
+    await mcp.start();
+    const png = Buffer.from("fake-png-bytes");
+    const aging =
+      "Accounts receivable aging as of 2024-09-28\nCurrent: 72%; 31–60 days: 18%.";
+    const gateway = new ToolGateway({
+      port: 0,
+      runToken: TOKEN,
+      maxToolCalls: 40,
+      fixtures: {
+        documents: [
+          {
+            ...documentFixture({
+              documentId: "doc_financials_2024",
+              sourceId: "src_doc_financials",
+              title: "FY2024 financial statements",
+              fileName: "doc_financials_2024.png",
+              mimeType: "image/png",
+              content: "",
+            }),
+            pages: [{ pageNumber: 1, text: "", imagePngBase64: png.toString("base64") }],
+          },
+          documentFixture({
+            documentId: "doc_ar_aging_2024",
+            sourceId: "src_ar_aging",
+            title: "AR aging",
+            fileName: "ar-aging.txt",
+            mimeType: "text/plain",
+            content: aging,
+          }),
+        ],
+        records: [],
+      },
+    });
+    running.push(gateway);
+    await gateway.start();
+    const adapter = new SecureLendAdapter({
+      port: 0,
+      config: {
+        mode: "mcp",
+        participant: participant(),
+        mcp: {
+          url: mcp.mcpUrl,
+          token: "mcp-secret",
+          pollIntervalMs: 10,
+          pollTimeoutMs: 2_000,
+        },
+      },
+      chatPath: {
+        mcpUrl: mcp.mcpUrl,
+        token: "mcp-secret",
+        pollIntervalMs: 10,
+        pollTimeoutMs: 2_000,
+        fetchImpl: guardedFetch(),
+        now: () => 1_700_000_000_000,
+      },
+    });
+    running.push(adapter);
+    await adapter.start();
+    const started = await fetch(
+      `http://127.0.0.1:${adapter.portNumber}/v1/runs`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(
+          runRequest(`http://127.0.0.1:${gateway.port}/v1/tools/call`),
+        ),
+      },
+    );
+    const accepted = (await started.json()) as { agentRunId: string };
+    await pollCompleted(
+      `http://127.0.0.1:${adapter.portNumber}`,
+      accepted.agentRunId,
+    );
+    const submits = mcp.calls.filter((call) => call.name === "submit_documents");
+    expect(submits.map((call) => call.arguments["filename"])).toEqual([
+      "doc_financials_2024.png",
+      "doc_ar_aging_2024.txt",
+    ]);
+    expect(mcp.uploads.some((body) => body.includes(png))).toBe(true);
+    expect(mcp.uploads.some((body) => body.includes(Buffer.from(aging)))).toBe(
+      true,
+    );
+    const extraction = mcp.calls.find(
+      (call) => call.name === "run_data_extraction",
+    );
+    expect(extraction?.arguments["documentId"]).toBe("sl_doc_1");
+  });
+
   it("synthesizes a pack upload and still completes a memo when list_documents is empty", async () => {
     const mcp = new MockSecureLendMcp();
     running.push(mcp);
@@ -724,6 +815,77 @@ describe("MCP product chat-path mode", () => {
         documentId: "sl_doc_1",
       }),
     ]);
+  });
+
+  it("polls run_data_extraction until IDP OCR facts are ready", async () => {
+    const mcp = new MockSecureLendMcp({ extractionDelayPolls: 2 });
+    running.push(mcp);
+    await mcp.start();
+    const gateway = new ToolGateway({
+      port: 0,
+      runToken: TOKEN,
+      maxToolCalls: 40,
+      fixtures: {
+        documents: [
+          documentFixture({
+            content: "Annual P and L is on the scanned PDF.",
+            fileName: "financials-2024.png",
+            mimeType: "image/png",
+          }),
+        ],
+        records: [],
+      },
+    });
+    running.push(gateway);
+    await gateway.start();
+    const adapter = new SecureLendAdapter({
+      port: 0,
+      config: {
+        mode: "mcp",
+        participant: participant(),
+        mcp: {
+          url: mcp.mcpUrl,
+          token: "mcp-secret",
+          pollIntervalMs: 10,
+          pollTimeoutMs: 2_000,
+        },
+      },
+      chatPath: {
+        mcpUrl: mcp.mcpUrl,
+        token: "mcp-secret",
+        pollIntervalMs: 10,
+        pollTimeoutMs: 2_000,
+        fetchImpl: guardedFetch(),
+        now: () => 99,
+      },
+    });
+    running.push(adapter);
+    await adapter.start();
+    const started = await fetch(
+      `http://127.0.0.1:${adapter.portNumber}/v1/runs`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(
+          runRequest(`http://127.0.0.1:${gateway.port}/v1/tools/call`),
+        ),
+      },
+    );
+    const accepted = (await started.json()) as { agentRunId: string };
+    const status = RunStatusResponseSchema.parse(
+      await pollCompleted(
+        `http://127.0.0.1:${adapter.portNumber}`,
+        accepted.agentRunId,
+      ),
+    );
+    expect(status.status).toBe("completed");
+    if (status.status === "completed") {
+      expect(status.result.financialSpread.revenue.amount).toBe(5_000_000);
+    }
+    expect(mcp.extractionPolls).toBeGreaterThan(2);
+    expect(
+      mcp.calls.filter((call) => call.name === "run_data_extraction").length,
+    ).toBeGreaterThan(2);
   });
 
   it("uses public catalog aliases when frontend run_* names are absent", async () => {

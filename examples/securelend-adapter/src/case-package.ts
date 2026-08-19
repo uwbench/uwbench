@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import type { RunRequest } from "@uwbench/protocol";
 import { ToolClient } from "@uwbench/tool-runtime";
 
@@ -503,9 +504,12 @@ function recoverDocument(
     stringField(listed.fileName) ??
     stringField(metadata["fileName"]) ??
     stringField(read["fileName"]);
-  const text = extractText(read);
+  let text = extractText(read);
   const binary = recoverBinary(read, mimeType, documentId, fileName);
   if (binary) {
+    if (!text && binary.mimeType === "image/png") {
+      text = ocrPngBytes(binary.bytes);
+    }
     return {
       documentId,
       sourceId,
@@ -565,6 +569,22 @@ function recoverBinary(
     }
   }
   return undefined;
+}
+
+function ocrPngBytes(bytes: Buffer): string {
+  if (bytes.length === 0) return "";
+  try {
+    const result = spawnSync("tesseract", ["stdin", "stdout"], {
+      input: bytes,
+      encoding: "utf8",
+      timeout: 15_000,
+      maxBuffer: 2_000_000,
+    });
+    if (result.status !== 0) return "";
+    return (result.stdout ?? "").trim();
+  } catch {
+    return "";
+  }
 }
 
 function extractText(read: Record<string, unknown>): string {

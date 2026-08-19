@@ -170,5 +170,6 @@ export function matchUpload(
   if (byName) return byName;
   const byId = uploads.find((item) => item.documentId === file.documentId);
   if (byId) return byId;
-  return uploads[index] ?? uploads[0];
+  if (uploads.length === 1) return uploads[0];
+  return uploads[index];
 }
