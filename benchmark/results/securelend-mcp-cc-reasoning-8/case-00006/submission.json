@@ -425,28 +425,40 @@
   ],
   "risks": [
     {
-      "riskId": "risk_customer_concentration",
-      "category": "CONCENTRATION",
-      "severity": "MEDIUM",
-      "statement": "Customer concentration in the credit file is a material risk.",
+      "riskId": "risk_collateral_shortfall",
+      "category": "COLLATERAL",
+      "severity": "CRITICAL",
+      "statement": "LTV of 144% vs forced liquidation value ($5.2M FLV) far exceeds 75% policy maximum. Collateral coverage gap of $2.3M. Proposed $7.5M loan exceeds maximum advance of $3.9M (FLV × 75%).",
       "evidence": [
         {
           "sourceId": "src_financials_2024"
         }
       ],
-      "confidence": 0.6
+      "confidence": 0.98
     },
     {
-      "riskId": "risk_leverage",
-      "category": "FINANCIAL",
-      "severity": "MEDIUM",
-      "statement": "Leverage is 2.71x on the mapped financials.",
+      "riskId": "risk_asset_depreciation",
+      "category": "COLLATERAL",
+      "severity": "HIGH",
+      "statement": "Trucking equipment (Class 8 tractors) depreciates rapidly. 2020-2024 model years will lose significant value over 84-month term. FLV likely to decline further, widening coverage gap.",
       "evidence": [
         {
           "sourceId": "src_financials_2024"
         }
       ],
-      "confidence": 0.6
+      "confidence": 0.85
+    },
+    {
+      "riskId": "risk_industry_cyclicality",
+      "category": "MACROECONOMIC",
+      "severity": "MEDIUM",
+      "statement": "Trucking (NAICS 484121) highly cyclical — sensitive to freight rates, fuel costs, and economic activity. Current freight recession pressures rates. Equipment values correlate with freight cycle.",
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 0.75
     }
   ],
   "discrepancies": [

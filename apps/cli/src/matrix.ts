@@ -14,6 +14,8 @@ export interface MatrixCell {
   runId: string;
   runDir: string;
   agentUrl: string;
+  startedAt?: string;
+  canonical: boolean;
 }
 
 export interface MatrixSummaryRow {
@@ -21,13 +23,14 @@ export interface MatrixSummaryRow {
   model: string;
   provider: string;
   lane: string;
+  attempts: number;
   n: number;
   scored: number;
   mean?: number;
 }
 
 export interface PublishMatrix {
-  schemaVersion: "1.0";
+  schemaVersion: "1.1";
   disclaimer: string;
   generatedAt: string;
   cells: MatrixCell[];
@@ -39,6 +42,7 @@ interface RunManifestLike {
   lane?: string;
   runId?: string;
   agentUrl?: string;
+  startedAt?: string;
   participant?: ParticipantIdentity;
 }
 
@@ -90,11 +94,41 @@ export function collectMatrixCells(dirs: string[]): MatrixCell[] {
       runId: manifest.runId ?? "",
       runDir,
       agentUrl: manifest.agentUrl ?? "",
+      canonical: false,
     };
+    if (manifest.startedAt !== undefined) {
+      cell.startedAt = manifest.startedAt;
+    }
     if (scored && score.finalScore !== undefined) {
       cell.finalScore = score.finalScore;
     }
     cells.push(cell);
+  }
+  const canonicalByCase = new Map<string, MatrixCell>();
+  for (const cell of cells) {
+    const key = [
+      cell.harness,
+      cell.model,
+      cell.provider,
+      cell.lane,
+      cell.caseId,
+    ].join("\t");
+    const current = canonicalByCase.get(key);
+    const cellStarted = Date.parse(cell.startedAt ?? "");
+    const currentStarted = Date.parse(current?.startedAt ?? "");
+    const cellOrder = Number.isNaN(cellStarted) ? 0 : cellStarted;
+    const currentOrder = Number.isNaN(currentStarted) ? 0 : currentStarted;
+    if (
+      current === undefined ||
+      cellOrder > currentOrder ||
+      (cellOrder === currentOrder &&
+        cell.runId.localeCompare(current.runId) > 0)
+    ) {
+      canonicalByCase.set(key, cell);
+    }
+  }
+  for (const cell of canonicalByCase.values()) {
+    cell.canonical = true;
   }
   return cells;
 }
@@ -109,7 +143,8 @@ export function summarizeMatrix(cells: MatrixCell[]): MatrixSummaryRow[] {
   }
   return [...groups.entries()]
     .map(([, group]) => {
-      const scored = group.filter(
+      const canonical = group.filter((cell) => cell.canonical);
+      const scored = canonical.filter(
         (cell) =>
           cell.scoreStatus === "scored" && cell.finalScore !== undefined,
       );
@@ -118,7 +153,8 @@ export function summarizeMatrix(cells: MatrixCell[]): MatrixSummaryRow[] {
         model: group[0]!.model,
         provider: group[0]!.provider,
         lane: group[0]!.lane,
-        n: group.length,
+        attempts: group.length,
+        n: canonical.length,
         scored: scored.length,
       };
       if (scored.length > 0) {
@@ -138,7 +174,7 @@ export function summarizeMatrix(cells: MatrixCell[]): MatrixSummaryRow[] {
 export function buildPublishMatrix(dirs: string[]): PublishMatrix {
   const cells = collectMatrixCells(dirs);
   return {
-    schemaVersion: "1.0",
+    schemaVersion: "1.1",
     disclaimer: "Scores are benchmark artifacts, not real credit opinions.",
     generatedAt: new Date().toISOString(),
     cells,
@@ -153,20 +189,21 @@ export function formatMatrixMarkdown(matrix: PublishMatrix): string {
     matrix.disclaimer,
     "",
     "Publish **model × harness × lane**. Do not mix lanes on one leaderboard.",
+    "Cases and means use the latest attempt for each case; Attempts includes preserved diagnostic retries. No best-of-run selection is performed.",
     "",
-    "| Harness | Model | Provider | Lane | N | Scored | Mean |",
-    "| --- | --- | --- | --- | ---: | ---: | ---: |",
+    "| Harness | Model | Provider | Lane | Cases | Attempts | Scored | Mean |",
+    "| --- | --- | --- | --- | ---: | ---: | ---: | ---: |",
   ];
   for (const row of matrix.summary) {
     const mean = row.mean === undefined ? "—" : row.mean.toFixed(1);
     lines.push(
-      `| ${row.harness} | ${row.model} | ${row.provider} | ${row.lane} | ${row.n} | ${row.scored} | ${mean} |`,
+      `| ${row.harness} | ${row.model} | ${row.provider} | ${row.lane} | ${row.n} | ${row.attempts} | ${row.scored} | ${mean} |`,
     );
   }
   lines.push("", "## Cells", "");
   lines.push(
-    "| Case | Lane | Harness | Model | Score |",
-    "| --- | --- | --- | --- | ---: |",
+    "| Case | Lane | Harness | Model | Attempt | Score |",
+    "| --- | --- | --- | --- | --- | ---: |",
   );
   for (const cell of matrix.cells) {
     const score =
@@ -174,7 +211,7 @@ export function formatMatrixMarkdown(matrix: PublishMatrix): string {
         ? cell.scoreStatus
         : cell.finalScore.toFixed(1);
     lines.push(
-      `| ${cell.caseId} | ${cell.lane} | ${cell.harness} | ${cell.model} | ${score} |`,
+      `| ${cell.caseId} | ${cell.lane} | ${cell.harness} | ${cell.model} | ${cell.canonical ? "canonical" : "diagnostic"} | ${score} |`,
     );
   }
   lines.push("");

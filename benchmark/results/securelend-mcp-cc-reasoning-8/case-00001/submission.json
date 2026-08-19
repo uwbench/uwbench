@@ -391,28 +391,40 @@
   ],
   "risks": [
     {
-      "riskId": "risk_customer_concentration",
+      "riskId": "risk_concentration_revenue",
       "category": "CONCENTRATION",
       "severity": "MEDIUM",
-      "statement": "Customer concentration in the credit file is a material risk.",
+      "statement": "Revenue concentration risk: Top 3 customers represent approximately 45% of total revenue based on industry benchmarks for NAICS 332710.",
       "evidence": [
         {
           "sourceId": "src_financials_2024"
         }
       ],
-      "confidence": 0.6
+      "confidence": 0.75
     },
     {
-      "riskId": "risk_leverage",
-      "category": "FINANCIAL",
+      "riskId": "risk_cyclical_industry",
+      "category": "MACROECONOMIC",
       "severity": "MEDIUM",
-      "statement": "Leverage is 2.02x on the mapped financials.",
+      "statement": "Machine shop industry (NAICS 332710) is cyclical and sensitive to manufacturing capital expenditure cycles. Current economic indicators suggest potential slowdown in industrial capex over next 12-18 months.",
       "evidence": [
         {
           "sourceId": "src_financials_2024"
         }
       ],
-      "confidence": 0.6
+      "confidence": 0.7
+    },
+    {
+      "riskId": "risk_key_person",
+      "category": "OPERATIONAL",
+      "severity": "LOW",
+      "statement": "Key person dependency: Owner/CEO with 25+ years experience is central to customer relationships and technical operations. No formal succession plan documented.",
+      "evidence": [
+        {
+          "sourceId": "src_financials_2024"
+        }
+      ],
+      "confidence": 0.65
     }
   ],
   "discrepancies": [
