@@ -175,6 +175,7 @@ describe("live Codex adapter", () => {
 });
 
 describe.each([
+  ["claude-code", "claude-sonnet-5"],
   ["pi-nemotron", "nvidia/nemotron-3-super-120b-a12b"],
   ["pi-glm-5.2", "z-ai/glm-5.2"],
   ["pi-grok-4.6", "grok-4.6"],

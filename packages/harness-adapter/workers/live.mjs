@@ -182,7 +182,10 @@ function liveArgs() {
     return args;
   }
   if (binary === "claude") {
-    return ["-p", "--dangerously-skip-permissions", followExample];
+    const args = ["-p", "--dangerously-skip-permissions"];
+    if (model) args.push("--model", model);
+    args.push(followExample);
+    return args;
   }
   if (binary === "gemini") {
     const args = ["-p", followExample, "-y", "--skip-trust"];
