@@ -84,6 +84,8 @@ export const CaseReadDocumentOutputSchema = z.strictObject({
       pageNumber: z.number().int().positive(),
       text: z.string(),
       evidence: EvidenceReferenceSchema,
+      rendering: z.enum(["text", "image"]).optional(),
+      imagePngBase64: z.string().min(1).optional(),
     }),
   ),
 });

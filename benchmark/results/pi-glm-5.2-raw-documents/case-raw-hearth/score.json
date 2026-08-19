@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "1.0",
+  "scorerVersion": "0.1.0",
+  "caseId": "case-raw-hearth",
+  "runId": "run_1786973988704_22587f3b",
+  "status": "not_scored",
+  "reason": "case_not_scorable",
+  "detail": "No completed submission was available to score.",
+  "issuedAt": "2026-08-17T13:40:22.035Z"
+}

@@ -16,6 +16,10 @@
         "$ref": "../json-schema/agent/ProtocolErrorCode.json",
         "description": "Stable agent protocol error code"
       },
+      "ParticipantIdentity": {
+        "$ref": "../json-schema/agent/ParticipantIdentity.json",
+        "description": "Harness, model, and adapter identity for published scores"
+      },
       "HealthResponse": {
         "$ref": "../json-schema/agent/HealthResponse.json",
         "description": "Health check response"

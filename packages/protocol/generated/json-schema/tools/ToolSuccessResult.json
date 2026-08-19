@@ -186,6 +186,17 @@
                   },
                   "evidence": {
                     "$ref": "#/$defs/__schema1"
+                  },
+                  "rendering": {
+                    "type": "string",
+                    "enum": [
+                      "text",
+                      "image"
+                    ]
+                  },
+                  "imagePngBase64": {
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "required": [

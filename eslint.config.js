@@ -12,6 +12,7 @@ export default tseslint.config(
       "**/build/**",
       "coverage/**",
       ".turbo/**",
+      "tmp/**",
       "*.config.*",
       ".changeset/**",
       "*.md",

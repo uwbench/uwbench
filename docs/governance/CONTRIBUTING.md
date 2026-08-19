@@ -26,3 +26,9 @@ chain-of-thought.
 Security vulnerabilities must follow [SECURITY.md](../../SECURITY.md), not the
 public issue tracker. Governance and review requirements are defined in
 [GOVERNANCE.md](GOVERNANCE.md).
+
+Commercial-credit incumbents reviewing the job freeze or handbook
+inventory should use the
+[Phase 2 lender-review form](../practice-analysis/phase-2-lender-review.md)
+or the GitHub issue template. Do not attach real borrower files. That
+path is practice analysis, not a score submission.

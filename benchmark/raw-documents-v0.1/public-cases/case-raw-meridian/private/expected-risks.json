@@ -1,0 +1,16 @@
+{
+  "risks": [
+    {
+      "riskId": "risk_primary_operating",
+      "category": "OPERATIONAL",
+      "severity": "MEDIUM",
+      "statement": "Utilization and partner-retention risk in a professional-services model.",
+      "evidence": [
+        {
+          "sourceId": "src_borrower_profile"
+        }
+      ],
+      "confidence": 0.7
+    }
+  ]
+}

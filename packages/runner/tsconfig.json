@@ -12,6 +12,12 @@
     { "path": "../protocol" },
     { "path": "../tool-runtime" },
     { "path": "../case-schema" },
-    { "path": "../scorer-core" }
+    { "path": "../scorer-core" },
+    { "path": "../scorer-financial" },
+    { "path": "../scorer-policy" },
+    { "path": "../scorer-evidence" },
+    { "path": "../scorer-risk" },
+    { "path": "../scorer-workflow" },
+    { "path": "../report" }
   ]
 }

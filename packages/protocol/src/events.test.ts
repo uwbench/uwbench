@@ -160,8 +160,15 @@ describe("computeHash", () => {
   });
 
   it("canonicalizes numbers without trailing zeros (RFC 8785)", () => {
-    const eventA = createBaseEvent({ payload: { value: 1.0 } });
-    const eventB = createBaseEvent({ payload: { value: 1 } });
+    const timestamp = "2026-01-01T00:00:00.000Z";
+    const eventA = createBaseEvent({
+      timestamp,
+      payload: { value: 1.0 },
+    });
+    const eventB = createBaseEvent({
+      timestamp,
+      payload: { value: 1 },
+    });
     expect(computeHash(eventA)).toBe(computeHash(eventB));
   });
 

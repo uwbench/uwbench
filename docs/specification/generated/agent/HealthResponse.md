@@ -18,6 +18,7 @@ See [HealthResponse.json](../../../../packages/protocol/generated/json-schema/ag
 | `status` | string | ✓ |  |  |
 | `version` | string | ✓ |  |  |
 | `protocolVersion` | [`__schema0`](#__schema0) | ✓ |  |  |
+| `participant` | object |  |  |  |
 
 ## Definitions
 

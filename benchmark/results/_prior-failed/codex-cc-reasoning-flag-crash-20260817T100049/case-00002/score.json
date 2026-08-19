@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "1.0",
+  "scorerVersion": "0.1.0",
+  "caseId": "case-00002",
+  "runId": "run_1786960825535_68e41992",
+  "status": "not_scored",
+  "reason": "case_not_scorable",
+  "detail": "No completed submission was available to score.",
+  "issuedAt": "2026-08-17T10:00:25.656Z"
+}

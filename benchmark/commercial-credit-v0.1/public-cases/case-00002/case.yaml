@@ -10,6 +10,7 @@ requested_amount: 250000000
 supported_lanes:
   - reasoning_only
   - normalized_data
+  - raw_documents
 features:
   missing_information: true
   conflicting_information: false

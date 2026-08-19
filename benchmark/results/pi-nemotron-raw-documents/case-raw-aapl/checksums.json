@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1.0",
+  "runId": "run_1786971496764_c6a3663a",
+  "files": {
+    "events.ndjson": "sha256:79b1b26d233302c05a26c31ef980c131318b02876b2e9e05bc7fa0e540efa27c",
+    "run-manifest.json": "sha256:2ec49f122ddac4ddd2a8338ec9638fb474dcaac284ce04cbd7d5a90c32dd6342",
+    "submission.json": "sha256:9afe5068274c8da51584a44810d2f23e251eaf535c4a9ea8e0a35e00dc70a72e",
+    "score.json": "sha256:b0cda734ec6af8ca8e9801756d1b83473a2ccea58bc8149dbc08a52bc739b21c",
+    "report.html": "sha256:db6dd8074b223899bfdb5a46f28a1c01f1e33a34eeb036ddf9cd592ef896c4cb"
+  }
+}

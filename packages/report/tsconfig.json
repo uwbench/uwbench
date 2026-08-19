@@ -1,10 +1,20 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "composite": true,
     "outDir": "dist",
     "rootDir": "src",
     "tsBuildInfoFile": "dist/.tsbuildinfo"
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "exclude": ["node_modules", "dist", "**/*.test.ts"],
+  "references": [
+    { "path": "../protocol" },
+    { "path": "../scorer-core" },
+    { "path": "../scorer-financial" },
+    { "path": "../scorer-policy" },
+    { "path": "../scorer-evidence" },
+    { "path": "../scorer-risk" },
+    { "path": "../scorer-workflow" }
+  ]
 }

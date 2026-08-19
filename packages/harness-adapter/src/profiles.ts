@@ -274,10 +274,11 @@ export function createControlledAdapter(
 ): HarnessAdapter {
   const profile = CONTROLLED_PROFILES[profileId];
   const live = options.live === true;
+  const liveModel = options.env?.["UWBENCH_LIVE_MODEL"] ?? profile.liveModel;
   const identity = live
     ? {
         ...profile.identity,
-        model: profile.liveModel ?? "live",
+        model: liveModel ?? "live",
         modelVersion: "undeclared",
       }
     : profile.identity;

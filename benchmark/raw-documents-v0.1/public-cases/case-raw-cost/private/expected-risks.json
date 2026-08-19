@@ -1,0 +1,16 @@
+{
+  "risks": [
+    {
+      "riskId": "risk_primary_operating",
+      "category": "OPERATIONAL",
+      "severity": "MEDIUM",
+      "statement": "Membership-warehouse model with holiday-quarter volume concentration.",
+      "evidence": [
+        {
+          "sourceId": "src_borrower_profile"
+        }
+      ],
+      "confidence": 0.7
+    }
+  ]
+}

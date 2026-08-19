@@ -93,6 +93,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build workspace packages
+        run: pnpm build
+
       - name: Test
         run: pnpm test
 
@@ -168,7 +171,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check changesets
-        run: pnpm changeset:check
+        run: pnpm changeset:check --since=origin/main
 
   release:
     name: Release

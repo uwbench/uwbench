@@ -1,0 +1,56 @@
+{
+  "facts": [
+    {
+      "canonicalKey": "revenue",
+      "value": 182000000000,
+      "type": "currency",
+      "currency": "USD",
+      "evidence": [
+        {
+          "sourceId": "src_doc_financials",
+          "documentId": "doc_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "ebitda",
+      "value": 29000000000,
+      "type": "currency",
+      "currency": "USD",
+      "evidence": [
+        {
+          "sourceId": "src_doc_financials",
+          "documentId": "doc_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "total_debt",
+      "value": 74000000000,
+      "type": "currency",
+      "currency": "USD",
+      "evidence": [
+        {
+          "sourceId": "src_doc_financials",
+          "documentId": "doc_financials_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "equity",
+      "value": 59000000000,
+      "type": "currency",
+      "currency": "USD",
+      "evidence": [
+        {
+          "sourceId": "src_doc_financials",
+          "documentId": "doc_financials_2024"
+        }
+      ],
+      "confidence": 1
+    }
+  ]
+}

@@ -287,6 +287,25 @@ describe("Case Tool Schemas", () => {
       const result = CaseReadDocumentSchema.shape.output.safeParse(output);
       expect(result.success).toBe(true);
     });
+
+    it("accepts image-rendered pages with a PNG payload", () => {
+      const output = {
+        documentId: "doc_scan",
+        sourceId: "src_scan",
+        content: "",
+        pages: [
+          {
+            pageNumber: 1,
+            text: "",
+            rendering: "image",
+            imagePngBase64: "iVBORw0KGgo=",
+            evidence: evidenceReference,
+          },
+        ],
+      };
+      const result = CaseReadDocumentSchema.shape.output.safeParse(output);
+      expect(result.success).toBe(true);
+    });
   });
 
   describe("CaseSearchDocumentsSchema", () => {

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "1.0",
+  "runId": "run_1786915733051_c1e4a5ce",
+  "files": {
+    "events.ndjson": "sha256:1baacd9c2ab8d95e89325e05ac5ae005f5efa8060a8bee1c4369fe6b1b99bd4b",
+    "run-manifest.json": "sha256:937847ddc2428f3d924705e80e1c6e1889b4d9386cbd09a8a8a97b2460d824ed",
+    "score.json": "sha256:05fdd79312bf66170faace94f896a578a878492cade5c94e5f5f4953a9321bec"
+  }
+}
