@@ -1,4 +1,5 @@
-Public-alpha resource note prepared for arXiv (`cs.AI`).
+Public-alpha resource paper for arXiv (primary `cs.AI`, secondary
+`q-fin.RM`). Release source: `v0.1.0-alpha.1`.
 
 Phase 0 (job freeze) and Phase 1 (handbook inventory) are in
 `docs/practice-analysis/`. `uwbench.tex` reports a dated,
@@ -14,3 +15,4 @@ reported separately from distinct case counts under matrix schema 1.1.
 Compile: `tectonic -X compile paper/uwbench.tex` or
 `pdflatex paper/uwbench.tex` (bibliography is inlined).
 Upload the compiled PDF plus `uwbench.tex` when submitting.
+Recommended arXiv license: CC BY 4.0.
