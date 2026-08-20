@@ -320,8 +320,9 @@ See [CONTRIBUTING.md](docs/governance/CONTRIBUTING.md) and
 - [ADR-006: Judge Use](docs/specification/ADR-006-judge-use.md)
 - [Practice analysis (Phase 0–2)](docs/practice-analysis/README.md)
 
-Public-alpha resource paper for arXiv, frozen as `v0.1.0-alpha.1`:
-[paper/uwbench.tex](paper/uwbench.tex).
+Public-alpha resource paper, frozen as `v0.1.0-alpha.1`:
+[paper/uwbench.tex](paper/uwbench.tex). Cite the published version as
+[doi:10.5281/zenodo.22035851](https://doi.org/10.5281/zenodo.22035851).
 Official scores remain unearned.
 
 ## Security
