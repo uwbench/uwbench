@@ -1,5 +1,7 @@
-Public-alpha resource paper for arXiv (primary `cs.AI`, secondary
-`q-fin.RM`). Release source: `v0.1.0-alpha.1`.
+Public-alpha resource paper published as
+[doi:10.5281/zenodo.22035851](https://doi.org/10.5281/zenodo.22035851).
+Release source: `v0.1.0-alpha.1`. An arXiv submission is planned (primary
+`cs.AI`, secondary `q-fin.RM`) after author endorsement.
 
 Phase 0 (job freeze) and Phase 1 (handbook inventory) are in
 `docs/practice-analysis/`. `uwbench.tex` reports a dated,
