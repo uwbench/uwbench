@@ -37,6 +37,11 @@ describe("LOAB evidence exhibits", () => {
           allowed_tools: ["greenid_verify", "equifax_pull"],
           tool_calls: [
             {
+              name: "policy_lookup",
+              arguments: { section: "Section 4.2" },
+              result: { data: { text: "mandatory docs" } },
+            },
+            {
               name: "greenid_verify",
               arguments: { full_name: "Example" },
               result: { data: { dvs_result: "PASS" } },
@@ -62,6 +67,7 @@ describe("LOAB evidence exhibits", () => {
     expect(types).toContain("privacy-consent");
     expect(types).toContain("identity");
     expect(types).toContain("credit-report");
+    expect(types.filter((type) => type === "credit-policy")).toHaveLength(1);
     expect(exhibits.some((item) => /dvs_result/.test(item.content))).toBe(true);
     expect(exhibits.some((item) => /"score": 700/.test(item.content))).toBe(
       true,

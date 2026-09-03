@@ -6,6 +6,7 @@ import {
   isExtractionReady,
   mcpDocumentId,
   primaryUploadedDocumentId,
+  loabExtractDocumentIds,
   putDocumentTextArguments,
   submitDocumentsArguments,
 } from "./chat-path.js";
@@ -329,6 +330,37 @@ describe("MCP chat-path helpers", () => {
     expect(inferDocumentType({ title: "FY2024 financial statements" })).toBe(
       "financial-statement",
     );
+    expect(
+      loabExtractDocumentIds(
+        [
+          {
+            documentId: "doc_profile",
+            sourceId: "src_profile",
+            title: "Applicant profile and loan request",
+            fileName: "applicant-profile.txt",
+            mimeType: "text/plain",
+            documentType: "loan-application",
+          },
+          {
+            documentId: "doc_policy",
+            sourceId: "src_policy",
+            title: "Retrieved credit policy excerpts",
+            fileName: "policy-pack.txt",
+            mimeType: "text/plain",
+            documentType: "credit-policy",
+          },
+          {
+            documentId: "doc_construct",
+            sourceId: "src_construct",
+            title: "Construct notice",
+            fileName: "construct-mismatch.txt",
+            mimeType: "text/plain",
+            documentType: "supporting-document",
+          },
+        ],
+        ["sl_profile", "sl_policy", "sl_construct"],
+      ),
+    ).toEqual(["sl_profile"]);
   });
 
   it("omits run_data_extraction unless documentId is a string", () => {

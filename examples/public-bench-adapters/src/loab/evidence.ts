@@ -94,39 +94,22 @@ export function loabEvidenceExhibits(
   }
 
   if (process) {
+    const policyHits: Record<string, unknown>[] = [];
+    const productHits: Record<string, unknown>[] = [];
     for (const step of process.transcript) {
       for (const call of step.tool_calls) {
         if (call.name === "policy_lookup") {
-          exhibits.push(
-            exhibit(
-              `policy-${slug(String(call.arguments["section"] ?? step.step))}`,
-              "credit-policy",
-              `Policy excerpt ${String(call.arguments["section"] ?? "")}`.trim(),
-              renderRecord(
-                `Policy lookup ${String(call.arguments["section"] ?? "")}`,
-                {
-                  tool: call.name,
-                  arguments: call.arguments,
-                  result: call.result ?? null,
-                },
-              ),
-            ),
-          );
+          policyHits.push({
+            section: call.arguments["section"] ?? null,
+            result: call.result ?? null,
+          });
           continue;
         }
-        if (/^product_lookup$/.test(call.name)) {
-          exhibits.push(
-            exhibit(
-              `product-${slug(String(call.arguments["product_code"] ?? "lookup"))}`,
-              "supporting-document",
-              "Product lookup",
-              renderRecord("Product lookup", {
-                tool: call.name,
-                arguments: call.arguments,
-                result: call.result ?? null,
-              }),
-            ),
-          );
+        if (call.name === "product_lookup") {
+          productHits.push({
+            arguments: call.arguments,
+            result: call.result ?? null,
+          });
           continue;
         }
         exhibits.push(
@@ -142,6 +125,26 @@ export function loabEvidenceExhibits(
           ),
         );
       }
+    }
+    if (policyHits.length > 0) {
+      exhibits.push(
+        exhibit(
+          "policy-pack",
+          "credit-policy",
+          "Retrieved credit policy excerpts",
+          renderRecord("Policy lookups", policyHits),
+        ),
+      );
+    }
+    if (productHits.length > 0) {
+      exhibits.push(
+        exhibit(
+          "product-lookup",
+          "supporting-document",
+          "Product lookup",
+          renderRecord("Product lookup", productHits),
+        ),
+      );
     }
   }
 

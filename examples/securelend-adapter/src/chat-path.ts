@@ -190,7 +190,7 @@ export async function runProductChatPath(
   const primaryDocumentId = primaryUploadedDocumentId(files, documentIds);
   const extractIds =
     request.benchmark === "loab"
-      ? uniqueDocumentIds(documentIds)
+      ? loabExtractDocumentIds(files, documentIds)
       : primaryDocumentId
         ? [primaryDocumentId]
         : [];
@@ -591,6 +591,49 @@ async function landDocumentText(
 
 function uniqueDocumentIds(ids: string[]): string[] {
   return [...new Set(ids.filter((id) => id.length > 0))];
+}
+
+const LOAB_EXTRACT_TYPES = new Set([
+  "loan-application",
+  "payslip",
+  "bank-statement",
+  "identity",
+  "credit-report",
+  "property-valuation",
+  "income-verification",
+  "privacy-consent",
+  "purchase-contract",
+  "company-registration",
+]);
+
+export function loabExtractDocumentIds(
+  files: Pick<
+    CaseDocument,
+    | "documentType"
+    | "sourceId"
+    | "title"
+    | "fileName"
+    | "documentId"
+    | "mimeType"
+  >[],
+  documentIds: string[],
+): string[] {
+  const ids: string[] = [];
+  for (const [index, file] of files.entries()) {
+    const id = mcpDocumentId(documentIds[index]);
+    if (!id) continue;
+    const type =
+      file.documentType ??
+      inferDocumentType({
+        documentId: file.documentId,
+        sourceId: file.sourceId,
+        title: file.title,
+        ...(file.fileName ? { fileName: file.fileName } : {}),
+        mimeType: file.mimeType,
+      });
+    if (LOAB_EXTRACT_TYPES.has(type)) ids.push(id);
+  }
+  return uniqueDocumentIds(ids);
 }
 
 function throwIfAborted(signal?: AbortSignal): void {
