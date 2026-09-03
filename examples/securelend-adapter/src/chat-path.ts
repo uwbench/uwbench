@@ -140,6 +140,7 @@ export async function runProductChatPath(
             uploadedId,
             file,
             sleep,
+            ingestSettleMs(config.pollIntervalMs),
           );
         }
         if (config.documentApiUrl) {
@@ -159,6 +160,10 @@ export async function runProductChatPath(
           );
           finalized = true;
         }
+        const settle = ingestSettleMs(config.pollIntervalMs);
+        if (request.benchmark === "loab" && settle > 0) {
+          await sleep(settle);
+        }
         continue;
       }
       const readyId = mcpDocumentId(
@@ -175,6 +180,7 @@ export async function runProductChatPath(
             readyId,
             file,
             sleep,
+            ingestSettleMs(config.pollIntervalMs),
           );
         }
       }
@@ -226,6 +232,7 @@ export async function runProductChatPath(
     throwIfAborted(signal);
   }
   if (
+    request.benchmark !== "loab" &&
     primaryDocumentId &&
     (catalog.length === 0 || catalog.includes(toolNames.financialSpread))
   ) {
@@ -242,12 +249,10 @@ export async function runProductChatPath(
   throwIfAborted(signal);
   let memo: unknown;
   try {
-    const memoJob = await mcp.callTool(toolNames.professionalMemo, {
-      workspaceId,
-      sourceType: "workspace",
-      sourceId: workspaceId,
-      templateId: "default-credit-memo-template",
-    });
+    const memoJob = await mcp.callTool(
+      toolNames.professionalMemo,
+      professionalMemoArguments(workspaceId, request.benchmark),
+    );
     const jobId =
       firstString(asRecord(memoJob), "jobId", "id", "memoJobId") ??
       firstString(asRecord(asRecord(memoJob)?.["job"]), "id", "jobId");
@@ -344,6 +349,30 @@ export function submitDocumentsArguments(
           mimeType: file.mimeType,
         }),
     })),
+  };
+}
+
+/**
+ * Live MCP defaults to a 2s poll. Tests use 10–20ms and must not sleep
+ * for a second per exhibit. Only settle when the configured interval
+ * looks like a live run.
+ */
+export function ingestSettleMs(pollIntervalMs: number): number {
+  if (pollIntervalMs < 500) return 0;
+  return Math.min(pollIntervalMs, 1_500);
+}
+
+export function professionalMemoArguments(
+  workspaceId: string,
+  benchmark?: string,
+): Record<string, unknown> {
+  return {
+    workspaceId,
+    sourceType: "workspace",
+    sourceId: workspaceId,
+    ...(benchmark === "loab"
+      ? {}
+      : { templateId: "default-credit-memo-template" }),
   };
 }
 
@@ -589,9 +618,13 @@ async function landDocumentText(
   documentId: string,
   file: Pick<CaseDocument, "text">,
   sleep: (ms: number) => Promise<void> = defaultSleep,
+  settleMs = 0,
 ): Promise<void> {
   if (catalog.length > 0 && !catalog.includes(toolName)) return;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  if (settleMs > 0) await sleep(settleMs);
+  const attempts = settleMs > 0 ? 8 : 3;
+  const retryMs = settleMs > 0 ? settleMs : 400;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
       const landed = await mcp.callTool(
         toolName,
@@ -602,7 +635,7 @@ async function landDocumentText(
     } catch {
       // Text-layer ingest is best-effort. Extraction still runs.
     }
-    await sleep(400);
+    await sleep(retryMs);
   }
 }
 

@@ -148,7 +148,7 @@ export function loabEvidenceExhibits(
     }
   }
 
-  return dedupeExhibits(exhibits);
+  return mergeExhibitsByType(dedupeExhibits(exhibits));
 }
 
 export function loabEvidenceFixtures(
@@ -296,6 +296,40 @@ function dedupeExhibits(
     if (seen.has(item.documentId)) continue;
     seen.add(item.documentId);
     out.push(item);
+  }
+  return out;
+}
+
+/**
+ * One upload per product documentType. Same-type roles (passport + GreenID,
+ * profile + application form) share a typed exhibit so the chat-path does
+ * not reserve a dozen upload URLs for one credit file.
+ */
+function mergeExhibitsByType(
+  exhibits: LoabEvidenceExhibit[],
+): LoabEvidenceExhibit[] {
+  const grouped = new Map<string, LoabEvidenceExhibit[]>();
+  for (const item of exhibits) {
+    const list = grouped.get(item.documentType) ?? [];
+    list.push(item);
+    grouped.set(item.documentType, list);
+  }
+  const out: LoabEvidenceExhibit[] = [];
+  for (const [documentType, items] of grouped) {
+    const first = items[0];
+    if (!first) continue;
+    if (items.length === 1) {
+      out.push(first);
+      continue;
+    }
+    out.push(
+      exhibit(
+        documentType,
+        documentType,
+        items.map((item) => item.title).join("; "),
+        items.map((item) => item.content).join("\n\n"),
+      ),
+    );
   }
   return out;
 }

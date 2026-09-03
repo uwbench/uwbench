@@ -26,7 +26,7 @@ describe("LOAB evidence exhibits", () => {
     );
   });
 
-  it("emits one exhibit per submitted document and mock tool result", () => {
+  it("merges same-type roles into one typed exhibit per product documentType", () => {
     const process: LoabProcessTrace = {
       gatewayKind: "loab_mock_data",
       stopReason: "terminal_decision:APPROVE",
@@ -68,6 +68,8 @@ describe("LOAB evidence exhibits", () => {
     expect(types).toContain("identity");
     expect(types).toContain("credit-report");
     expect(types.filter((type) => type === "credit-policy")).toHaveLength(1);
+    expect(types.filter((type) => type === "identity")).toHaveLength(1);
+    expect(types.filter((type) => type === "loan-application")).toHaveLength(1);
     expect(exhibits.some((item) => /dvs_result/.test(item.content))).toBe(true);
     expect(exhibits.some((item) => /"score": 700/.test(item.content))).toBe(
       true,

@@ -120,6 +120,13 @@ describe("public bench → /v1/runs → MCP", () => {
     );
     expect(mcp.calls.map((call) => call.name)).not.toContain("greenid_verify");
     expect(mcp.calls.map((call) => call.name)).toContain("put_document_text");
+    expect(mcp.calls.map((call) => call.name)).not.toContain(
+      "run_financial_statement_spread",
+    );
+    const memoCall = mcp.calls.find(
+      (call) => call.name === "run_professional_memo",
+    );
+    expect(memoCall?.arguments["templateId"]).toBeUndefined();
     expect(
       mcp.calls.some(
         (call) =>

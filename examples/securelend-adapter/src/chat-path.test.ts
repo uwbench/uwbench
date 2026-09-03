@@ -6,7 +6,9 @@ import {
   isExtractionReady,
   mcpDocumentId,
   primaryUploadedDocumentId,
+  ingestSettleMs,
   loabExtractDocumentIds,
+  professionalMemoArguments,
   putDocumentTextArguments,
   submitDocumentsArguments,
 } from "./chat-path.js";
@@ -330,6 +332,19 @@ describe("MCP chat-path helpers", () => {
     expect(inferDocumentType({ title: "FY2024 financial statements" })).toBe(
       "financial-statement",
     );
+    expect(ingestSettleMs(10)).toBe(0);
+    expect(ingestSettleMs(2_000)).toBe(1_500);
+    expect(professionalMemoArguments("ws_1")).toEqual({
+      workspaceId: "ws_1",
+      sourceType: "workspace",
+      sourceId: "ws_1",
+      templateId: "default-credit-memo-template",
+    });
+    expect(professionalMemoArguments("ws_1", "loab")).toEqual({
+      workspaceId: "ws_1",
+      sourceType: "workspace",
+      sourceId: "ws_1",
+    });
     expect(
       loabExtractDocumentIds(
         [
