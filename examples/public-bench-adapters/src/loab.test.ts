@@ -9,7 +9,9 @@ import {
 import { mapLoabTask } from "./loab/map.js";
 import {
   extractLoabOutcome,
+  extractLoabOutcomeFromRun,
   mapProductDecisionToLoabOutcome,
+  productDecisionFromRunResult,
   scoreLoabOutcome,
 } from "./loab/score.js";
 
@@ -102,7 +104,69 @@ describe("LOAB outcome-only scoring", () => {
     expect(JSON.stringify(score)).not.toMatch(/10×|99\.2%|75%/);
   });
 
-  it("extracts a decision from memo text when needed", () => {
+  it("prefers the structured /v1/runs product decision over first APPROVE in memo prose", () => {
+    expect(
+      extractLoabOutcome({
+        decision: "DECLINE",
+        memoMarkdown:
+          "Policy often allows APPROVE on similar files. Recommendation: still weak cash flow.",
+      }),
+    ).toBe("DECLINE");
+    expect(
+      extractLoabOutcome({
+        decision: "APPROVE_WITH_CONDITIONS",
+        memoMarkdown: "Do not APPROVE without conditions. Memo discusses APPROVE first.",
+      }),
+    ).toBe("APPROVE");
+    expect(
+      extractLoabOutcome({
+        decision: "INSUFFICIENT_INFORMATION",
+        memoMarkdown: "APPROVE is unavailable until tax returns arrive.",
+      }),
+    ).toBe("REQUEST_FURTHER_INFO");
+    expect(
+      productDecisionFromRunResult({
+        recommendation: { decision: "DECLINE" },
+      }),
+    ).toBe("DECLINE");
+    expect(
+      extractLoabOutcomeFromRun({
+        recommendation: { decision: "DECLINE" },
+        memo: {
+          markdown:
+            "Analysts often APPROVE these. The completed /v1/runs decision is structured.",
+        },
+      }),
+    ).toBe("DECLINE");
+  });
+
+  it("returns UNKNOWN when the structured decision is absent instead of defaulting to APPROVE", () => {
+    expect(extractLoabOutcome({})).toBe("UNKNOWN");
+    expect(
+      extractLoabOutcome({
+        memoMarkdown:
+          "An APPROVE would require stronger cash flow. No product decision was issued.",
+      }),
+    ).toBe("UNKNOWN");
+    expect(extractLoabOutcomeFromRun(undefined)).toBe("UNKNOWN");
+    expect(extractLoabOutcomeFromRun({})).toBe("UNKNOWN");
+    expect(
+      extractLoabOutcomeFromRun({
+        memo: { markdown: "Recommendation: APPROVE on a clean file." },
+      }),
+    ).toBe("UNKNOWN");
+    expect(productDecisionFromRunResult({})).toBeUndefined();
+    expect(
+      scoreLoabOutcome(
+        extractLoabOutcomeFromRun({
+          memo: { markdown: "APPROVE pending a stronger file." },
+        }),
+        "APPROVE",
+      ).predicted,
+    ).toBe("UNKNOWN");
+  });
+
+  it("extracts a labeled memo decision only when the structured field is missing", () => {
     expect(
       extractLoabOutcome({
         memoMarkdown: "Recommendation: DECLINE on DTI.",

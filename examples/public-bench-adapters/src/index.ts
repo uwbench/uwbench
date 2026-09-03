@@ -4,7 +4,9 @@ export { classifyLoabTask, loadLoabTasks } from "./loab/load.js";
 export { mapLoabTask } from "./loab/map.js";
 export {
   extractLoabOutcome,
+  extractLoabOutcomeFromRun,
   mapProductDecisionToLoabOutcome,
+  productDecisionFromRunResult,
   scoreLoabOutcome,
 } from "./loab/score.js";
 export {
