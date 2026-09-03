@@ -42,7 +42,9 @@ export function unpublishedMortarBenchReport(options: {
     construct: CONSTRUCT,
     bench: "mortarbench",
     itemId: options.itemId,
-    ...(options.score ? { mortarbench: options.score } : {}),
+    ...(options.score
+      ? { mortarbench: clipMortarBenchScore(options.score) }
+      : {}),
     ...(options.status ? { adapterRun: runMeta(options.status) } : {}),
     ...(options.blocker ? { blocker: options.blocker } : {}),
   };
@@ -74,5 +76,15 @@ function runMeta(status: RunStatusResponse): {
   return {
     agentRunId: status.agentRunId,
     status: status.status,
+  };
+}
+
+const PREDICTED_CLIP = 240;
+
+function clipMortarBenchScore(score: MortarBenchScore): MortarBenchScore {
+  if (score.predicted.length <= PREDICTED_CLIP) return score;
+  return {
+    ...score,
+    predicted: `${score.predicted.slice(0, PREDICTED_CLIP)}… [truncated ${score.predicted.length} chars; unpublished extract, not a sales claim]`,
   };
 }
