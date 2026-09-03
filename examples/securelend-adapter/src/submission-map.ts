@@ -1300,6 +1300,22 @@ function decisionFromUnknown(
     asRecord(asRecord(memo)?.["recommendation"]),
   ];
   for (const record of blobs) {
+    const proposed = firstString(record, "proposedDecision", "proposed_decision");
+    if (proposed && (DECISIONS as readonly string[]).includes(proposed)) {
+      return proposed as Decision;
+    }
+    const nestedProposed = firstString(
+      asRecord(record?.["proposedDecision"]) ??
+        asRecord(record?.["proposed_decision"]),
+      "decision",
+      "value",
+    );
+    if (
+      nestedProposed &&
+      (DECISIONS as readonly string[]).includes(nestedProposed)
+    ) {
+      return nestedProposed as Decision;
+    }
     const raw = firstString(record, "decision", "recommendation");
     if (raw && (DECISIONS as readonly string[]).includes(raw)) {
       return raw as Decision;

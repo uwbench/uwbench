@@ -6,8 +6,14 @@ import {
   isExtractionReady,
   mcpDocumentId,
   primaryUploadedDocumentId,
+  ingestSettleMs,
+  loabExtractDocumentIds,
+  icMemoOutlineArguments,
+  professionalMemoArguments,
+  putDocumentTextArguments,
   submitDocumentsArguments,
 } from "./chat-path.js";
+import { inferDocumentType } from "./case-package.js";
 import {
   assertEphemeralWorkspaceName,
   resolveToolName,
@@ -294,6 +300,7 @@ describe("MCP chat-path helpers", () => {
       workspaceId: "ws_1",
       filename: "financial-package.txt",
       contentType: "text/plain",
+      documentType: "financial-statement",
       documents: [
         expect.objectContaining({
           fileName: "financial-package.txt",
@@ -304,6 +311,83 @@ describe("MCP chat-path helpers", () => {
     });
   });
 
+  it("lands a TextBased put_document_text layer for known exhibit text", () => {
+    expect(
+      putDocumentTextArguments("ws_1", "sl_doc_1", {
+        text: "Equifax score 700",
+      }),
+    ).toMatchObject({
+      workspaceId: "ws_1",
+      documentId: "sl_doc_1",
+      pdfType: "TextBased",
+      confidence: 0.95,
+      source: "uwbench-case-text",
+      pages: [{ pageNumber: 1, markdown: "Equifax score 700" }],
+    });
+    expect(inferDocumentType({ title: "Equifax credit report" })).toBe(
+      "credit-report",
+    );
+    expect(inferDocumentType({ title: "Privacy consent" })).toBe(
+      "privacy-consent",
+    );
+    expect(inferDocumentType({ title: "FY2024 financial statements" })).toBe(
+      "financial-statement",
+    );
+    expect(ingestSettleMs(10)).toBe(0);
+    expect(ingestSettleMs(2_000)).toBe(1_500);
+    expect(professionalMemoArguments("ws_1")).toEqual({
+      workspaceId: "ws_1",
+      sourceType: "workspace",
+      sourceId: "ws_1",
+      templateId: "default-credit-memo-template",
+    });
+    expect(professionalMemoArguments("ws_1", "loab")).toEqual({
+      workspaceId: "ws_1",
+      sourceType: "workspace",
+      sourceId: "ws_1",
+      memoType: "mortgage",
+    });
+    expect(icMemoOutlineArguments("ws_1", "loab")).toEqual({
+      workspaceId: "ws_1",
+      memoType: "mortgage",
+    });
+    expect(icMemoOutlineArguments("ws_1")).toEqual({
+      workspaceId: "ws_1",
+      memoType: "credit",
+    });
+    expect(
+      loabExtractDocumentIds(
+        [
+          {
+            documentId: "doc_profile",
+            sourceId: "src_profile",
+            title: "Applicant profile and loan request",
+            fileName: "applicant-profile.txt",
+            mimeType: "text/plain",
+            documentType: "loan-application",
+          },
+          {
+            documentId: "doc_policy",
+            sourceId: "src_policy",
+            title: "Retrieved credit policy excerpts",
+            fileName: "policy-pack.txt",
+            mimeType: "text/plain",
+            documentType: "credit-policy",
+          },
+          {
+            documentId: "doc_construct",
+            sourceId: "src_construct",
+            title: "Construct notice",
+            fileName: "construct-mismatch.txt",
+            mimeType: "text/plain",
+            documentType: "supporting-document",
+          },
+        ],
+        ["sl_profile", "sl_policy", "sl_construct"],
+      ),
+    ).toEqual(["sl_profile"]);
+  });
+
   it("omits run_data_extraction unless documentId is a string", () => {
     expect(mcpDocumentId(undefined)).toBeUndefined();
     expect(dataExtractionArguments("ws_1", undefined)).toBeUndefined();
@@ -312,6 +396,10 @@ describe("MCP chat-path helpers", () => {
       workspaceId: "ws_1",
       documentId: "sl_doc_1",
       blueprintType: "financial_statement",
+    });
+    expect(dataExtractionArguments("ws_1", "sl_doc_1", false, false)).toEqual({
+      workspaceId: "ws_1",
+      documentId: "sl_doc_1",
     });
     expect(dataExtractionArguments("ws_1", "sl_doc_1", true)).toEqual({
       workspaceId: "ws_1",
@@ -358,9 +446,7 @@ describe("MCP chat-path helpers", () => {
     expect(isExtractionFailed({ ready: false, status: "PROCESSING" })).toBe(
       false,
     );
-    expect(
-      isExtractionFailed("Extraction service unavailable."),
-    ).toBe(false);
+    expect(isExtractionFailed("Extraction service unavailable.")).toBe(false);
     expect(
       unwrapMcpToolResult({
         isError: true,
@@ -1246,7 +1332,9 @@ describe("MCP chat-path helpers", () => {
       },
     });
     expect(
-      submission.risks.some((item) => item.statement === "Customer concentration"),
+      submission.risks.some(
+        (item) => item.statement === "Customer concentration",
+      ),
     ).toBe(true);
     expect(
       submission.risks

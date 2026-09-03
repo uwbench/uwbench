@@ -15,6 +15,7 @@ export interface DriveRunOptions {
 
 export interface DriveRunResult {
   status: RunStatusResponse;
+  rawStatus: unknown;
   gatewayUrl: string;
   unpublished: true;
   notASalesClaim: true;
@@ -62,7 +63,7 @@ export async function driveAdapterRun(
         `POST /v1/runs failed (${started.status}): ${accepted.message ?? JSON.stringify(accepted)}`,
       );
     }
-    const status = await pollRun(
+    const polled = await pollRunWithRaw(
       trimSlash(options.adapterUrl),
       accepted.agentRunId,
       options.pollIntervalMs ?? 250,
@@ -70,7 +71,8 @@ export async function driveAdapterRun(
       fetchImpl,
     );
     return {
-      status,
+      status: polled.status,
+      rawStatus: polled.rawStatus,
       gatewayUrl,
       unpublished: true,
       notASalesClaim: true,
@@ -87,6 +89,27 @@ export async function pollRun(
   timeoutMs: number,
   fetchImpl: typeof fetch = fetch,
 ): Promise<RunStatusResponse> {
+  const polled = await pollRunWithRaw(
+    adapterUrl,
+    agentRunId,
+    intervalMs,
+    timeoutMs,
+    fetchImpl,
+  );
+  return polled.status;
+}
+
+/**
+ * Protocol status is `.strict()`. The adapter attaches `productTrace`
+ * beside it; keep the raw JSON so those fields are not dropped.
+ */
+export async function pollRunWithRaw(
+  adapterUrl: string,
+  agentRunId: string,
+  intervalMs: number,
+  timeoutMs: number,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ status: RunStatusResponse; rawStatus: unknown }> {
   const started = Date.now();
   let last: unknown;
   while (Date.now() - started < timeoutMs) {
@@ -94,20 +117,39 @@ export async function pollRun(
       `${adapterUrl}/v1/runs/${encodeURIComponent(agentRunId)}`,
     );
     last = await response.json();
-    const parsed = RunStatusResponseSchema.safeParse(last);
+    const parsed = parseRunStatus(last);
     if (
-      parsed.success &&
-      (parsed.data.status === "completed" ||
-        parsed.data.status === "failed" ||
-        parsed.data.status === "cancelled")
+      parsed &&
+      (parsed.status === "completed" ||
+        parsed.status === "failed" ||
+        parsed.status === "cancelled")
     ) {
-      return parsed.data;
+      return { status: parsed, rawStatus: last };
     }
     await sleep(intervalMs);
   }
   throw new Error(
     `Timed out waiting for /v1/runs/${agentRunId}: ${JSON.stringify(last)}`,
   );
+}
+
+export function parseRunStatus(raw: unknown): RunStatusResponse | undefined {
+  const direct = RunStatusResponseSchema.safeParse(raw);
+  if (direct.success) return direct.data;
+  const record = asStatusRecord(raw);
+  if (!record || record["productTrace"] === undefined) return undefined;
+  const { productTrace: _dropped, ...rest } = record;
+  const stripped = RunStatusResponseSchema.safeParse(rest);
+  return stripped.success ? stripped.data : undefined;
+}
+
+function asStatusRecord(
+  value: unknown,
+): Record<string, unknown> | undefined {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return undefined;
 }
 
 function trimSlash(url: string): string {

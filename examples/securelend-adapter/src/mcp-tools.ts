@@ -13,6 +13,10 @@ export const CHAT_PATH_TOOLS = {
     preferred: "submit_documents",
     aliases: ["submit_documents"],
   },
+  putDocumentText: {
+    preferred: "put_document_text",
+    aliases: ["put_document_text"],
+  },
   documentIntelligence: {
     preferred: "run_document_intelligence",
     aliases: ["run_document_intelligence", "document_intelligence_agent"],
@@ -32,6 +36,14 @@ export const CHAT_PATH_TOOLS = {
   memoStatus: {
     preferred: "get_memo_status",
     aliases: ["get_memo_status"],
+  },
+  getDealWorkspace: {
+    preferred: "get_deal_workspace",
+    aliases: ["get_deal_workspace"],
+  },
+  icMemoOutline: {
+    preferred: "prepare_ic_memo_outline",
+    aliases: ["prepare_ic_memo_outline"],
   },
 } as const;
 
