@@ -26,6 +26,7 @@
     { "path": "./examples/tool-agent-baseline" },
     { "path": "./examples/oracle-input-baseline" },
     { "path": "./examples/harness-adapters" },
-    { "path": "./examples/securelend-adapter" }
+    { "path": "./examples/securelend-adapter" },
+    { "path": "./examples/public-bench-adapters" }
   ]
 }

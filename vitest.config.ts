@@ -19,6 +19,7 @@ export default defineConfig({
       "packages/*/src/**/*.test.ts",
       "apps/*/src/**/*.test.ts",
       "examples/securelend-adapter/src/**/*.test.ts",
+      "examples/public-bench-adapters/src/**/*.test.ts",
     ],
     exclude: [
       "node_modules/**",

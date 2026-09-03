@@ -129,6 +129,10 @@ This is **not** SecureLend's planned local sidecar
 | `SECURELEND_MODEL_VERSION` / `SECURELEND_PROVIDER` / `SECURELEND_PROVIDER_VERSION` / `SECURELEND_HARNESS_VERSION` | no             | Extra identity fields (default `undeclared`)            |
 | `PORT`                                                                                                            | no             | Listen port (default `9200`)                            |
 
+Independent public benches (MortarBench, LOAB) are **not** mapped here.
+Use the sibling `examples/public-bench-adapters` to POST `/v1/runs` at this
+adapter. Do not quote UWBench scores as the independent sales number.
+
 ## Tests
 
 ```bash
