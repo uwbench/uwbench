@@ -48,6 +48,7 @@ export interface CaseDocument {
   title: string;
   mimeType: string;
   fileName?: string;
+  documentType?: string;
   text: string;
   bytes: Buffer;
   uploadable: boolean;
@@ -474,6 +475,7 @@ export function synthesizeFinancialPackage(
     title: "Financial package synthesized from UWBench public records",
     mimeType: "text/plain",
     fileName: "financial-package.txt",
+    documentType: "financial-statement",
     text,
     bytes: Buffer.from(text, "utf8"),
     uploadable: true,
@@ -518,6 +520,13 @@ function recoverDocument(
       ...(fileName || binary.fileName
         ? { fileName: fileName ?? binary.fileName }
         : {}),
+      documentType: inferDocumentType({
+        documentId,
+        sourceId,
+        title,
+        fileName: fileName ?? binary.fileName,
+        mimeType: binary.mimeType,
+      }),
       text: text || title,
       bytes: binary.bytes,
       uploadable: true,
@@ -531,10 +540,60 @@ function recoverDocument(
     title,
     mimeType: isTextMime(mimeType) ? mimeType : "text/plain",
     fileName: textName,
+    documentType: inferDocumentType({
+      documentId,
+      sourceId,
+      title,
+      fileName: textName,
+      mimeType,
+    }),
     text,
     bytes: Buffer.from(text, "utf8"),
     uploadable: true,
   };
+}
+
+/**
+ * Product submit_documents documentType hint. Inferred from the exhibit
+ * role in title/source/file name — not from a benchmark task id.
+ */
+export function inferDocumentType(file: {
+  documentId?: string;
+  sourceId?: string;
+  title?: string;
+  fileName?: string;
+  mimeType?: string;
+}): string {
+  const blob =
+    `${file.documentId ?? ""} ${file.sourceId ?? ""} ${file.title ?? ""} ${file.fileName ?? ""}`.toLowerCase();
+  if (/privacy|consent/.test(blob)) return "privacy-consent";
+  if (/payslip|employment/.test(blob)) return "payslip";
+  if (/bank[-_ ]?statement/.test(blob)) return "bank-statement";
+  if (
+    /passport|driver|licence|license|medicare|identity|greenid|kyc/.test(blob)
+  ) {
+    return "identity";
+  }
+  if (/equifax|bureau|credit[-_ ]?report/.test(blob)) return "credit-report";
+  if (/corelogic|valuation|appraisal/.test(blob)) return "property-valuation";
+  if (/ato|income[-_ ]?verif|tax[-_ ]?return|notice of assessment/.test(blob)) {
+    return "income-verification";
+  }
+  if (/asic|abn|company[-_ ]?registration/.test(blob)) {
+    return "company-registration";
+  }
+  if (/application|loan[-_ ]?request/.test(blob)) return "loan-application";
+  if (/contract of sale|purchase[-_ ]?contract/.test(blob)) {
+    return "purchase-contract";
+  }
+  if (/construct notice|construct-mismatch/.test(blob)) {
+    return "supporting-document";
+  }
+  if (/policy/.test(blob)) return "credit-policy";
+  if (/financial|statement|p&l|income statement/.test(blob)) {
+    return "financial-statement";
+  }
+  return "supporting-document";
 }
 
 function recoverBinary(

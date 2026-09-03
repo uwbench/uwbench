@@ -7,6 +7,12 @@ export {
   loadLoabTasks,
 } from "./loab/load.js";
 export { mapLoabTask } from "./loab/map.js";
+export {
+  exhibitTypeForRole,
+  loabEvidenceExhibits,
+  loabEvidenceFixtures,
+} from "./loab/evidence.js";
+export { chaseGapsFromUnknown } from "./loab/chase.js";
 export { orchestrateOrigination } from "./loab/orchestrate.js";
 export {
   extractLoabOutcome,

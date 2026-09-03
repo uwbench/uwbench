@@ -188,6 +188,8 @@ async function runLoab(args: CliArgs, adapterUrl: string): Promise<void> {
               : {}),
             steps: run.process.transcript.length,
           },
+          ...(run.chaseGaps ? { chaseGaps: run.chaseGaps } : {}),
+          ...(run.workspaceHint ? { workspaceHint: run.workspaceHint } : {}),
         }),
         null,
         2,

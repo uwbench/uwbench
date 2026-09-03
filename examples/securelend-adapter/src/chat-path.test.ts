@@ -6,8 +6,10 @@ import {
   isExtractionReady,
   mcpDocumentId,
   primaryUploadedDocumentId,
+  putDocumentTextArguments,
   submitDocumentsArguments,
 } from "./chat-path.js";
+import { inferDocumentType } from "./case-package.js";
 import {
   assertEphemeralWorkspaceName,
   resolveToolName,
@@ -294,6 +296,7 @@ describe("MCP chat-path helpers", () => {
       workspaceId: "ws_1",
       filename: "financial-package.txt",
       contentType: "text/plain",
+      documentType: "financial-statement",
       documents: [
         expect.objectContaining({
           fileName: "financial-package.txt",
@@ -302,6 +305,30 @@ describe("MCP chat-path helpers", () => {
         }),
       ],
     });
+  });
+
+  it("lands a TextBased put_document_text layer for known exhibit text", () => {
+    expect(
+      putDocumentTextArguments("ws_1", "sl_doc_1", {
+        text: "Equifax score 700",
+      }),
+    ).toMatchObject({
+      workspaceId: "ws_1",
+      documentId: "sl_doc_1",
+      pdfType: "TextBased",
+      confidence: 0.95,
+      source: "uwbench-case-text",
+      pages: [{ pageNumber: 1, markdown: "Equifax score 700" }],
+    });
+    expect(inferDocumentType({ title: "Equifax credit report" })).toBe(
+      "credit-report",
+    );
+    expect(inferDocumentType({ title: "Privacy consent" })).toBe(
+      "privacy-consent",
+    );
+    expect(inferDocumentType({ title: "FY2024 financial statements" })).toBe(
+      "financial-statement",
+    );
   });
 
   it("omits run_data_extraction unless documentId is a string", () => {
@@ -358,9 +385,7 @@ describe("MCP chat-path helpers", () => {
     expect(isExtractionFailed({ ready: false, status: "PROCESSING" })).toBe(
       false,
     );
-    expect(
-      isExtractionFailed("Extraction service unavailable."),
-    ).toBe(false);
+    expect(isExtractionFailed("Extraction service unavailable.")).toBe(false);
     expect(
       unwrapMcpToolResult({
         isError: true,
@@ -1246,7 +1271,9 @@ describe("MCP chat-path helpers", () => {
       },
     });
     expect(
-      submission.risks.some((item) => item.statement === "Customer concentration"),
+      submission.risks.some(
+        (item) => item.statement === "Customer concentration",
+      ),
     ).toBe(true);
     expect(
       submission.risks

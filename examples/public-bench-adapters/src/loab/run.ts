@@ -6,6 +6,7 @@ import { openLoabToolGateway } from "./gateway.js";
 import { loadLoabRubric, loadLoabTasks } from "./load.js";
 import { mapLoabTask } from "./map.js";
 import { orchestrateOrigination } from "./orchestrate.js";
+import { chaseGapsFromUnknown, workspaceHintFromUnknown } from "./chase.js";
 import {
   mapProductDecisionToLoabRubricOutcome,
   proposedDecisionFromUnknown,
@@ -25,6 +26,8 @@ export interface LoabModeRun {
   driven?: DriveRunResult;
   proposedDecision?: string;
   outcomeBlocked?: string;
+  chaseGaps?: ReturnType<typeof chaseGapsFromUnknown>;
+  workspaceHint?: string;
 }
 
 export async function runLoabOriginationSuite(options: {
@@ -80,6 +83,8 @@ export async function runLoabOriginationTask(options: {
   let driven: DriveRunResult | undefined;
   let proposedDecision: string | undefined;
   let outcomeBlocked: string | undefined;
+  let chaseGaps: ReturnType<typeof chaseGapsFromUnknown> | undefined;
+  let workspaceHint: string | undefined;
   if (options.driveSecureLend !== false) {
     const mapped = mapLoabTask(options.task, process);
     driven = await driveAdapterRun({
@@ -91,6 +96,8 @@ export async function runLoabOriginationTask(options: {
     });
     if (driven.status.status === "completed") {
       proposedDecision = proposedDecisionFromUnknown(driven.status.result);
+      chaseGaps = chaseGapsFromUnknown(driven.status.result);
+      workspaceHint = workspaceHintFromUnknown(driven.status.result);
       if (!proposedDecision) {
         outcomeBlocked = PROPOSED_DECISION_ABSENT;
       }
@@ -127,6 +134,8 @@ export async function runLoabOriginationTask(options: {
     ...(driven ? { driven } : {}),
     ...(proposedDecision ? { proposedDecision } : {}),
     ...(outcomeBlocked ? { outcomeBlocked } : {}),
+    ...(chaseGaps && chaseGaps.length > 0 ? { chaseGaps } : {}),
+    ...(workspaceHint ? { workspaceHint } : {}),
   };
 }
 

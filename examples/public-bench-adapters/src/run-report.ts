@@ -26,6 +26,8 @@ export interface UnpublishedReport {
     stopReason?: string;
     steps?: number;
   };
+  chaseGaps?: { key: string; items: string[] }[];
+  workspaceHint?: string;
 }
 
 export function submissionFromStatus(
@@ -65,6 +67,8 @@ export function unpublishedLoabReport(options: {
     stopReason?: string;
     steps?: number;
   };
+  chaseGaps?: { key: string; items: string[] }[];
+  workspaceHint?: string;
 }): UnpublishedReport {
   return {
     unpublished: true,
@@ -74,9 +78,22 @@ export function unpublishedLoabReport(options: {
     bench: "loab",
     itemId: options.itemId,
     ...(options.score ? { loab: options.score } : {}),
-    ...(options.status ? { adapterRun: runMeta(options.status) } : {}),
+    ...(options.status
+      ? {
+          adapterRun: {
+            ...runMeta(options.status),
+            ...(options.workspaceHint
+              ? { workspaceHint: options.workspaceHint }
+              : {}),
+          },
+        }
+      : {}),
     ...(options.blocker ? { blocker: options.blocker } : {}),
     ...(options.process ? { process: options.process } : {}),
+    ...(options.chaseGaps && options.chaseGaps.length > 0
+      ? { chaseGaps: options.chaseGaps }
+      : {}),
+    ...(options.workspaceHint ? { workspaceHint: options.workspaceHint } : {}),
   };
 }
 

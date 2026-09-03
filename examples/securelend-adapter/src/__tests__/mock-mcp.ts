@@ -39,6 +39,7 @@ export class MockSecureLendMcp {
       catalog: options.catalog ?? [
         "create_deal_workspace",
         "submit_documents",
+        "put_document_text",
         "run_document_intelligence",
         "run_data_extraction",
         "run_financial_statement_spread",

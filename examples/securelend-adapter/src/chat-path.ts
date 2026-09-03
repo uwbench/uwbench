@@ -1,6 +1,7 @@
 import type { RunRequest, UnderwritingSubmission } from "@uwbench/protocol";
 import {
   casePackagePayload,
+  inferDocumentType,
   loadCasePackage,
   synthesizeFinancialPackage,
   type CaseDocument,
@@ -82,6 +83,7 @@ export async function runProductChatPath(
   const toolNames = {
     createWorkspace: resolveToolName(catalog, "createWorkspace"),
     submitDocuments: resolveToolName(catalog, "submitDocuments"),
+    putDocumentText: resolveToolName(catalog, "putDocumentText"),
     documentIntelligence: resolveToolName(catalog, "documentIntelligence"),
     dataExtraction: resolveToolName(catalog, "dataExtraction"),
     financialSpread: resolveToolName(catalog, "financialSpread"),
@@ -103,7 +105,7 @@ export async function runProductChatPath(
       caseId: request.caseId,
       benchmark: request.benchmark,
       lane: request.lane,
-      ...(gatewayFiles.length === 0
+      ...(gatewayFiles.length === 0 || request.benchmark === "loab"
         ? { casePackage: casePackagePayload(request, pkg) }
         : {}),
     },
@@ -129,6 +131,16 @@ export async function runProductChatPath(
         uploaded = true;
         const uploadedId = mcpDocumentId(target.documentId);
         if (uploadedId) documentIds.push(uploadedId);
+        if (uploadedId && file.text.trim()) {
+          await landDocumentText(
+            mcp,
+            catalog,
+            toolNames.putDocumentText,
+            workspaceId,
+            uploadedId,
+            file,
+          );
+        }
         if (config.documentApiUrl) {
           await finalizeUploadedDocument(
             config.documentApiUrl,
@@ -151,7 +163,19 @@ export async function runProductChatPath(
       const readyId = mcpDocumentId(
         firstString(asRecord(submitResult), "documentId", "id"),
       );
-      if (readyId) documentIds.push(readyId);
+      if (readyId) {
+        documentIds.push(readyId);
+        if (file.text.trim()) {
+          await landDocumentText(
+            mcp,
+            catalog,
+            toolNames.putDocumentText,
+            workspaceId,
+            readyId,
+            file,
+          );
+        }
+      }
     }
   }
 
@@ -164,15 +188,22 @@ export async function runProductChatPath(
   // Prefer the statement scan (PNG/PDF financials) over letter/workbook so
   // Textract/IDP runs on the page that actually has the P&L.
   const primaryDocumentId = primaryUploadedDocumentId(files, documentIds);
-  const waitForIdp = needsProductOcr(pkg);
+  const extractIds =
+    request.benchmark === "loab"
+      ? uniqueDocumentIds(documentIds)
+      : primaryDocumentId
+        ? [primaryDocumentId]
+        : [];
+  const waitForIdp =
+    request.benchmark === "loab" ? false : needsProductOcr(pkg);
   let intelligence: unknown;
   let extraction: unknown;
   let spread: unknown;
-  if (primaryDocumentId) {
+  for (const documentId of extractIds) {
     try {
       intelligence = await mcp.callTool(toolNames.documentIntelligence, {
         workspaceId,
-        documentId: primaryDocumentId,
+        documentId,
       });
     } catch {
       intelligence = undefined;
@@ -182,7 +213,7 @@ export async function runProductChatPath(
       mcp,
       toolNames.dataExtraction,
       workspaceId,
-      primaryDocumentId,
+      documentId,
       waitForIdp,
       config.pollIntervalMs,
       config.pollTimeoutMs,
@@ -190,15 +221,19 @@ export async function runProductChatPath(
       signal,
     );
     throwIfAborted(signal);
-    if (catalog.length === 0 || catalog.includes(toolNames.financialSpread)) {
-      try {
-        spread = await mcp.callTool(toolNames.financialSpread, {
-          workspaceId,
-          documentId: primaryDocumentId,
-        });
-      } catch {
-        spread = undefined;
-      }
+  }
+  if (
+    primaryDocumentId &&
+    request.benchmark !== "loab" &&
+    (catalog.length === 0 || catalog.includes(toolNames.financialSpread))
+  ) {
+    try {
+      spread = await mcp.callTool(toolNames.financialSpread, {
+        workspaceId,
+        documentId: primaryDocumentId,
+      });
+    } catch {
+      spread = undefined;
     }
   }
 
@@ -270,7 +305,10 @@ export function mcpDocumentId(value: unknown): string | undefined {
 /** Live `submit_documents` validates top-level filename + contentType. */
 export function submitDocumentsArguments(
   workspaceId: string,
-  files: Pick<CaseDocument, "documentId" | "fileName" | "mimeType" | "bytes">[],
+  files: (Pick<CaseDocument, "documentId" | "mimeType" | "bytes"> &
+    Partial<
+      Pick<CaseDocument, "fileName" | "documentType" | "sourceId" | "title">
+    >)[],
 ): Record<string, unknown> {
   const primary = files[0];
   const filename =
@@ -278,7 +316,15 @@ export function submitDocumentsArguments(
   const contentType = primary?.mimeType ?? "text/plain";
   return {
     workspaceId,
-    documentType: "financial-statement",
+    documentType:
+      primary?.documentType ??
+      inferDocumentType({
+        ...(primary?.documentId ? { documentId: primary.documentId } : {}),
+        ...(primary?.sourceId ? { sourceId: primary.sourceId } : {}),
+        ...(primary?.title ? { title: primary.title } : {}),
+        fileName: filename,
+        mimeType: contentType,
+      }),
     filename,
     contentType,
     documents: files.map((file) => ({
@@ -286,7 +332,35 @@ export function submitDocumentsArguments(
       contentType: file.mimeType,
       sizeBytes: file.bytes.length,
       documentId: file.documentId,
+      documentType:
+        file.documentType ??
+        inferDocumentType({
+          documentId: file.documentId,
+          ...(file.sourceId ? { sourceId: file.sourceId } : {}),
+          ...(file.title ? { title: file.title } : {}),
+          ...(file.fileName ? { fileName: file.fileName } : {}),
+          mimeType: file.mimeType,
+        }),
     })),
+  };
+}
+
+export function putDocumentTextArguments(
+  workspaceId: string,
+  documentId: string,
+  file: Pick<CaseDocument, "text">,
+): Record<string, unknown> {
+  const markdown = file.text.trim();
+  return {
+    workspaceId,
+    documentId,
+    pages: [{ pageNumber: 1, markdown }],
+    pdfType: "TextBased",
+    confidence: 0.95,
+    encodingIssues: false,
+    garbled: false,
+    pagesNeedingOcr: [],
+    source: "uwbench-case-text",
   };
 }
 
@@ -403,9 +477,7 @@ export function isExtractionReady(value: unknown): boolean {
   // Live run_data_extraction sets ready:false when `facts` is empty even
   // though extractedData already has incomeStatement period maps.
   if (
-    isUsableSpread(
-      spreadFromUnknown(record) ?? spreadFromIdpExtraction(record),
-    )
+    isUsableSpread(spreadFromUnknown(record) ?? spreadFromIdpExtraction(record))
   ) {
     return true;
   }
@@ -496,6 +568,29 @@ function isMemoComplete(value: unknown): boolean {
 function isMemoFailed(value: unknown): boolean {
   const status = firstString(asRecord(value), "status")?.toUpperCase();
   return status === "FAILED" || status === "ERROR";
+}
+
+async function landDocumentText(
+  mcp: McpClient,
+  catalog: readonly string[],
+  toolName: string,
+  workspaceId: string,
+  documentId: string,
+  file: Pick<CaseDocument, "text">,
+): Promise<void> {
+  if (catalog.length > 0 && !catalog.includes(toolName)) return;
+  try {
+    await mcp.callTool(
+      toolName,
+      putDocumentTextArguments(workspaceId, documentId, file),
+    );
+  } catch {
+    // Text-layer ingest is best-effort. Extraction still runs.
+  }
+}
+
+function uniqueDocumentIds(ids: string[]): string[] {
+  return [...new Set(ids.filter((id) => id.length > 0))];
 }
 
 function throwIfAborted(signal?: AbortSignal): void {

@@ -13,6 +13,10 @@ export const CHAT_PATH_TOOLS = {
     preferred: "submit_documents",
     aliases: ["submit_documents"],
   },
+  putDocumentText: {
+    preferred: "put_document_text",
+    aliases: ["put_document_text"],
+  },
   documentIntelligence: {
     preferred: "run_document_intelligence",
     aliases: ["run_document_intelligence", "document_intelligence_agent"],
