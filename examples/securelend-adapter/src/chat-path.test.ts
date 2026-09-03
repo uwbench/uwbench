@@ -372,6 +372,10 @@ describe("MCP chat-path helpers", () => {
       documentId: "sl_doc_1",
       blueprintType: "financial_statement",
     });
+    expect(dataExtractionArguments("ws_1", "sl_doc_1", false, false)).toEqual({
+      workspaceId: "ws_1",
+      documentId: "sl_doc_1",
+    });
     expect(dataExtractionArguments("ws_1", "sl_doc_1", true)).toEqual({
       workspaceId: "ws_1",
       documentId: "sl_doc_1",

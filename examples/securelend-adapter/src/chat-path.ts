@@ -139,6 +139,7 @@ export async function runProductChatPath(
             workspaceId,
             uploadedId,
             file,
+            sleep,
           );
         }
         if (config.documentApiUrl) {
@@ -173,6 +174,7 @@ export async function runProductChatPath(
             workspaceId,
             readyId,
             file,
+            sleep,
           );
         }
       }
@@ -219,12 +221,12 @@ export async function runProductChatPath(
       config.pollTimeoutMs,
       sleep,
       signal,
+      request.benchmark !== "loab",
     );
     throwIfAborted(signal);
   }
   if (
     primaryDocumentId &&
-    request.benchmark !== "loab" &&
     (catalog.length === 0 || catalog.includes(toolNames.financialSpread))
   ) {
     try {
@@ -369,13 +371,16 @@ export function dataExtractionArguments(
   workspaceId: string,
   documentId: unknown,
   confirm = false,
+  includeLendingBlueprint = true,
 ): Record<string, unknown> | undefined {
   const id = mcpDocumentId(documentId);
   if (!id) return undefined;
   return {
     workspaceId,
     documentId: id,
-    blueprintType: LENDING_BLUEPRINT_TYPE,
+    ...(includeLendingBlueprint
+      ? { blueprintType: LENDING_BLUEPRINT_TYPE }
+      : {}),
     ...(confirm ? { confirm: true } : {}),
   };
 }
@@ -421,9 +426,15 @@ async function readOrPollExtraction(
   timeoutMs: number,
   sleep: (ms: number) => Promise<void>,
   signal?: AbortSignal,
+  includeLendingBlueprint = true,
 ): Promise<unknown> {
   const call = async (confirm: boolean): Promise<unknown> => {
-    const args = dataExtractionArguments(workspaceId, documentId, confirm);
+    const args = dataExtractionArguments(
+      workspaceId,
+      documentId,
+      confirm,
+      includeLendingBlueprint,
+    );
     if (!args) return undefined;
     return mcp.callTool(toolName, args);
   };
@@ -577,15 +588,21 @@ async function landDocumentText(
   workspaceId: string,
   documentId: string,
   file: Pick<CaseDocument, "text">,
+  sleep: (ms: number) => Promise<void> = defaultSleep,
 ): Promise<void> {
   if (catalog.length > 0 && !catalog.includes(toolName)) return;
-  try {
-    await mcp.callTool(
-      toolName,
-      putDocumentTextArguments(workspaceId, documentId, file),
-    );
-  } catch {
-    // Text-layer ingest is best-effort. Extraction still runs.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const landed = await mcp.callTool(
+        toolName,
+        putDocumentTextArguments(workspaceId, documentId, file),
+      );
+      const status = firstString(asRecord(landed), "status")?.toUpperCase();
+      if (status !== "PENDING_UPLOAD") return;
+    } catch {
+      // Text-layer ingest is best-effort. Extraction still runs.
+    }
+    await sleep(400);
   }
 }
 
