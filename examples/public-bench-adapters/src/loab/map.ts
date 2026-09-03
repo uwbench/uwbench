@@ -84,7 +84,7 @@ export function mapLoabTask(task: LoabTask): MappedLoabTask {
       ].join(" "),
       requiredOutputs: ["recommendation", "memo"],
       limits: {
-        wallClockSeconds: 180,
+        wallClockSeconds: 600,
         maxToolCalls: 40,
         maxOutputBytes: 1_000_000,
         maxConcurrentToolCalls: 1,

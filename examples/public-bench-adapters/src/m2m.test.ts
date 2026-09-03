@@ -42,6 +42,9 @@ describe("fresh M2M identity", () => {
       const params = new URLSearchParams(String(init?.body ?? ""));
       expect(params.get("grant_type")).toBe("client_credentials");
       expect(params.get("client_id")).toBe("fresh-id");
+      expect(params.get("scope")).toBe(
+        "https://agents.securelend.ai/mcp.access",
+      );
       return new Response(
         JSON.stringify({
           access_token: "tok_abc",
@@ -57,6 +60,7 @@ describe("fresh M2M identity", () => {
         clientId: "fresh-id",
         clientSecret: "fresh-secret",
         tokenEndpoint: "https://agents.securelend.ai/oauth/token",
+        scope: "https://agents.securelend.ai/mcp.access",
       },
       fetchImpl,
     );

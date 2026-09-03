@@ -76,12 +76,18 @@ async function maybeStartAdapter(args: CliArgs): Promise<{
     const client = await registerFreshM2mClient(origin);
     const token = await clientCredentialsToken(client);
     process.env["SECURELEND_MCP_TOKEN"] = token.accessToken;
-    process.env["SECURELEND_MCP_URL"] ??= `${origin.replace(/\/$/u, "")}/mcp`;
+    process.env["SECURELEND_MCP_URL"] ??=
+      client.mcpEndpoint ?? `${origin.replace(/\/$/u, "")}/mcp`;
     console.error(
       `[public-bench-adapters] registered fresh M2M client_name=${client.clientName} (secret not printed)`,
     );
   }
   process.env["SECURELEND_MODEL"] ??= "undeclared-public-bench-probe";
+  process.env["SECURELEND_MCP_POLL_TIMEOUT_MS"] ??=
+    String(drivePollTimeoutMs());
+  process.env["SECURELEND_MCP_POLL_INTERVAL_MS"] ??= String(
+    drivePollIntervalMs(),
+  );
   const config = readAdapterConfig();
   const adapter = new SecureLendAdapter({ port: 0, config });
   await adapter.start();
@@ -108,6 +114,8 @@ async function runMortarBench(
       adapterUrl,
       fixtures: mapped.fixtures,
       runRequest: mapped.runRequest,
+      pollIntervalMs: drivePollIntervalMs(),
+      pollTimeoutMs: drivePollTimeoutMs(),
     });
     if (driven.status.status !== "completed") {
       console.log(
@@ -176,6 +184,8 @@ async function runLoab(args: CliArgs, adapterUrl: string): Promise<void> {
       adapterUrl,
       fixtures: mapped.fixtures,
       runRequest: mapped.runRequest,
+      pollIntervalMs: drivePollIntervalMs(),
+      pollTimeoutMs: drivePollTimeoutMs(),
     });
     if (driven.status.status !== "completed") {
       console.log(
@@ -212,6 +222,18 @@ async function runLoab(args: CliArgs, adapterUrl: string): Promise<void> {
       ),
     );
   }
+}
+
+function drivePollTimeoutMs(): number {
+  const raw = process.env["SECURELEND_DRIVE_POLL_TIMEOUT_MS"];
+  const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 600_000;
+}
+
+function drivePollIntervalMs(): number {
+  const raw = process.env["SECURELEND_DRIVE_POLL_INTERVAL_MS"];
+  const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 2_000;
 }
 
 function parseArgs(argv: string[]): CliArgs {

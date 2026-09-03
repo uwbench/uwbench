@@ -7,6 +7,8 @@ export interface M2mClient {
   clientId: string;
   clientSecret: string;
   tokenEndpoint: string;
+  mcpEndpoint?: string;
+  scope?: string;
 }
 
 export interface M2mToken {
@@ -44,6 +46,8 @@ export async function registerFreshM2mClient(
       `M2M register response missing client_id/client_secret: ${body.slice(0, 400)}`,
     );
   }
+  const mcpEndpoint = firstString(parsed, "mcp_endpoint", "mcpEndpoint");
+  const scope = firstString(parsed, "scope");
   return {
     clientName,
     clientId,
@@ -51,6 +55,8 @@ export async function registerFreshM2mClient(
     tokenEndpoint:
       firstString(parsed, "token_endpoint", "tokenEndpoint") ??
       `${trimSlash(origin)}/oauth/token`,
+    ...(mcpEndpoint ? { mcpEndpoint } : {}),
+    ...(scope ? { scope } : {}),
   };
 }
 
@@ -68,6 +74,7 @@ export async function clientCredentialsToken(
       grant_type: "client_credentials",
       client_id: client.clientId,
       client_secret: client.clientSecret,
+      ...(client.scope ? { scope: client.scope } : {}),
     }),
   });
   const body = await readBody(response);
