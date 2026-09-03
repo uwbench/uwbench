@@ -13,7 +13,7 @@ import { loadBundledMortarBenchSamples } from "./mortarbench/load.js";
 import { mapLoabTask } from "./loab/map.js";
 import { bundledLoabOriginationSample } from "./loab/load.js";
 import { extractMortarBenchAnswer } from "./mortarbench/score.js";
-import { extractLoabOutcome } from "./loab/score.js";
+import { extractLoabOutcomeFromRun } from "./loab/score.js";
 import { submissionFromStatus } from "./run-report.js";
 
 const running: { stop: () => Promise<void> }[] = [];
@@ -120,10 +120,9 @@ describe("public bench → /v1/runs → MCP", () => {
     );
     expect(mcp.calls.map((call) => call.name)).not.toContain("greenid_verify");
     const submission = submissionFromStatus(driven.status);
-    const outcome = extractLoabOutcome({
-      decision: submission?.recommendation.decision,
-      memoMarkdown: submission?.memo.markdown,
-    });
-    expect(outcome.length).toBeGreaterThan(0);
+    expect(submission?.recommendation.decision).toBe("REFER");
+    expect(submission?.memo.markdown).toMatch(/REFER/i);
+    const outcome = extractLoabOutcomeFromRun(submission);
+    expect(outcome).toBe("REFER");
   });
 });
