@@ -33,6 +33,10 @@ import {
   type ProductTrace,
 } from "./product-trace.js";
 import {
+  callWithSubmitRetry,
+  submitSpacingMs,
+} from "./submit-retry.js";
+import {
   finalizeUploadedDocument,
   interpretSubmitDocumentsResult,
   matchUpload,
@@ -181,10 +185,21 @@ async function finishChatPath(input: {
     // Live submit_documents reserves one S3 object. Reusing that URL for every
     // case file overwrites the statement scan with later letter/AR text, and
     // Textract then fails (UnsupportedDocumentException).
-    for (const file of files) {
-      const submitResult = await mcp.callTool(
-        toolNames.submitDocuments,
-        submitDocumentsArguments(workspaceId, [file]),
+    for (const [index, file] of files.entries()) {
+      const spacing = submitSpacingMs(config.pollIntervalMs);
+      if (index > 0 && spacing > 0) {
+        await sleep(spacing);
+      }
+      const submitResult = await callWithSubmitRetry(
+        () =>
+          mcp.callTool(
+            toolNames.submitDocuments,
+            submitDocumentsArguments(workspaceId, [file]),
+          ),
+        {
+          pollIntervalMs: config.pollIntervalMs,
+          sleep,
+        },
       );
       const uploads = interpretSubmitDocumentsResult(submitResult);
       const target = matchUpload(uploads, file, 0);
