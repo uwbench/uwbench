@@ -1,27 +1,17 @@
 {
-  "name": "@uwbench/securelend-adapter",
+  "name": "@uwbench/public-bench-adapters",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    },
-    "./server": {
-      "types": "./dist/server.d.ts",
-      "import": "./dist/server.js"
-    }
-  },
   "scripts": {
     "build": "tsc --build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "eslint src --ext .ts",
     "clean": "rm -rf dist .tsbuildinfo",
-    "start": "node dist/server.js"
+    "start": "node dist/cli.js"
   },
   "devDependencies": {
     "@types/node": "^20.14.10",
@@ -30,6 +20,7 @@
   },
   "dependencies": {
     "@uwbench/protocol": "workspace:*",
+    "@uwbench/securelend-adapter": "workspace:*",
     "@uwbench/tool-runtime": "workspace:*"
   }
 }
