@@ -30,6 +30,12 @@ const GAP_KEYS = [
   "stips",
   "completenessGaps",
   "completeness_gaps",
+  "documentChase",
+  "document_chase",
+  "missingDiligence",
+  "missing_diligence",
+  "fileStatus",
+  "file_status",
 ] as const;
 
 export function chaseGapsFromUnknown(value: unknown): ProductChaseGap[] {
@@ -61,6 +67,10 @@ export function chaseGapsFromUnknown(value: unknown): ProductChaseGap[] {
 }
 
 export function workspaceHintFromUnknown(value: unknown): string | undefined {
+  const trace = productTraceFromUnknown(value);
+  if (typeof trace?.workspaceId === "string" && trace.workspaceId.trim()) {
+    return trace.workspaceId.trim();
+  }
   const record = asRecord(value);
   if (!record) return undefined;
   const direct =
@@ -72,6 +82,75 @@ export function workspaceHintFromUnknown(value: unknown): string | undefined {
     firstString(asRecord(record["memo"]), "markdown");
   const match = markdown?.match(/Workspace:[^\n(]*\(([^)]+)\)/i);
   return match?.[1];
+}
+
+/**
+ * Raw product debug fields from /v1/runs (including the adapter's
+ * productTrace sibling that protocol-schema parse would otherwise drop).
+ */
+export interface ProductTraceReport {
+  workspaceId?: unknown;
+  jobId?: unknown;
+  memoId?: unknown;
+  proposedDecision?: unknown;
+  documentChase?: unknown;
+  missingDiligence?: unknown;
+  fileStatus?: unknown;
+}
+
+const TRACE_FIELDS = [
+  ["workspaceId", "workspaceId", "workspace_id"],
+  ["jobId", "jobId", "job_id", "memoJobId"],
+  ["memoId", "memoId", "memo_id"],
+  ["proposedDecision", "proposedDecision", "proposed_decision"],
+  ["documentChase", "documentChase", "document_chase"],
+  ["missingDiligence", "missingDiligence", "missing_diligence"],
+  ["fileStatus", "fileStatus", "file_status"],
+] as const;
+
+const TRACE_WRAPPERS = [
+  "productTrace",
+  "product_trace",
+  "result",
+  "memo",
+  "fullResult",
+  "workspace",
+  "data",
+] as const;
+
+export function productTraceFromUnknown(
+  value: unknown,
+): ProductTraceReport | undefined {
+  const out: ProductTraceReport = {};
+  for (const record of traceRecords(value)) {
+    for (const [field, ...aliases] of TRACE_FIELDS) {
+      if (out[field] !== undefined) continue;
+      const found = pickUnknown(record, aliases);
+      if (found !== undefined) out[field] = found;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function traceRecords(value: unknown): Record<string, unknown>[] {
+  const root = asRecord(value);
+  if (!root) return [];
+  const out: Record<string, unknown>[] = [root];
+  for (const key of TRACE_WRAPPERS) {
+    const nested = asRecord(root[key]);
+    if (nested) out.push(nested);
+  }
+  return out;
+}
+
+function pickUnknown(
+  record: Record<string, unknown>,
+  aliases: readonly string[],
+): unknown {
+  for (const key of aliases) {
+    if (record[key] !== undefined && record[key] !== null) return record[key];
+  }
+  return undefined;
 }
 
 function isGapKey(key: string): boolean {

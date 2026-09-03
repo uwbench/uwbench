@@ -6,7 +6,12 @@ import { openLoabToolGateway } from "./gateway.js";
 import { loadLoabRubric, loadLoabTasks } from "./load.js";
 import { mapLoabTask } from "./map.js";
 import { orchestrateOrigination } from "./orchestrate.js";
-import { chaseGapsFromUnknown, workspaceHintFromUnknown } from "./chase.js";
+import {
+  chaseGapsFromUnknown,
+  productTraceFromUnknown,
+  workspaceHintFromUnknown,
+  type ProductTraceReport,
+} from "./chase.js";
 import {
   mapProductDecisionToLoabRubricOutcome,
   proposedDecisionFromUnknown,
@@ -28,6 +33,7 @@ export interface LoabModeRun {
   outcomeBlocked?: string;
   chaseGaps?: ReturnType<typeof chaseGapsFromUnknown>;
   workspaceHint?: string;
+  productTrace?: ProductTraceReport;
 }
 
 export async function runLoabOriginationSuite(options: {
@@ -85,6 +91,7 @@ export async function runLoabOriginationTask(options: {
   let outcomeBlocked: string | undefined;
   let chaseGaps: ReturnType<typeof chaseGapsFromUnknown> | undefined;
   let workspaceHint: string | undefined;
+  let productTrace: ProductTraceReport | undefined;
   if (options.driveSecureLend !== false) {
     const mapped = mapLoabTask(options.task, process);
     driven = await driveAdapterRun({
@@ -94,10 +101,23 @@ export async function runLoabOriginationTask(options: {
       pollIntervalMs: options.pollIntervalMs,
       pollTimeoutMs: options.pollTimeoutMs,
     });
+    productTrace =
+      productTraceFromUnknown(driven.rawStatus) ??
+      productTraceFromUnknown(driven.status);
+    workspaceHint =
+      workspaceHintFromUnknown(driven.rawStatus) ??
+      (driven.status.status === "completed"
+        ? workspaceHintFromUnknown(driven.status.result)
+        : undefined);
     if (driven.status.status === "completed") {
-      proposedDecision = proposedDecisionFromUnknown(driven.status.result);
-      chaseGaps = chaseGapsFromUnknown(driven.status.result);
-      workspaceHint = workspaceHintFromUnknown(driven.status.result);
+      proposedDecision = proposedDecisionFromUnknown(
+        driven.rawStatus ?? driven.status.result,
+      );
+      const fromRaw = chaseGapsFromUnknown(driven.rawStatus);
+      chaseGaps =
+        fromRaw.length > 0
+          ? fromRaw
+          : chaseGapsFromUnknown(driven.status.result);
       if (!proposedDecision) {
         outcomeBlocked = PROPOSED_DECISION_ABSENT;
       }
@@ -136,6 +156,7 @@ export async function runLoabOriginationTask(options: {
     ...(outcomeBlocked ? { outcomeBlocked } : {}),
     ...(chaseGaps && chaseGaps.length > 0 ? { chaseGaps } : {}),
     ...(workspaceHint ? { workspaceHint } : {}),
+    ...(productTrace ? { productTrace } : {}),
   };
 }
 

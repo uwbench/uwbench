@@ -8,6 +8,7 @@ import {
   primaryUploadedDocumentId,
   ingestSettleMs,
   loabExtractDocumentIds,
+  icMemoOutlineArguments,
   professionalMemoArguments,
   putDocumentTextArguments,
   submitDocumentsArguments,
@@ -344,6 +345,15 @@ describe("MCP chat-path helpers", () => {
       workspaceId: "ws_1",
       sourceType: "workspace",
       sourceId: "ws_1",
+      memoType: "mortgage",
+    });
+    expect(icMemoOutlineArguments("ws_1", "loab")).toEqual({
+      workspaceId: "ws_1",
+      memoType: "mortgage",
+    });
+    expect(icMemoOutlineArguments("ws_1")).toEqual({
+      workspaceId: "ws_1",
+      memoType: "credit",
     });
     expect(
       loabExtractDocumentIds(

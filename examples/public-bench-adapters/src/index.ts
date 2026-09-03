@@ -1,5 +1,5 @@
 export { CONSTRUCT, UNPUBLISHED_BANNER } from "./construct.js";
-export { driveAdapterRun, pollRun } from "./drive.js";
+export { driveAdapterRun, parseRunStatus, pollRun, pollRunWithRaw } from "./drive.js";
 export { ensureLoabClone } from "./loab/clone.js";
 export {
   classifyLoabTask,
@@ -12,7 +12,10 @@ export {
   loabEvidenceExhibits,
   loabEvidenceFixtures,
 } from "./loab/evidence.js";
-export { chaseGapsFromUnknown } from "./loab/chase.js";
+export {
+  chaseGapsFromUnknown,
+  productTraceFromUnknown,
+} from "./loab/chase.js";
 export { orchestrateOrigination } from "./loab/orchestrate.js";
 export {
   extractLoabOutcome,

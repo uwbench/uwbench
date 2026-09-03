@@ -16,6 +16,11 @@ import {
 import { runProductChatPath, type ChatPathConfig } from "./chat-path.js";
 import { protocolError, readJson, sendJson } from "./http.js";
 import {
+  compactProductTrace,
+  productTraceFromError,
+  type ProductTrace,
+} from "./product-trace.js";
+import {
   ADAPTER_VERSION,
   type AdapterConfig,
   type McpModeConfig,
@@ -30,6 +35,7 @@ interface RunState {
   controller: AbortController;
   submission?: UnderwritingSubmission;
   error?: ReturnType<typeof protocolError>;
+  productTrace?: ProductTrace;
 }
 
 export interface SecureLendAdapterOptions {
@@ -188,7 +194,7 @@ export class SecureLendAdapter {
         );
         return;
       }
-      sendJson(response, 200, RunStatusResponseSchema.parse(this.status(run)));
+      sendJson(response, 200, this.statusPayload(run));
       return;
     }
 
@@ -238,6 +244,17 @@ export class SecureLendAdapter {
     return base;
   }
 
+  /**
+   * Protocol status is strict. Attach productTrace beside it so workspace /
+   * chase / job ids survive GET /v1/runs without failing schema parse on
+   * the protocol fields.
+   */
+  private statusPayload(run: RunState): unknown {
+    const parsed = RunStatusResponseSchema.parse(this.status(run));
+    const trace = compactProductTrace(run.productTrace ?? {});
+    return trace ? { ...parsed, productTrace: trace } : parsed;
+  }
+
   private async processMcpRun(run: RunState): Promise<void> {
     if (!this.chatPath) {
       run.status = "failed";
@@ -257,6 +274,7 @@ export class SecureLendAdapter {
       );
       if (this.runs.get(run.agentRunId)?.status === "cancelled") return;
       run.submission = result.submission;
+      if (result.productTrace) run.productTrace = result.productTrace;
       run.status = "completed";
     } catch (error) {
       if (
@@ -266,6 +284,8 @@ export class SecureLendAdapter {
         run.status = "cancelled";
         return;
       }
+      const failedTrace = productTraceFromError(error);
+      if (failedTrace) run.productTrace = failedTrace;
       run.error = protocolError(
         "AGENT_CRASHED",
         error instanceof Error ? error.message : String(error),

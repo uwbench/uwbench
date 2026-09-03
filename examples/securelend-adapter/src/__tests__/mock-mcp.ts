@@ -45,6 +45,8 @@ export class MockSecureLendMcp {
         "run_financial_statement_spread",
         "run_professional_memo",
         "get_memo_status",
+        "get_deal_workspace",
+        "prepare_ic_memo_outline",
       ],
       uploadStyle: options.uploadStyle ?? "put",
       memoDelayPolls: options.memoDelayPolls ?? 1,
@@ -307,8 +309,16 @@ export class MockSecureLendMcp {
       return {
         status: "COMPLETED",
         progress: 100,
+        jobId: args["jobId"] ?? "job_memo_1",
         memoId: "memo_1",
         decision: "REFER",
+        proposedDecision: "REFER",
+        documentChase: {
+          needed: ["tax_return"],
+          have: ["bank_statement"],
+        },
+        missingDiligence: ["tax_return"],
+        fileStatus: { complete: false },
         recommendation: { decision: "REFER" },
         claims: [
           {
@@ -334,6 +344,25 @@ export class MockSecureLendMcp {
             orderIndex: 1,
           },
         ],
+      };
+    }
+    if (name === "get_deal_workspace") {
+      return {
+        workspaceId: args["workspaceId"],
+        proposedDecision: "REFER",
+        documentChase: {
+          needed: ["tax_return"],
+          have: ["bank_statement"],
+        },
+        missingDiligence: ["tax_return"],
+        fileStatus: { complete: false },
+      };
+    }
+    if (name === "prepare_ic_memo_outline") {
+      return {
+        memoType: args["memoType"],
+        workspaceId: args["workspaceId"],
+        missingDiligence: ["tax_return"],
       };
     }
     return { ok: true, name };

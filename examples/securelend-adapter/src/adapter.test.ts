@@ -62,6 +62,14 @@ async function pollCompleted(
   baseUrl: string,
   agentRunId: string,
 ): Promise<unknown> {
+  const raw = await pollCompletedRaw(baseUrl, agentRunId);
+  return stripProductTrace(raw);
+}
+
+async function pollCompletedRaw(
+  baseUrl: string,
+  agentRunId: string,
+): Promise<unknown> {
   let status: unknown;
   for (let index = 0; index < 80; index += 1) {
     status = await (await fetch(`${baseUrl}/v1/runs/${agentRunId}`)).json();
@@ -76,6 +84,12 @@ async function pollCompleted(
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
   return status;
+}
+
+function stripProductTrace(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const { productTrace: _dropped, ...rest } = value as Record<string, unknown>;
+  return rest;
 }
 
 describe("protocol-proxy mode", () => {
@@ -193,6 +207,13 @@ describe("MCP product chat-path mode", () => {
       ),
     });
     const accepted = (await started.json()) as { agentRunId: string };
+    const rawStatus = await pollCompletedRaw(base, accepted.agentRunId);
+    expect(rawStatus).toMatchObject({
+      productTrace: {
+        workspaceId: "ws_uwbench_ephemeral",
+        jobId: "job_memo_1",
+      },
+    });
     const status = RunStatusResponseSchema.parse(
       await pollCompleted(base, accepted.agentRunId),
     );

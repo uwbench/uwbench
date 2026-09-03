@@ -190,6 +190,7 @@ async function runLoab(args: CliArgs, adapterUrl: string): Promise<void> {
           },
           ...(run.chaseGaps ? { chaseGaps: run.chaseGaps } : {}),
           ...(run.workspaceHint ? { workspaceHint: run.workspaceHint } : {}),
+          ...(run.productTrace ? { productTrace: run.productTrace } : {}),
         }),
         null,
         2,

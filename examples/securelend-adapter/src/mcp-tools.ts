@@ -37,6 +37,14 @@ export const CHAT_PATH_TOOLS = {
     preferred: "get_memo_status",
     aliases: ["get_memo_status"],
   },
+  getDealWorkspace: {
+    preferred: "get_deal_workspace",
+    aliases: ["get_deal_workspace"],
+  },
+  icMemoOutline: {
+    preferred: "prepare_ic_memo_outline",
+    aliases: ["prepare_ic_memo_outline"],
+  },
 } as const;
 
 export type ChatPathTool = keyof typeof CHAT_PATH_TOOLS;

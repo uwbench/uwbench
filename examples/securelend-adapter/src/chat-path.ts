@@ -26,6 +26,13 @@ import {
   spreadFromUnknown,
 } from "./submission-map.js";
 import {
+  attachProductTrace,
+  compactProductTrace,
+  mergeProductTrace,
+  pickProductTrace,
+  type ProductTrace,
+} from "./product-trace.js";
+import {
   finalizeUploadedDocument,
   interpretSubmitDocumentsResult,
   matchUpload,
@@ -50,6 +57,7 @@ export interface ChatPathRunResult {
   toolNames: Record<ChatPathTool, string>;
   uploaded: boolean;
   finalized: boolean;
+  productTrace?: ProductTrace;
 }
 
 const LENDING_BLUEPRINT_TYPE = "financial_statement";
@@ -89,6 +97,8 @@ export async function runProductChatPath(
     financialSpread: resolveToolName(catalog, "financialSpread"),
     professionalMemo: resolveToolName(catalog, "professionalMemo"),
     memoStatus: resolveToolName(catalog, "memoStatus"),
+    getDealWorkspace: resolveToolName(catalog, "getDealWorkspace"),
+    icMemoOutline: resolveToolName(catalog, "icMemoOutline"),
   } satisfies Record<ChatPathTool, string>;
 
   const gatewayFiles = pkg.documents.filter((document) => document.uploadable);
@@ -111,6 +121,58 @@ export async function runProductChatPath(
     },
   });
   const workspaceId = extractWorkspaceId(created, workspaceName);
+  const productTrace: ProductTrace = { workspaceId };
+  try {
+    return await finishChatPath({
+      request,
+      pkg,
+      mcp,
+      catalog,
+      toolNames,
+      config,
+      fetchImpl,
+      sleep,
+      ...(signal ? { signal } : {}),
+      workspaceId,
+      workspaceName,
+      files,
+      productTrace,
+    });
+  } catch (error) {
+    attachProductTrace(error, productTrace);
+  }
+}
+
+async function finishChatPath(input: {
+  request: RunRequest;
+  pkg: Awaited<ReturnType<typeof loadCasePackage>>;
+  mcp: McpClient;
+  catalog: string[];
+  toolNames: Record<ChatPathTool, string>;
+  config: ChatPathConfig;
+  fetchImpl: typeof fetch;
+  sleep: (ms: number) => Promise<void>;
+  signal?: AbortSignal;
+  workspaceId: string;
+  workspaceName: string;
+  files: CaseDocument[];
+  productTrace: ProductTrace;
+}): Promise<ChatPathRunResult> {
+  const {
+    request,
+    pkg,
+    mcp,
+    catalog,
+    toolNames,
+    config,
+    fetchImpl,
+    sleep,
+    signal,
+    workspaceId,
+    workspaceName,
+    files,
+    productTrace,
+  } = input;
   let uploaded = false;
   let finalized = false;
   const documentIds: string[] = [];
@@ -248,12 +310,13 @@ export async function runProductChatPath(
 
   throwIfAborted(signal);
   let memo: unknown;
+  let jobId: string | undefined;
   try {
     const memoJob = await mcp.callTool(
       toolNames.professionalMemo,
       professionalMemoArguments(workspaceId, request.benchmark),
     );
-    const jobId =
+    jobId =
       firstString(asRecord(memoJob), "jobId", "id", "memoJobId") ??
       firstString(asRecord(asRecord(memoJob)?.["job"]), "id", "jobId");
     memo = await pollMemo(
@@ -270,6 +333,22 @@ export async function runProductChatPath(
   } catch {
     memo = undefined;
   }
+  let workspaceSnapshot: unknown;
+  if (request.benchmark === "loab") {
+    try {
+      workspaceSnapshot = await mcp.callTool(toolNames.getDealWorkspace, {
+        workspaceId,
+      });
+    } catch {
+      workspaceSnapshot = undefined;
+    }
+  }
+  const merged = mergeProductTrace(
+    { workspaceId, ...(jobId ? { jobId } : {}) },
+    pickProductTrace(memo),
+    pickProductTrace(workspaceSnapshot),
+  );
+  if (merged) Object.assign(productTrace, merged);
 
   const submission = mapChatPathToSubmission(pkg, {
     workspaceId,
@@ -295,6 +374,7 @@ export async function runProductChatPath(
     contentType: "text/markdown",
   });
 
+  const trace = compactProductTrace(productTrace);
   return {
     submission,
     workspaceId,
@@ -302,6 +382,7 @@ export async function runProductChatPath(
     toolNames,
     uploaded,
     finalized,
+    ...(trace ? { productTrace: trace } : {}),
   };
 }
 
@@ -371,8 +452,19 @@ export function professionalMemoArguments(
     sourceType: "workspace",
     sourceId: workspaceId,
     ...(benchmark === "loab"
-      ? {}
+      ? { memoType: "mortgage" }
       : { templateId: "default-credit-memo-template" }),
+  };
+}
+
+/** Residential origination is mortgage/consumer-style. Used if/when called. */
+export function icMemoOutlineArguments(
+  workspaceId: string,
+  benchmark?: string,
+): Record<string, unknown> {
+  return {
+    workspaceId,
+    memoType: benchmark === "loab" ? "mortgage" : "credit",
   };
 }
 
