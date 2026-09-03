@@ -115,7 +115,8 @@ describe("LOAB outcome-only scoring", () => {
     expect(
       extractLoabOutcome({
         decision: "APPROVE_WITH_CONDITIONS",
-        memoMarkdown: "Do not APPROVE without conditions. Memo discusses APPROVE first.",
+        memoMarkdown:
+          "Do not APPROVE without conditions. Memo discusses APPROVE first.",
       }),
     ).toBe("APPROVE");
     expect(
