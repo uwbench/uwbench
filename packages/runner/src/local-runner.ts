@@ -394,6 +394,60 @@ function parseRawRecord(
 }
 
 /**
+ * Reasoning cases publish yearly records in tool-fixtures.json. Keep those
+ * bodies. Stuff canonical only when a source has no fixture of its own.
+ * A prior year that only exists in the fixture is still served.
+ */
+function reasoningRecords(
+  canonical: Record<string, unknown>,
+  caseData: Case,
+  fixtureRecords: {
+    recordId?: string;
+    sourceId?: string;
+    record?: Record<string, unknown>;
+  }[],
+): {
+  recordId: string;
+  sourceId: string;
+  record: Record<string, unknown>;
+}[] {
+  const byId = new Map<
+    string,
+    { recordId?: string; sourceId?: string; record?: Record<string, unknown> }
+  >();
+  for (const row of fixtureRecords) {
+    if (!row.recordId || !row.record || Array.isArray(row.record)) continue;
+    byId.set(row.recordId, row);
+  }
+  const fromSources = caseData.sources.flatMap((source) => {
+    if (source.kind !== "record") return [];
+    const fixture = byId.get(source.recordId);
+    return [{
+      recordId: source.recordId,
+      sourceId: fixture?.sourceId || source.sourceId,
+      record: fixture?.record ?? canonical,
+    }];
+  });
+  const seen = new Set(fromSources.map((row) => row.recordId));
+  const extras = [...byId.entries()]
+    .filter(([id]) => !seen.has(id))
+    .map(([id, fixture]) => ({
+      recordId: id,
+      sourceId: fixture.sourceId || id,
+      record: fixture.record!,
+    }));
+  return [
+    {
+      recordId: "record_canonical_input",
+      sourceId: "normalized:canonical-input",
+      record: canonical,
+    },
+    ...fromSources,
+    ...extras,
+  ];
+}
+
+/**
  * Create the only filesystem view made available to runtime tools. Private
  * references and lanes not selected for this run are never copied into it.
  */
@@ -429,6 +483,11 @@ function buildLaneToolFixtures(
         }[];
         revealableDocuments?: unknown[];
         information?: Record<string, unknown>;
+        records?: {
+          recordId?: string;
+          sourceId?: string;
+          record?: Record<string, unknown>;
+        }[];
       })
     : {};
   const operatorMap: Record<string, string> = {
@@ -562,20 +621,7 @@ function buildLaneToolFixtures(
       lane === "raw_documents"
         ? rawRecords
         : canonical
-          ? [
-              {
-                recordId: "record_canonical_input",
-                sourceId: "normalized:canonical-input",
-                record: canonical,
-              },
-              ...caseData.sources
-                .filter((source) => source.kind === "record")
-                .map((source) => ({
-                  recordId: source.recordId,
-                  sourceId: source.sourceId,
-                  record: canonical,
-                })),
-            ]
+          ? reasoningRecords(canonical, caseData, trusted.records ?? [])
           : [],
     policies,
     information: trusted.information ?? {},

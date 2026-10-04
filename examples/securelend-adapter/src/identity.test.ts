@@ -54,9 +54,20 @@ describe("adapter identity and mode selection", () => {
     }
   });
 
-  it("explains the two modes when neither URL is set", () => {
+  it("selects the desk profile when SECURELEND_PLATFORM_URL is set", () => {
+    const config = readAdapterConfig({
+      ...required,
+      SECURELEND_PLATFORM_URL: "http://127.0.0.1:8787/",
+      SECURELEND_MCP_URL: "https://agents.securelend.ai/mcp",
+    });
+    expect(config.mode).toBe("platform");
+    expect(config.platform?.baseUrl).toBe("http://127.0.0.1:8787");
+    expect(config.platform?.actor).toBe("gate");
+  });
+
+  it("explains the modes when neither URL is set", () => {
     expect(() => readAdapterConfig({ ...required })).toThrow(
-      /SECURELEND_AGENT_URL|SECURELEND_MCP_URL/,
+      /SECURELEND_PLATFORM_URL|SECURELEND_MCP_URL/,
     );
   });
 });
