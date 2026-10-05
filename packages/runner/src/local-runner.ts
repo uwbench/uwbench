@@ -422,11 +422,13 @@ function reasoningRecords(
   const fromSources = caseData.sources.flatMap((source) => {
     if (source.kind !== "record") return [];
     const fixture = byId.get(source.recordId);
-    return [{
-      recordId: source.recordId,
-      sourceId: fixture?.sourceId || source.sourceId,
-      record: fixture?.record ?? canonical,
-    }];
+    return [
+      {
+        recordId: source.recordId,
+        sourceId: fixture?.sourceId || source.sourceId,
+        record: fixture?.record ?? canonical,
+      },
+    ];
   });
   const seen = new Set(fromSources.map((row) => row.recordId));
   const extras = [...byId.entries()]

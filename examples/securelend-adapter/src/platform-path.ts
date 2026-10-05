@@ -99,21 +99,26 @@ export function platformPackBody(
   }[];
   testCases: { id: string; facts: Record<string, number>; expect: string }[];
 } {
-  const eligibility = policies.map((rule) => {
+  const eligibility: {
+    id: string;
+    field: string;
+    op: "gte" | "lte" | "eq";
+    value: number;
+    onFail: "refer" | "decline";
+  }[] = [];
+  for (const rule of policies) {
     const field = typeof rule.input["ratio"] === "string" ? rule.input["ratio"] : "";
     const op = platformOp(rule.operator);
     const value = typeof rule.threshold === "number" ? rule.threshold : Number(rule.threshold);
-    if (!field || !op || !Number.isFinite(value)) {
-      throw new Error(`Cannot map policy ${rule.ruleId} (${rule.operator} ${String(rule.threshold)})`);
-    }
-    return {
+    if (!field || !op || !Number.isFinite(value)) continue;
+    eligibility.push({
       id: rule.ruleId,
       field,
       op,
       value,
       onFail: /decline/i.test(rule.onFailure) ? "decline" as const : "refer" as const,
-    };
-  });
+    });
+  }
   if (eligibility.length === 0) {
     return {
       products: [{ template: "credit", name: "Term loan" }],
@@ -199,19 +204,24 @@ export async function runPlatformPath(
 }
 
 function absorbRecord(facts: Record<string, number>, record: Record<string, unknown>): void {
+  const next: Record<string, number> = {};
   const spread = asRecord(record["financialSpread"]) ?? asRecord(record["spread"]) ?? record;
   for (const [key, target] of Object.entries(SPREAD_FIELDS)) {
     const amount = amountOf(spread[key]);
-    if (amount !== undefined) facts[target] = amount;
+    if (amount !== undefined) next[target] = amount;
   }
   const listed = record["normalizedFacts"];
-  if (!Array.isArray(listed)) return;
-  for (const item of listed) {
-    const row = asRecord(item);
-    const key = typeof row?.["canonicalKey"] === "string" ? row["canonicalKey"] : "";
-    const target = SPREAD_FIELDS[key];
-    const amount = amountOf(row?.["value"]);
-    if (target && amount !== undefined) facts[target] = amount;
+  if (Array.isArray(listed)) {
+    for (const item of listed) {
+      const row = asRecord(item);
+      const key = typeof row?.["canonicalKey"] === "string" ? row["canonicalKey"] : "";
+      const target = SPREAD_FIELDS[key];
+      const amount = amountOf(row?.["value"]);
+      if (target && amount !== undefined) next[target] = amount;
+    }
+  }
+  for (const [target, amount] of Object.entries(next)) {
+    if (facts[target] === undefined) facts[target] = amount;
   }
 }
 

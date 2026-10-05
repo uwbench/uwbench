@@ -111,4 +111,62 @@ describe("desk score-gate profile", () => {
     expect(pack.eligibility).toEqual([]);
     expect(pack.testCases[0]?.expect).toBe("insufficient");
   });
+
+  it("keeps the current-year amount when a later prior year repeats the field", () => {
+    const records: CaseRecord[] = [
+      {
+        recordId: "record_canonical_input",
+        sourceId: "normalized:canonical-input",
+        record: {
+          financialSpread: {
+            revenue: { amount: 2_200_000_000 },
+            ebitda: { amount: 88_000_000 },
+          },
+        },
+      },
+      {
+        recordId: "record_financials_2024",
+        sourceId: "src_financials_2024",
+        record: { revenue: 2_200_000_000, ebitda: 88_000_000, debt_service: 85_000_000 },
+      },
+      {
+        recordId: "record_financials_2023",
+        sourceId: "src_financials_2023",
+        record: { revenue: 2_450_000_000, ebitda: 245_000_000, debt_service: 78_000_000 },
+      },
+    ];
+    expect(platformFacts({ records })).toMatchObject({
+      revenue: 2_200_000_000,
+      ebitda: 88_000_000,
+      debt_service: 85_000_000,
+    });
+  });
+
+  it("skips a term-loan rule that has no ratio input", () => {
+    const flag: CasePolicyRule = {
+      ruleId: "rule_exception_framework",
+      sourceId: "src_policy_exception_framework",
+      title: "Policy Exception Framework",
+      appliesWhen: "term loan requested",
+      input: { flag: "policy_exception_requested" },
+      operator: "eq",
+      threshold: true,
+      onFailure: "REFER",
+    };
+    const ratio: CasePolicyRule = {
+      ruleId: "rule_dscr_minimum",
+      sourceId: "src_policy_dscr",
+      title: "DSCR",
+      appliesWhen: "term loan requested",
+      input: { ratio: "dscr" },
+      operator: ">=",
+      threshold: 1.25,
+      onFailure: "DECLINE",
+    };
+    const mixed = platformPackBody([flag, ratio]);
+    expect(mixed.eligibility.map((rule) => rule.id)).toEqual(["rule_dscr_minimum"]);
+    const onlyFlag = platformPackBody([flag]);
+    expect(onlyFlag.eligibility).toEqual([]);
+    expect(onlyFlag.testCases[0]?.expect).toBe("insufficient");
+  });
 });
