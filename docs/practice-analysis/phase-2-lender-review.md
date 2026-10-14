@@ -90,7 +90,10 @@ runs on real cases, where real borrower files stay with the lender and are
 never submitted here, and operational and regulatory test tracks (PII
 redaction before the model, data retention and deletion, audit trail).
 See [the practice-analysis README](README.md#phase-2-scope-updated-october-2026).
-These are not part of v0.1.
+These are not part of v0.1. The
+[design partner program](../design-partners.md) states what is open, what
+is planned, and the guardrails. The build list is the
+[planned work items](README.md#planned-work-items).
 
 ## Where to send
 
@@ -98,4 +101,4 @@ These are not part of v0.1.
   with the form above, or
 - Maintainers listed in the repository, if your institution cannot post
   publicly. We will record an anonymized summary here, not the raw
-  affiliation, unless you ask to be named.
+  affiliation. A partner is named in public only with written consent.

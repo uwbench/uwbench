@@ -10,7 +10,7 @@ This folder is the public practice-analysis record.
 | --- | --- | --- |
 | 0. Job freeze | **Done** (16 August 2026) | [phase-0-job-freeze.md](phase-0-job-freeze.md) |
 | 1. Handbook inventory | **Done** (draft, 16 August 2026) | [phase-1-task-inventory.md](phase-1-task-inventory.md) |
-| 2. Incumbent review, private real-case runs, operational and regulatory tracks | Review open; real-case runs and operational tracks planned (not in v0.1) | [phase-2-lender-review.md](phase-2-lender-review.md) |
+| 2. Incumbent review, private real-case runs, operational and regulatory tracks | Review open; real-case runs, operational tracks, and the work items below are planned (not in v0.1) | [phase-2-lender-review.md](phase-2-lender-review.md), [design partners](../design-partners.md) |
 | 3. Importance × frequency survey | Not started | — |
 | 4. Blueprint + v0.1 coverage remap | Not started | — |
 | 5. Cases written to blueprint holes | Not started | — |
@@ -25,7 +25,9 @@ measure the occupation. Official scores remain unearned.
 ## Phase 2 scope (updated October 2026)
 
 Phase 2 has three parts. Only the first is open now. Parts B and C are
-planned. They are not in v0.1, and v0.1 does not test them.
+planned. They are not in v0.1, and v0.1 does not test them. The build
+list is [Planned work items](#planned-work-items). The
+[design partner program](../design-partners.md) is the invitation.
 
 **A. Lender and credit-officer review (open).** Practicing commercial-credit
 people review the job freeze and the draft inventory and file anonymized
@@ -54,6 +56,59 @@ concludes:
   lenders and reviewers name them.
 
 None of these tracks exists in the current code or scorecard.
+
+## Planned work items
+
+Each item below is **Planned**. None of them is in v0.1. None of them
+has code in this repository. No peer statistic is published before the
+anonymization and cohort spec.
+
+### Private peer scorecard (give-to-get)
+
+**Planned.** A lender that runs cases in its own environment gets a
+private scorecard of its own policy and decisions against an anonymized
+peer distribution: decision agreement, conditions, follow-ups, and time
+to decision. Only that lender sees its own row. The Part A review does
+not return this. Comments on the review form do not create scores or
+rankings.
+
+### Self-hosted runner
+
+**Planned.** Package `packages/runner` and the scorer packages as a
+container or Terraform module that runs in the lender's own cloud. The
+agent runs in sealed mode (no outbound network) or provider-network mode
+(outbound only through an allowlisted proxy). The only export is a
+signed score bundle. Borrower files stay in the lender's environment.
+The runner and scorers exist today as libraries. This package does not.
+[ADR-004](../specification/ADR-004-fargate-isolation.md) is the isolation
+design for hosted tasks. It is not this lender-hosted module.
+
+### Anonymization and cohort spec
+
+**Planned.** Publish the spec before any peer statistic. It covers a
+k-minimum of 5 (no peer statistic for a cell with fewer than 5
+institutions), coarse cohort keys (institution type, asset band, region,
+product), suppression and noise, a no-reidentification rule, and who
+holds the aggregate. Case separation for public and certification cases
+is already in [ADR-003](../specification/ADR-003-case-privacy.md). Cohort
+rules for peer statistics are not.
+
+### Outcome and loss data track
+
+**Planned.** Optional. Aggregated 12-month and 24-month delinquency,
+default, and loss severity, per decision band and per cohort. Counts
+only, and only from the private runner. The public scorecard scores a
+decision from the case author's utility matrix. It does not take
+delinquency, default, or loss severity as inputs.
+
+### Neutral steward and public funnel
+
+**Planned.** A Certification Board, or another neutral steward, to hold
+aggregates and certification cases, and a public count of institutions
+in each cohort. The funnel is the review form, then a private-run pilot,
+then cohort member. The board is described in
+[GOVERNANCE.md](../governance/GOVERNANCE.md) and is not formed. No public
+cohort count exists.
 
 Do not send real borrower files to this repository. Do not treat SecureLend review as the
 panel. Show files and the inventory before scorecard weights.
