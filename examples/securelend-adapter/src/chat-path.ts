@@ -1,6 +1,7 @@
 import type { RunRequest, UnderwritingSubmission } from "@uwbench/protocol";
 import {
   casePackagePayload,
+  inferDocumentType,
   loadCasePackage,
   synthesizeFinancialPackage,
   type CaseDocument,
@@ -24,6 +25,17 @@ import {
   spreadFromIdpExtraction,
   spreadFromUnknown,
 } from "./submission-map.js";
+import {
+  attachProductTrace,
+  compactProductTrace,
+  mergeProductTrace,
+  pickProductTrace,
+  type ProductTrace,
+} from "./product-trace.js";
+import {
+  callWithSubmitRetry,
+  submitSpacingMs,
+} from "./submit-retry.js";
 import {
   finalizeUploadedDocument,
   interpretSubmitDocumentsResult,
@@ -49,6 +61,7 @@ export interface ChatPathRunResult {
   toolNames: Record<ChatPathTool, string>;
   uploaded: boolean;
   finalized: boolean;
+  productTrace?: ProductTrace;
 }
 
 const LENDING_BLUEPRINT_TYPE = "financial_statement";
@@ -82,11 +95,14 @@ export async function runProductChatPath(
   const toolNames = {
     createWorkspace: resolveToolName(catalog, "createWorkspace"),
     submitDocuments: resolveToolName(catalog, "submitDocuments"),
+    putDocumentText: resolveToolName(catalog, "putDocumentText"),
     documentIntelligence: resolveToolName(catalog, "documentIntelligence"),
     dataExtraction: resolveToolName(catalog, "dataExtraction"),
     financialSpread: resolveToolName(catalog, "financialSpread"),
     professionalMemo: resolveToolName(catalog, "professionalMemo"),
     memoStatus: resolveToolName(catalog, "memoStatus"),
+    getDealWorkspace: resolveToolName(catalog, "getDealWorkspace"),
+    icMemoOutline: resolveToolName(catalog, "icMemoOutline"),
   } satisfies Record<ChatPathTool, string>;
 
   const gatewayFiles = pkg.documents.filter((document) => document.uploadable);
@@ -103,12 +119,64 @@ export async function runProductChatPath(
       caseId: request.caseId,
       benchmark: request.benchmark,
       lane: request.lane,
-      ...(gatewayFiles.length === 0
+      ...(gatewayFiles.length === 0 || request.benchmark === "loab"
         ? { casePackage: casePackagePayload(request, pkg) }
         : {}),
     },
   });
   const workspaceId = extractWorkspaceId(created, workspaceName);
+  const productTrace: ProductTrace = { workspaceId };
+  try {
+    return await finishChatPath({
+      request,
+      pkg,
+      mcp,
+      catalog,
+      toolNames,
+      config,
+      fetchImpl,
+      sleep,
+      ...(signal ? { signal } : {}),
+      workspaceId,
+      workspaceName,
+      files,
+      productTrace,
+    });
+  } catch (error) {
+    attachProductTrace(error, productTrace);
+  }
+}
+
+async function finishChatPath(input: {
+  request: RunRequest;
+  pkg: Awaited<ReturnType<typeof loadCasePackage>>;
+  mcp: McpClient;
+  catalog: string[];
+  toolNames: Record<ChatPathTool, string>;
+  config: ChatPathConfig;
+  fetchImpl: typeof fetch;
+  sleep: (ms: number) => Promise<void>;
+  signal?: AbortSignal;
+  workspaceId: string;
+  workspaceName: string;
+  files: CaseDocument[];
+  productTrace: ProductTrace;
+}): Promise<ChatPathRunResult> {
+  const {
+    request,
+    pkg,
+    mcp,
+    catalog,
+    toolNames,
+    config,
+    fetchImpl,
+    sleep,
+    signal,
+    workspaceId,
+    workspaceName,
+    files,
+    productTrace,
+  } = input;
   let uploaded = false;
   let finalized = false;
   const documentIds: string[] = [];
@@ -117,10 +185,21 @@ export async function runProductChatPath(
     // Live submit_documents reserves one S3 object. Reusing that URL for every
     // case file overwrites the statement scan with later letter/AR text, and
     // Textract then fails (UnsupportedDocumentException).
-    for (const file of files) {
-      const submitResult = await mcp.callTool(
-        toolNames.submitDocuments,
-        submitDocumentsArguments(workspaceId, [file]),
+    for (const [index, file] of files.entries()) {
+      const spacing = submitSpacingMs(config.pollIntervalMs);
+      if (index > 0 && spacing > 0) {
+        await sleep(spacing);
+      }
+      const submitResult = await callWithSubmitRetry(
+        () =>
+          mcp.callTool(
+            toolNames.submitDocuments,
+            submitDocumentsArguments(workspaceId, [file]),
+          ),
+        {
+          pollIntervalMs: config.pollIntervalMs,
+          sleep,
+        },
       );
       const uploads = interpretSubmitDocumentsResult(submitResult);
       const target = matchUpload(uploads, file, 0);
@@ -129,6 +208,18 @@ export async function runProductChatPath(
         uploaded = true;
         const uploadedId = mcpDocumentId(target.documentId);
         if (uploadedId) documentIds.push(uploadedId);
+        if (uploadedId && file.text.trim()) {
+          await landDocumentText(
+            mcp,
+            catalog,
+            toolNames.putDocumentText,
+            workspaceId,
+            uploadedId,
+            file,
+            sleep,
+            ingestSettleMs(config.pollIntervalMs),
+          );
+        }
         if (config.documentApiUrl) {
           await finalizeUploadedDocument(
             config.documentApiUrl,
@@ -146,12 +237,30 @@ export async function runProductChatPath(
           );
           finalized = true;
         }
+        const settle = ingestSettleMs(config.pollIntervalMs);
+        if (request.benchmark === "loab" && settle > 0) {
+          await sleep(settle);
+        }
         continue;
       }
       const readyId = mcpDocumentId(
         firstString(asRecord(submitResult), "documentId", "id"),
       );
-      if (readyId) documentIds.push(readyId);
+      if (readyId) {
+        documentIds.push(readyId);
+        if (file.text.trim()) {
+          await landDocumentText(
+            mcp,
+            catalog,
+            toolNames.putDocumentText,
+            workspaceId,
+            readyId,
+            file,
+            sleep,
+            ingestSettleMs(config.pollIntervalMs),
+          );
+        }
+      }
     }
   }
 
@@ -164,15 +273,22 @@ export async function runProductChatPath(
   // Prefer the statement scan (PNG/PDF financials) over letter/workbook so
   // Textract/IDP runs on the page that actually has the P&L.
   const primaryDocumentId = primaryUploadedDocumentId(files, documentIds);
-  const waitForIdp = needsProductOcr(pkg);
+  const extractIds =
+    request.benchmark === "loab"
+      ? loabExtractDocumentIds(files, documentIds)
+      : primaryDocumentId
+        ? [primaryDocumentId]
+        : [];
+  const waitForIdp =
+    request.benchmark === "loab" ? false : needsProductOcr(pkg);
   let intelligence: unknown;
   let extraction: unknown;
   let spread: unknown;
-  if (primaryDocumentId) {
+  for (const documentId of extractIds) {
     try {
       intelligence = await mcp.callTool(toolNames.documentIntelligence, {
         workspaceId,
-        documentId: primaryDocumentId,
+        documentId,
       });
     } catch {
       intelligence = undefined;
@@ -182,36 +298,40 @@ export async function runProductChatPath(
       mcp,
       toolNames.dataExtraction,
       workspaceId,
-      primaryDocumentId,
+      documentId,
       waitForIdp,
       config.pollIntervalMs,
       config.pollTimeoutMs,
       sleep,
       signal,
+      request.benchmark !== "loab",
     );
     throwIfAborted(signal);
-    if (catalog.length === 0 || catalog.includes(toolNames.financialSpread)) {
-      try {
-        spread = await mcp.callTool(toolNames.financialSpread, {
-          workspaceId,
-          documentId: primaryDocumentId,
-        });
-      } catch {
-        spread = undefined;
-      }
+  }
+  if (
+    request.benchmark !== "loab" &&
+    primaryDocumentId &&
+    (catalog.length === 0 || catalog.includes(toolNames.financialSpread))
+  ) {
+    try {
+      spread = await mcp.callTool(toolNames.financialSpread, {
+        workspaceId,
+        documentId: primaryDocumentId,
+      });
+    } catch {
+      spread = undefined;
     }
   }
 
   throwIfAborted(signal);
   let memo: unknown;
+  let jobId: string | undefined;
   try {
-    const memoJob = await mcp.callTool(toolNames.professionalMemo, {
-      workspaceId,
-      sourceType: "workspace",
-      sourceId: workspaceId,
-      templateId: "default-credit-memo-template",
-    });
-    const jobId =
+    const memoJob = await mcp.callTool(
+      toolNames.professionalMemo,
+      professionalMemoArguments(workspaceId, request.benchmark),
+    );
+    jobId =
       firstString(asRecord(memoJob), "jobId", "id", "memoJobId") ??
       firstString(asRecord(asRecord(memoJob)?.["job"]), "id", "jobId");
     memo = await pollMemo(
@@ -228,6 +348,22 @@ export async function runProductChatPath(
   } catch {
     memo = undefined;
   }
+  let workspaceSnapshot: unknown;
+  if (request.benchmark === "loab") {
+    try {
+      workspaceSnapshot = await mcp.callTool(toolNames.getDealWorkspace, {
+        workspaceId,
+      });
+    } catch {
+      workspaceSnapshot = undefined;
+    }
+  }
+  const merged = mergeProductTrace(
+    { workspaceId, ...(jobId ? { jobId } : {}) },
+    pickProductTrace(memo),
+    pickProductTrace(workspaceSnapshot),
+  );
+  if (merged) Object.assign(productTrace, merged);
 
   const submission = mapChatPathToSubmission(pkg, {
     workspaceId,
@@ -237,6 +373,15 @@ export async function runProductChatPath(
     spread,
     memo,
   });
+  if (request.benchmark === "loab") {
+    const proposed = proposedDecisionToken(memo);
+    if (proposed) {
+      submission.memo.markdown = appendLoabProposedDecisionMarker(
+        submission.memo.markdown,
+        proposed,
+      );
+    }
+  }
 
   await pkg.client.tryCall("submission.save_artifact", {
     artifactId: `${request.caseId}-securelend-memo`,
@@ -244,6 +389,7 @@ export async function runProductChatPath(
     contentType: "text/markdown",
   });
 
+  const trace = compactProductTrace(productTrace);
   return {
     submission,
     workspaceId,
@@ -251,6 +397,7 @@ export async function runProductChatPath(
     toolNames,
     uploaded,
     finalized,
+    ...(trace ? { productTrace: trace } : {}),
   };
 }
 
@@ -261,7 +408,10 @@ export function mcpDocumentId(value: unknown): string | undefined {
 /** Live `submit_documents` validates top-level filename + contentType. */
 export function submitDocumentsArguments(
   workspaceId: string,
-  files: Pick<CaseDocument, "documentId" | "fileName" | "mimeType" | "bytes">[],
+  files: (Pick<CaseDocument, "documentId" | "mimeType" | "bytes"> &
+    Partial<
+      Pick<CaseDocument, "fileName" | "documentType" | "sourceId" | "title">
+    >)[],
 ): Record<string, unknown> {
   const primary = files[0];
   const filename =
@@ -269,7 +419,15 @@ export function submitDocumentsArguments(
   const contentType = primary?.mimeType ?? "text/plain";
   return {
     workspaceId,
-    documentType: "financial-statement",
+    documentType:
+      primary?.documentType ??
+      inferDocumentType({
+        ...(primary?.documentId ? { documentId: primary.documentId } : {}),
+        ...(primary?.sourceId ? { sourceId: primary.sourceId } : {}),
+        ...(primary?.title ? { title: primary.title } : {}),
+        fileName: filename,
+        mimeType: contentType,
+      }),
     filename,
     contentType,
     documents: files.map((file) => ({
@@ -277,7 +435,70 @@ export function submitDocumentsArguments(
       contentType: file.mimeType,
       sizeBytes: file.bytes.length,
       documentId: file.documentId,
+      documentType:
+        file.documentType ??
+        inferDocumentType({
+          documentId: file.documentId,
+          ...(file.sourceId ? { sourceId: file.sourceId } : {}),
+          ...(file.title ? { title: file.title } : {}),
+          ...(file.fileName ? { fileName: file.fileName } : {}),
+          mimeType: file.mimeType,
+        }),
     })),
+  };
+}
+
+/**
+ * Live MCP defaults to a 2s poll. Tests use 10–20ms and must not sleep
+ * for a second per exhibit. Only settle when the configured interval
+ * looks like a live run.
+ */
+export function ingestSettleMs(pollIntervalMs: number): number {
+  if (pollIntervalMs < 500) return 0;
+  return Math.min(pollIntervalMs, 1_500);
+}
+
+export function professionalMemoArguments(
+  workspaceId: string,
+  benchmark?: string,
+): Record<string, unknown> {
+  return {
+    workspaceId,
+    sourceType: "workspace",
+    sourceId: workspaceId,
+    ...(benchmark === "loab"
+      ? { memoType: "mortgage" }
+      : { templateId: "default-credit-memo-template" }),
+  };
+}
+
+/** Residential origination is mortgage/consumer-style. Used if/when called. */
+export function icMemoOutlineArguments(
+  workspaceId: string,
+  benchmark?: string,
+): Record<string, unknown> {
+  return {
+    workspaceId,
+    memoType: benchmark === "loab" ? "mortgage" : "credit",
+  };
+}
+
+export function putDocumentTextArguments(
+  workspaceId: string,
+  documentId: string,
+  file: Pick<CaseDocument, "text">,
+): Record<string, unknown> {
+  const markdown = file.text.trim();
+  return {
+    workspaceId,
+    documentId,
+    pages: [{ pageNumber: 1, markdown }],
+    pdfType: "TextBased",
+    confidence: 0.95,
+    encodingIssues: false,
+    garbled: false,
+    pagesNeedingOcr: [],
+    source: "uwbench-case-text",
   };
 }
 
@@ -286,13 +507,16 @@ export function dataExtractionArguments(
   workspaceId: string,
   documentId: unknown,
   confirm = false,
+  includeLendingBlueprint = true,
 ): Record<string, unknown> | undefined {
   const id = mcpDocumentId(documentId);
   if (!id) return undefined;
   return {
     workspaceId,
     documentId: id,
-    blueprintType: LENDING_BLUEPRINT_TYPE,
+    ...(includeLendingBlueprint
+      ? { blueprintType: LENDING_BLUEPRINT_TYPE }
+      : {}),
     ...(confirm ? { confirm: true } : {}),
   };
 }
@@ -338,9 +562,15 @@ async function readOrPollExtraction(
   timeoutMs: number,
   sleep: (ms: number) => Promise<void>,
   signal?: AbortSignal,
+  includeLendingBlueprint = true,
 ): Promise<unknown> {
   const call = async (confirm: boolean): Promise<unknown> => {
-    const args = dataExtractionArguments(workspaceId, documentId, confirm);
+    const args = dataExtractionArguments(
+      workspaceId,
+      documentId,
+      confirm,
+      includeLendingBlueprint,
+    );
     if (!args) return undefined;
     return mcp.callTool(toolName, args);
   };
@@ -394,9 +624,7 @@ export function isExtractionReady(value: unknown): boolean {
   // Live run_data_extraction sets ready:false when `facts` is empty even
   // though extractedData already has incomeStatement period maps.
   if (
-    isUsableSpread(
-      spreadFromUnknown(record) ?? spreadFromIdpExtraction(record),
-    )
+    isUsableSpread(spreadFromUnknown(record) ?? spreadFromIdpExtraction(record))
   ) {
     return true;
   }
@@ -489,6 +717,82 @@ function isMemoFailed(value: unknown): boolean {
   return status === "FAILED" || status === "ERROR";
 }
 
+async function landDocumentText(
+  mcp: McpClient,
+  catalog: readonly string[],
+  toolName: string,
+  workspaceId: string,
+  documentId: string,
+  file: Pick<CaseDocument, "text">,
+  sleep: (ms: number) => Promise<void> = defaultSleep,
+  settleMs = 0,
+): Promise<void> {
+  if (catalog.length > 0 && !catalog.includes(toolName)) return;
+  if (settleMs > 0) await sleep(settleMs);
+  const attempts = settleMs > 0 ? 8 : 3;
+  const retryMs = settleMs > 0 ? settleMs : 400;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const landed = await mcp.callTool(
+        toolName,
+        putDocumentTextArguments(workspaceId, documentId, file),
+      );
+      const status = firstString(asRecord(landed), "status")?.toUpperCase();
+      if (status !== "PENDING_UPLOAD") return;
+    } catch {
+      // Text-layer ingest is best-effort. Extraction still runs.
+    }
+    await sleep(retryMs);
+  }
+}
+
+function uniqueDocumentIds(ids: string[]): string[] {
+  return [...new Set(ids.filter((id) => id.length > 0))];
+}
+
+const LOAB_EXTRACT_TYPES = new Set([
+  "loan-application",
+  "payslip",
+  "bank-statement",
+  "identity",
+  "credit-report",
+  "property-valuation",
+  "income-verification",
+  "privacy-consent",
+  "purchase-contract",
+  "company-registration",
+]);
+
+export function loabExtractDocumentIds(
+  files: Pick<
+    CaseDocument,
+    | "documentType"
+    | "sourceId"
+    | "title"
+    | "fileName"
+    | "documentId"
+    | "mimeType"
+  >[],
+  documentIds: string[],
+): string[] {
+  const ids: string[] = [];
+  for (const [index, file] of files.entries()) {
+    const id = mcpDocumentId(documentIds[index]);
+    if (!id) continue;
+    const type =
+      file.documentType ??
+      inferDocumentType({
+        documentId: file.documentId,
+        sourceId: file.sourceId,
+        title: file.title,
+        ...(file.fileName ? { fileName: file.fileName } : {}),
+        mimeType: file.mimeType,
+      });
+    if (LOAB_EXTRACT_TYPES.has(type)) ids.push(id);
+  }
+  return uniqueDocumentIds(ids);
+}
+
 function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) {
     throw new DOMException("The operation was aborted.", "AbortError");
@@ -497,4 +801,48 @@ function throwIfAborted(signal?: AbortSignal): void {
 
 function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+const LOAB_PROPOSED_DECISION_MARKER = "securelend-proposed-decision";
+
+function proposedDecisionToken(memo: unknown): string | undefined {
+  const seen = new Set<unknown>();
+  const visit = (node: unknown): string | undefined => {
+    if (node === undefined || node === null || seen.has(node)) return undefined;
+    if (typeof node !== "object") return undefined;
+    seen.add(node);
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        const found = visit(item);
+        if (found) return found;
+      }
+      return undefined;
+    }
+    const record = node as Record<string, unknown>;
+    const direct = firstString(record, "proposedDecision", "proposed_decision");
+    if (direct) return direct;
+    const nested = firstString(
+      asRecord(record["proposedDecision"]) ??
+        asRecord(record["proposed_decision"]),
+      "decision",
+      "value",
+    );
+    if (nested) return nested;
+    for (const value of Object.values(record)) {
+      const found = visit(value);
+      if (found) return found;
+    }
+    return undefined;
+  };
+  return visit(memo);
+}
+
+function appendLoabProposedDecisionMarker(
+  markdown: string,
+  decision: string,
+): string {
+  const token = decision.trim().toUpperCase().replaceAll(" ", "_");
+  const marker = `<!-- ${LOAB_PROPOSED_DECISION_MARKER}: ${token} -->`;
+  if (markdown.includes(marker)) return markdown;
+  return `${markdown.trimEnd()}\n\n${marker}\n`;
 }
