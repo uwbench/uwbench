@@ -49,6 +49,10 @@ export const matrixCommand = new Command("matrix")
           attempts: row.attempts,
           scored: row.scored,
           mean: row.mean === undefined ? "—" : row.mean.toFixed(1),
+          adjMean:
+            row.completionAdjustedMean === undefined
+              ? "—"
+              : row.completionAdjustedMean.toFixed(1),
         })),
       );
       console.log(`Wrote ${join(outputDir, "matrix.json")}`);
