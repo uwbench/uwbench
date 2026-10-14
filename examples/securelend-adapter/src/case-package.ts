@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { readPixelFont } from "./pixel-font.js";
 import type { RunRequest } from "@uwbench/protocol";
 import { ToolClient } from "@uwbench/tool-runtime";
 
@@ -573,6 +574,8 @@ function recoverBinary(
 
 function ocrPngBytes(bytes: Buffer): string {
   if (bytes.length === 0) return "";
+  const pixel = readPixelFont(bytes);
+  if (pixel) return pixel;
   try {
     const result = spawnSync("tesseract", ["stdin", "stdout"], {
       input: bytes,

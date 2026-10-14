@@ -17,7 +17,11 @@ async function main(): Promise<void> {
   await adapter.start();
   const bound = adapter.portNumber ?? port;
   const target =
-    config.mode === "protocol" ? config.protocolUpstream : config.mcp?.url;
+    config.mode === "protocol"
+      ? config.protocolUpstream
+      : config.mode === "platform"
+        ? config.platform?.baseUrl
+        : config.mcp?.url;
   console.log(
     `[securelend-adapter] ${config.participant.harness} model=${config.participant.model} mode=${config.mode} → ${target} on http://127.0.0.1:${bound}`,
   );

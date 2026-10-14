@@ -14,11 +14,13 @@ import {
   type UnderwritingSubmission,
 } from "@uwbench/protocol";
 import { runProductChatPath, type ChatPathConfig } from "./chat-path.js";
+import { runPlatformPath, type PlatformPathConfig } from "./platform-path.js";
 import { protocolError, readJson, sendJson } from "./http.js";
 import {
   ADAPTER_VERSION,
   type AdapterConfig,
   type McpModeConfig,
+  type PlatformModeConfig,
 } from "./identity.js";
 import { proxyToProtocolAgent } from "./protocol-proxy.js";
 
@@ -36,12 +38,14 @@ export interface SecureLendAdapterOptions {
   port: number;
   config: AdapterConfig;
   chatPath?: ChatPathConfig;
+  platform?: PlatformPathConfig;
 }
 
 export class SecureLendAdapter {
   private readonly port: number;
   private readonly config: AdapterConfig;
   private readonly chatPath: ChatPathConfig | undefined;
+  private readonly platform: PlatformPathConfig | undefined;
   private readonly runs = new Map<string, RunState>();
   private readonly idempotencyKeys = new Map<string, string>();
   private server: ReturnType<typeof createServer> | null = null;
@@ -51,6 +55,7 @@ export class SecureLendAdapter {
     this.port = options.port;
     this.config = options.config;
     this.chatPath = options.chatPath ?? mcpConfigToChatPath(options.config.mcp);
+    this.platform = options.platform ?? platformConfig(options.config.platform);
   }
 
   get mode(): AdapterConfig["mode"] {
@@ -239,7 +244,7 @@ export class SecureLendAdapter {
   }
 
   private async processMcpRun(run: RunState): Promise<void> {
-    if (!this.chatPath) {
+    if (!this.chatPath && !this.platform) {
       run.status = "failed";
       run.error = protocolError(
         "AGENT_CRASHED",
@@ -249,12 +254,19 @@ export class SecureLendAdapter {
     }
     run.status = "running";
     try {
-      const result = await runProductChatPath(
-        run.request,
-        this.chatPath,
-        run.controller.signal,
-        run.discoveryHint,
-      );
+      const result = this.platform
+        ? await runPlatformPath(
+            run.request,
+            this.platform,
+            run.controller.signal,
+            run.discoveryHint,
+          )
+        : await runProductChatPath(
+            run.request,
+            this.chatPath!,
+            run.controller.signal,
+            run.discoveryHint,
+          );
       if (this.runs.get(run.agentRunId)?.status === "cancelled") return;
       run.submission = result.submission;
       run.status = "completed";
@@ -314,6 +326,13 @@ export class SecureLendAdapter {
       server.close((error) => (error ? reject(error) : resolve()));
     });
   }
+}
+
+function platformConfig(
+  platform: PlatformModeConfig | undefined,
+): PlatformPathConfig | undefined {
+  if (!platform) return undefined;
+  return { baseUrl: platform.baseUrl, actor: platform.actor };
 }
 
 function mcpConfigToChatPath(
