@@ -83,6 +83,15 @@ They do not add a lender to the reference matrix.
 Running an agent against the public CLI is a separate vendor path.
 Same person may do both. The artifacts must not mix.
 
+## Later parts of Phase 2 (planned, not in v0.1)
+
+This form covers the review part of Phase 2. Phase 2 also plans private
+runs on real cases, where real borrower files stay with the lender and are
+never submitted here, and operational and regulatory test tracks (PII
+redaction before the model, data retention and deletion, audit trail).
+See [the practice-analysis README](README.md#phase-2-scope-updated-october-2026).
+These are not part of v0.1.
+
 ## Where to send
 
 - GitHub issue on [uwbench/uwbench](https://github.com/uwbench/uwbench)

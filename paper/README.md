@@ -18,3 +18,10 @@ Compile: `tectonic -X compile paper/uwbench.tex` or
 `pdflatex paper/uwbench.tex` (bibliography is inlined).
 Upload the compiled PDF plus `uwbench.tex` when submitting.
 Recommended arXiv license: CC BY 4.0.
+
+Note (October 2026): the Phase 2 description in section 6.3 of the
+published paper (lender review only, no real borrower files) has been
+extended in the repository. Phase 2 now also plans private runs on real
+cases, with borrower files kept with the lender, and operational and
+regulatory test tracks. The published paper is unchanged. The current
+scope is in `docs/practice-analysis/README.md`.
