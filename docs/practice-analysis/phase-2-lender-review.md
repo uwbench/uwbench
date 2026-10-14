@@ -101,4 +101,4 @@ is planned, and the guardrails. The build list is the
   with the form above, or
 - Maintainers listed in the repository, if your institution cannot post
   publicly. We will record an anonymized summary here, not the raw
-  affiliation, unless you ask to be named.
+  affiliation. A partner is named in public only with written consent.
