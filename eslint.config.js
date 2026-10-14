@@ -3,6 +3,7 @@ import tseslint from "typescript-eslint";
 import prettierConfig from "eslint-config-prettier";
 import pluginPrettier from "eslint-plugin-prettier";
 import pluginUnusedImports from "eslint-plugin-unused-imports";
+import globals from "globals";
 
 export default tseslint.config(
   {
@@ -95,6 +96,13 @@ export default tseslint.config(
     files: ["**/*.config.ts", "**/*.config.js", "**/*.config.mjs"],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
+  {
+    files: ["site/**/*.js"],
+    languageOptions: {
+      sourceType: "module",
+      globals: globals.browser,
     },
   },
 );
