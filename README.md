@@ -12,7 +12,11 @@ Scores produced by this repo are benchmark artifacts, not credit opinions.
 Practice analysis Phase 0–1 is published under
 [`docs/practice-analysis/`](docs/practice-analysis/README.md). Regional
 lenders are invited to [Phase 2 review](docs/practice-analysis/phase-2-lender-review.md)
-of the job, not of a ranking.
+of the job, not of a ranking. Phase 2 also plans private runs on real
+cases (borrower files stay with the lender) and operational and regulatory
+test tracks (PII redaction, data retention and deletion, audit trail).
+These are planned and are not in v0.1. See the
+[Phase 2 scope](docs/practice-analysis/README.md#phase-2-scope-updated-october-2026).
 
 **License:** Apache-2.0
 
@@ -212,7 +216,7 @@ benchmark/raw-documents-v0.1/
 dataset/                       # Hugging Face-oriented public dump
 paper/                         # Draft technical-note skeleton
 docs/specification/            # ADRs + generated protocol docs
-docs/practice-analysis/        # Job freeze, handbook inventory, Phase 2 invite
+docs/practice-analysis/        # Job freeze, handbook inventory, Phase 2 invite and scope
 ```
 
 ## Development
