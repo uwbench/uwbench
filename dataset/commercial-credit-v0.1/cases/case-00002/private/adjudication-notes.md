@@ -6,7 +6,7 @@ Apex Distribution Inc. — $2.5M term loan request for fleet expansion and worki
 ## Key Credit Issues
 
 ### 1. DSCR Policy Failure (Primary)
-- **Calculated DSCR**: 1.21x (EBITDA $165M / Pro forma Debt Service $136.2M)
+- **Calculated DSCR**: 1.21x (EBITDA $1,650,000 / Pro forma debt service $1,362,000)
 - **Policy Minimum**: 1.25x
 - **Shortfall**: 0.04x (3.2% below threshold)
 - **Mitigants**: Strong leverage (2.55x), excellent interest coverage (9.17x), solid equity cushion (40%)
