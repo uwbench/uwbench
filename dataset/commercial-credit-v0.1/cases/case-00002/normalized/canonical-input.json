@@ -277,9 +277,6 @@
       "evidence": [
         {
           "sourceId": "src_financials_2024_partial"
-        },
-        {
-          "sourceId": "src_debt_schedule_2024"
         }
       ],
       "confidence": 0.95
