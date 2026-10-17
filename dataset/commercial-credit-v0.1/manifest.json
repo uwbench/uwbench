@@ -378,8 +378,8 @@
     {
       "path": "cases/case-00002/normalized/canonical-input.json",
       "role": "normalized",
-      "sha256": "945eb1e6f87ab5b739c3d59d48d9dc529e7a01a26f7146083d4c5723d46c627a",
-      "bytes": 8630
+      "sha256": "e4b1d7b4af0a446ab66856a012f3d9b719d2a0e977d4386f926c39577226d316",
+      "bytes": 8562
     },
     {
       "path": "cases/case-00002/private/adjudication-notes.md",
