@@ -1,0 +1,5 @@
+{
+  "uses_ai_in_credit_relevant_ops": true,
+  "ai_use_description": "Order routing and inventory reorder decisions",
+  "fallback_statement": "Manual process exists"
+}
