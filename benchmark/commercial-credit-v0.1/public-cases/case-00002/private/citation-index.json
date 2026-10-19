@@ -23,6 +23,16 @@
       "sourceId": "src_tax_returns_2022_2024",
       "fields": ["taxes", "net_income"],
       "confidence": 0.9
+    },
+    {
+      "citationId": "cite_ai_dependency_present",
+      "sourceId": "src_ai_dependency_2024",
+      "fields": [
+        "uses_ai_in_credit_relevant_ops",
+        "ai_use_description",
+        "fallback_statement"
+      ],
+      "confidence": 1.0
     }
   ]
 }

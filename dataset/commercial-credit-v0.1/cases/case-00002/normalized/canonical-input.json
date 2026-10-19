@@ -387,6 +387,57 @@
         }
       ],
       "confidence": 1
+    },
+    {
+      "canonicalKey": "uses_ai_in_credit_relevant_ops",
+      "value": true,
+      "normalizedValue": true,
+      "type": "boolean",
+      "unit": "none",
+      "period": {
+        "start": "2024-01-01",
+        "end": "2024-12-31"
+      },
+      "evidence": [
+        {
+          "sourceId": "src_ai_dependency_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "ai_use_description",
+      "value": "Order routing and inventory reorder decisions",
+      "normalizedValue": "Order routing and inventory reorder decisions",
+      "type": "categorical",
+      "unit": "none",
+      "period": {
+        "start": "2024-01-01",
+        "end": "2024-12-31"
+      },
+      "evidence": [
+        {
+          "sourceId": "src_ai_dependency_2024"
+        }
+      ],
+      "confidence": 1
+    },
+    {
+      "canonicalKey": "fallback_statement",
+      "value": "Manual process exists",
+      "normalizedValue": "Manual process exists",
+      "type": "categorical",
+      "unit": "none",
+      "period": {
+        "start": "2024-01-01",
+        "end": "2024-12-31"
+      },
+      "evidence": [
+        {
+          "sourceId": "src_ai_dependency_2024"
+        }
+      ],
+      "confidence": 1
     }
   ],
   "ratios": {
