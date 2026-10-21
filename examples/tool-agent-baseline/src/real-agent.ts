@@ -19,6 +19,7 @@ import {
   createToolClient,
   runToolAgent,
 } from "./agent-core.js";
+import { runRoutedHarness } from "./router.js";
 
 interface RunState {
   agentRunId: string;
@@ -87,7 +88,9 @@ export class RealToolAgent {
         advertisedTools: ADVERTISED_TOOLS,
         maxToolCalls: run.request.limits.maxToolCalls,
       });
-      const { submission } = await runToolAgent(
+      const execute =
+        process.env["HARNESS_ROUTER"] === "1" ? runRoutedHarness : runToolAgent;
+      const { submission } = await execute(
         {
           caseId: run.request.caseId,
           objective: run.request.objective,

@@ -72,15 +72,34 @@ export interface ToolAgentContext {
 export interface ToolAgentRun {
   submission: UnderwritingSubmission;
   client: ToolClient;
+  trace: HarnessTrace;
 }
 
-interface StructuredRecord {
+export interface RecordAttempt {
+  recordId: string;
+  ok: boolean;
+  sourceId?: string;
+}
+
+/** Tool-visible record of what the harness fetched. The router may read this. */
+export interface HarnessTrace {
+  recordAttempts: RecordAttempt[];
+  toolSourceIds: string[];
+  /** Policy source ids returned by policy.get_rule. Safe to cite without a documentId. */
+  policySourceIds: string[];
+}
+
+export function emptyTrace(): HarnessTrace {
+  return { recordAttempts: [], toolSourceIds: [], policySourceIds: [] };
+}
+
+export interface StructuredRecord {
   recordId: string;
   sourceId: string;
   record: Record<string, unknown>;
 }
 
-interface PolicyRule {
+export interface PolicyRule {
   ruleId: string;
   sourceId: string;
   title: string;
@@ -89,13 +108,16 @@ interface PolicyRule {
   threshold: unknown;
 }
 
-interface DocumentSummary {
+export interface DocumentSummary {
   documentId: string;
   sourceId: string;
   title: string;
 }
 
-function evidenceFor(sourceId: string, documentId?: string): EvidenceReference[] {
+function evidenceFor(
+  sourceId: string,
+  documentId?: string,
+): EvidenceReference[] {
   return documentId ? [{ sourceId, documentId }] : [{ sourceId }];
 }
 
@@ -196,163 +218,236 @@ export function createToolClient(options: ToolClientOptions): ToolClient {
   return new ToolClient(options);
 }
 
+function noteSources(trace: HarnessTrace, sourceIds: string[]): void {
+  for (const sourceId of sourceIds) {
+    if (!trace.toolSourceIds.includes(sourceId)) {
+      trace.toolSourceIds.push(sourceId);
+    }
+  }
+}
+
+/**
+ * Base harness H0. Subclasses override hooks and inherit the rest.
+ * `runToolAgent` stays this class with no overrides, which is the frozen executor.
+ */
+export class BaseToolHarness {
+  readonly version = AGENT_VERSION;
+
+  protected versionLabel(): string {
+    return this.version;
+  }
+
+  candidateRecordIds(): readonly string[] {
+    return CANDIDATE_RECORD_IDS;
+  }
+
+  protected selectEvidence(
+    records: StructuredRecord[],
+    documents: DocumentSummary[],
+    _policies: PolicyRule[],
+  ): EvidenceReference[] {
+    const primary = records[0];
+    if (primary) return evidenceFor(primary.sourceId);
+    if (documents[0]) {
+      return evidenceFor(documents[0].sourceId, documents[0].documentId);
+    }
+    return [];
+  }
+
+  protected buildRisks(
+    ratios: Record<string, number>,
+    evidence: EvidenceReference[],
+    _policies: PolicyAssessment,
+  ): RiskFinding[] {
+    return generateRisks(ratios, evidence);
+  }
+
+  async run(
+    context: ToolAgentContext,
+    client: ToolClient,
+  ): Promise<ToolAgentRun> {
+    const trace = emptyTrace();
+    const documents = await discoverDocuments(client, context.objective);
+    noteSources(
+      trace,
+      documents.map((document) => document.sourceId),
+    );
+    const records = await discoverRecords(
+      client,
+      this.candidateRecordIds(),
+      trace,
+    );
+    const policies = await discoverPolicies(client);
+    trace.policySourceIds = [...new Set(policies.map((rule) => rule.sourceId))];
+    noteSources(trace, trace.policySourceIds);
+    return this.compose(context, client, documents, records, policies, trace);
+  }
+
+  protected async compose(
+    context: ToolAgentContext,
+    client: ToolClient,
+    documents: DocumentSummary[],
+    records: StructuredRecord[],
+    policies: PolicyRule[],
+    trace: HarnessTrace,
+  ): Promise<ToolAgentRun> {
+    const spread =
+      records
+        .map((item) => spreadFromRecord(item.record))
+        .find((item): item is FinancialSpread => item !== undefined) ??
+      placeholderSpread();
+    const hasSpread = spread.currency !== "XXX";
+
+    if (hasSpread) {
+      await client.tryCall("finance.validate_spread", { spread });
+      await client.tryCall("finance.calculate", {
+        expression: "revenue - 0",
+        variables: { revenue: spread.revenue.amount },
+      });
+    }
+    const ratioResult = hasSpread
+      ? await client.tryCall("finance.calculate_ratios", { spread })
+      : { ok: false as const, error: undefined };
+    const ratios =
+      ratioResult.ok && ratioResult.result["ratios"]
+        ? (ratioResult.result["ratios"] as Record<string, number>)
+        : {};
+
+    const followUps = await requestMissingInformation(
+      client,
+      context.objective,
+    );
+    for (const followUp of followUps) {
+      for (const documentId of followUp.revealedDocuments ?? []) {
+        if (documents.some((document) => document.documentId === documentId)) {
+          continue;
+        }
+        const read = await client.tryCall("case.read_document", { documentId });
+        if (read.ok) {
+          documents.push({
+            documentId,
+            sourceId: String(read.result["sourceId"] ?? documentId),
+            title: documentId,
+          });
+        }
+      }
+    }
+
+    const evidence = this.selectEvidence(records, documents, policies);
+    const borrower = {
+      legalName:
+        records
+          .map((item) =>
+            stringField(item.record, "legal_name", "legalName", "name"),
+          )
+          .find((value) => value) ?? context.caseId,
+      entityType:
+        records
+          .map((item) => stringField(item.record, "entity_type", "entityType"))
+          .find((value) => value) ?? "unknown",
+      naics:
+        records
+          .map((item) => stringField(item.record, "naics_code", "naics"))
+          .find((value) => value) ?? "000000",
+      state:
+        records
+          .map((item) => stringField(item.record, "state"))
+          .find((value) => value) ?? "XX",
+      years:
+        records
+          .map((item) =>
+            numberField(item.record, "years_in_business", "yearsInBusiness"),
+          )
+          .find((value) => value !== undefined) ?? 0,
+    };
+
+    const policyAssessment = evaluatePolicies(policies, ratios);
+    const risks = this.buildRisks(ratios, evidence, policyAssessment);
+    const facts = generateFacts(borrower, spread, evidence);
+    const decision = !hasSpread
+      ? "INSUFFICIENT_INFORMATION"
+      : policyAssessment.evaluations.some((item) => !item.passed)
+        ? "REFER"
+        : followUps.length > 0
+          ? "APPROVE_WITH_CONDITIONS"
+          : "REFER";
+    const memoMarkdown = [
+      `# Tool-agent baseline — ${borrower.legalName}`,
+      "",
+      `Lane: ${context.lane}. Case: ${context.caseId}.`,
+      `Discovered ${documents.length} documents, ${records.length} records, ${policies.length} policy rules.`,
+      `Decision: ${decision}.`,
+      `Runtime: ${this.versionLabel()}`,
+    ].join("\n");
+
+    if (evidence.length > 0 || documents.length > 0) {
+      await client.tryCall("submission.save_artifact", {
+        artifactId: `${context.caseId}-tool-agent-memo`,
+        content: memoMarkdown,
+        contentType: "text/markdown",
+      });
+    }
+
+    const submission = UnderwritingSubmissionSchema.parse({
+      schemaVersion: "1.0",
+      financialSpread: spread,
+      normalizedFacts: facts,
+      risks,
+      discrepancies: [],
+      complianceFindings: [],
+      followUpRequests: followUps,
+      policyAssessment,
+      recommendation: {
+        decision,
+        confidence: hasSpread ? 0.7 : 1,
+        conditions:
+          followUps.length > 0
+            ? [
+                {
+                  description:
+                    "Review fulfilled information requests before close.",
+                  evidence,
+                },
+              ]
+            : [],
+        policyExceptions: [],
+        rationale: [
+          {
+            claim: `${policyAssessment.evaluations.filter((item) => item.passed).length} of ${policyAssessment.evaluations.length} advertised policy rules pass.`,
+            evidence: policies.map((rule) => ({ sourceId: rule.sourceId })),
+            confidence: 1,
+          },
+        ],
+      },
+      memo: {
+        markdown: memoMarkdown,
+        claims: [
+          {
+            claim: `Tool-using baseline ${AGENT_VERSION} used only advertised tools.`,
+            evidence,
+            confidence: 1,
+          },
+        ],
+      },
+      confidence: {
+        overall: hasSpread ? 0.7 : 0,
+        byComponent: {
+          financial_spread: hasSpread ? 1 : 0,
+          policy_assessment: policies.length > 0 ? 1 : 0,
+          follow_ups: followUps.length > 0 ? 1 : 0,
+        },
+      },
+    });
+
+    return { submission, client, trace };
+  }
+}
+
 export async function runToolAgent(
   context: ToolAgentContext,
   client: ToolClient,
 ): Promise<ToolAgentRun> {
-  const documents = await discoverDocuments(client, context.objective);
-  const records = await discoverRecords(client);
-  const policies = await discoverPolicies(client);
-  const spread =
-    records
-      .map((item) => spreadFromRecord(item.record))
-      .find((item): item is FinancialSpread => item !== undefined) ??
-    placeholderSpread();
-  const hasSpread = spread.currency !== "XXX";
-
-  if (hasSpread) {
-    await client.tryCall("finance.validate_spread", { spread });
-    await client.tryCall("finance.calculate", {
-      expression: "revenue - 0",
-      variables: { revenue: spread.revenue.amount },
-    });
-  }
-  const ratioResult = hasSpread
-    ? await client.tryCall("finance.calculate_ratios", { spread })
-    : { ok: false as const, error: undefined };
-  const ratios =
-    ratioResult.ok && ratioResult.result["ratios"]
-      ? (ratioResult.result["ratios"] as Record<string, number>)
-      : {};
-
-  const followUps = await requestMissingInformation(client, context.objective);
-  for (const followUp of followUps) {
-    for (const documentId of followUp.revealedDocuments ?? []) {
-      if (documents.some((document) => document.documentId === documentId)) {
-        continue;
-      }
-      const read = await client.tryCall("case.read_document", { documentId });
-      if (read.ok) {
-        documents.push({
-          documentId,
-          sourceId: String(read.result["sourceId"] ?? documentId),
-          title: documentId,
-        });
-      }
-    }
-  }
-
-  const primary = records[0];
-  const evidence = primary
-    ? evidenceFor(primary.sourceId)
-    : documents[0]
-      ? evidenceFor(documents[0].sourceId, documents[0].documentId)
-      : [];
-  const borrower = {
-    legalName:
-      records
-        .map((item) =>
-          stringField(item.record, "legal_name", "legalName", "name"),
-        )
-        .find((value) => value) ?? context.caseId,
-    entityType:
-      records
-        .map((item) => stringField(item.record, "entity_type", "entityType"))
-        .find((value) => value) ?? "unknown",
-    naics:
-      records
-        .map((item) => stringField(item.record, "naics_code", "naics"))
-        .find((value) => value) ?? "000000",
-    state:
-      records
-        .map((item) => stringField(item.record, "state"))
-        .find((value) => value) ?? "XX",
-    years:
-      records
-        .map((item) =>
-          numberField(item.record, "years_in_business", "yearsInBusiness"),
-        )
-        .find((value) => value !== undefined) ?? 0,
-  };
-
-  const policyAssessment = evaluatePolicies(policies, ratios);
-  const risks = generateRisks(ratios, evidence);
-  const facts = generateFacts(borrower, spread, evidence);
-  const decision = !hasSpread
-    ? "INSUFFICIENT_INFORMATION"
-    : policyAssessment.evaluations.some((item) => !item.passed)
-      ? "REFER"
-      : followUps.length > 0
-        ? "APPROVE_WITH_CONDITIONS"
-        : "REFER";
-  const memoMarkdown = [
-    `# Tool-agent baseline — ${borrower.legalName}`,
-    "",
-    `Lane: ${context.lane}. Case: ${context.caseId}.`,
-    `Discovered ${documents.length} documents, ${records.length} records, ${policies.length} policy rules.`,
-    `Decision: ${decision}.`,
-    `Runtime: ${AGENT_VERSION}`,
-  ].join("\n");
-
-  if (evidence.length > 0 || documents.length > 0) {
-    await client.tryCall("submission.save_artifact", {
-      artifactId: `${context.caseId}-tool-agent-memo`,
-      content: memoMarkdown,
-      contentType: "text/markdown",
-    });
-  }
-
-  const submission = UnderwritingSubmissionSchema.parse({
-    schemaVersion: "1.0",
-    financialSpread: spread,
-    normalizedFacts: facts,
-    risks,
-    discrepancies: [],
-    complianceFindings: [],
-    followUpRequests: followUps,
-    policyAssessment,
-    recommendation: {
-      decision,
-      confidence: hasSpread ? 0.7 : 1,
-      conditions:
-        followUps.length > 0
-          ? [
-              {
-                description: "Review fulfilled information requests before close.",
-                evidence,
-              },
-            ]
-          : [],
-      policyExceptions: [],
-      rationale: [
-        {
-          claim: `${policyAssessment.evaluations.filter((item) => item.passed).length} of ${policyAssessment.evaluations.length} advertised policy rules pass.`,
-          evidence: policies.map((rule) => ({ sourceId: rule.sourceId })),
-          confidence: 1,
-        },
-      ],
-    },
-    memo: {
-      markdown: memoMarkdown,
-      claims: [
-        {
-          claim: `Tool-using baseline ${AGENT_VERSION} used only advertised tools.`,
-          evidence,
-          confidence: 1,
-        },
-      ],
-    },
-    confidence: {
-      overall: hasSpread ? 0.7 : 0,
-      byComponent: {
-        financial_spread: hasSpread ? 1 : 0,
-        policy_assessment: policies.length > 0 ? 1 : 0,
-        follow_ups: followUps.length > 0 ? 1 : 0,
-      },
-    },
-  });
-
-  return { submission, client };
+  return new BaseToolHarness().run(context, client);
 }
 
 async function discoverDocuments(
@@ -375,21 +470,37 @@ async function discoverDocuments(
       documentId: document.documentId,
     });
   }
-  const query = objective.split(/\s+/u).find((word) => word.length > 4) ?? "loan";
+  const query =
+    objective.split(/\s+/u).find((word) => word.length > 4) ?? "loan";
   await client.tryCall("case.search_documents", { query, limit: 5 });
   return documents;
 }
 
-async function discoverRecords(client: ToolClient): Promise<StructuredRecord[]> {
+async function discoverRecords(
+  client: ToolClient,
+  recordIds: readonly string[],
+  trace: HarnessTrace,
+): Promise<StructuredRecord[]> {
   const records: StructuredRecord[] = [];
-  for (const recordId of CANDIDATE_RECORD_IDS) {
+  for (const recordId of recordIds) {
     const result = await client.tryCall("case.get_structured_record", {
       recordId,
     });
-    if (!result.ok) continue;
+    const sourceId = result.ok
+      ? String(result.result["sourceId"] ?? recordId)
+      : undefined;
+    trace.recordAttempts.push({
+      recordId,
+      ok: result.ok,
+      ...(sourceId ? { sourceId } : {}),
+    });
+    if (!result.ok || !sourceId) continue;
+    if (!trace.toolSourceIds.includes(sourceId)) {
+      trace.toolSourceIds.push(sourceId);
+    }
     records.push({
       recordId,
-      sourceId: String(result.result["sourceId"] ?? recordId),
+      sourceId,
       record: (result.result["record"] as Record<string, unknown>) ?? {},
     });
   }
@@ -397,13 +508,11 @@ async function discoverRecords(client: ToolClient): Promise<StructuredRecord[]> 
 }
 
 async function discoverPolicies(client: ToolClient): Promise<PolicyRule[]> {
-  const summaries: Array<{ ruleId: string }> = [];
+  const summaries: { ruleId: string }[] = [];
   for (const query of ["minimum", "maximum", "ratio"]) {
     const result = await client.tryCall("policy.search", { query, limit: 10 });
     if (!result.ok) continue;
-    summaries.push(
-      ...(((result.result["rules"] as Array<{ ruleId: string }>) ?? []) ?? []),
-    );
+    summaries.push(...((result.result["rules"] as { ruleId: string }[]) ?? []));
   }
   const rules: PolicyRule[] = [];
   for (const ruleId of new Set(summaries.map((item) => item.ruleId))) {
