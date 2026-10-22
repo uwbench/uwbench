@@ -40,7 +40,7 @@ describe("failure signatures", () => {
     expect(selectHarnessId(submission, emptyTrace())).toBe("base");
   });
 
-  it("routes a canonical-wrapper citation to the citation specialist", () => {
+  it("does not route on a wrapper citation after the base fix", () => {
     const submission = UnderwritingSubmissionSchema.parse({
       schemaVersion: "1.0",
       financialSpread: {
@@ -90,7 +90,7 @@ describe("failure signatures", () => {
     expect(fabricatedWrapperSourceIds(submission)).toEqual([
       "normalized:canonical-input",
     ]);
-    expect(selectHarnessId(submission, emptyTrace())).toBe("citation-anchor");
+    expect(selectHarnessId(submission, emptyTrace())).toBe("base");
     expect(
       specialistKeepsBase(submission, {
         ...emptyTrace(),

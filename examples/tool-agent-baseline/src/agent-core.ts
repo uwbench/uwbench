@@ -244,13 +244,22 @@ export class BaseToolHarness {
   protected selectEvidence(
     records: StructuredRecord[],
     documents: DocumentSummary[],
-    _policies: PolicyRule[],
+    policies: PolicyRule[],
   ): EvidenceReference[] {
-    const primary = records[0];
-    if (primary) return evidenceFor(primary.sourceId);
-    if (documents[0]) {
-      return evidenceFor(documents[0].sourceId, documents[0].documentId);
-    }
+    const recordIds = records
+      .map((record) => record.sourceId)
+      .filter((sourceId) => sourceId.startsWith("src_"));
+    const policyIds = policies
+      .map((rule) => rule.sourceId)
+      .filter((sourceId) => sourceId.startsWith("src_"));
+    const sourceId =
+      recordIds.find((id) => id.includes("financial")) ??
+      recordIds.find((id) => id.includes("borrower")) ??
+      recordIds[0] ??
+      policyIds[0];
+    if (sourceId) return [{ sourceId }];
+    const document = documents.find((item) => item.sourceId.startsWith("src_"));
+    if (document) return evidenceFor(document.sourceId, document.documentId);
     return [];
   }
 

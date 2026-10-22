@@ -13,7 +13,6 @@ export const HARNESS_IDS = [
   "base",
   "record-coverage",
   "policy-breach-risk",
-  "citation-anchor",
 ] as const;
 
 export type HarnessId = (typeof HARNESS_IDS)[number];
@@ -141,8 +140,6 @@ export function selectHarnessId(
 ): HarnessId {
   if (recordGap(trace)) return "record-coverage";
   if (policyBreachWithoutRisk(submission)) return "policy-breach-risk";
-  if (fabricatedWrapperSourceIds(submission).length > 0)
-    return "citation-anchor";
   return "base";
 }
 
