@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0",
+  "runId": "p2-held-aside-routed-s1-case-00008",
+  "files": {
+    "events.ndjson": "sha256:7e01f5403a4e7ab52c58543ecf06e8a89c5ff509eaaec2e2424c7cbf2ce2e279",
+    "run-manifest.json": "sha256:6a56317a31c641d99c7f5a7ae330f0c666b06b93fd497faa7b1c774a4b880fcd",
+    "submission.json": "sha256:2e99637d4e677293c9561345cf7ac908923994663c57830318c665d9bb1512b2",
+    "score.json": "sha256:bb4898916260d948c1cb28bf0bb8d4f3468e7e15a35b348afd4bafeed80e610e",
+    "report.html": "sha256:9d14b4cf93c4cec4f8a712acf0c6ca4df78f86329ed18f1d8df65594836cf929",
+    "artifacts/0aed8c19d77e6683fd9edd41c96cc521ab5eca45cc174a509e701e081d0afcee.artifact": "sha256:f55bf914846496b77ebd09b2b1114fb9ff04d57a4a9f3af6d79a4cc3a35f3b0c"
+  }
+}
