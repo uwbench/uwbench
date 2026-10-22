@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0",
+  "runId": "p2-discovery-routed-s2-case-00004",
+  "files": {
+    "events.ndjson": "sha256:76092ea4693f82192bad22ca843698ff7efbbdc398cb6c5451d7e9bd4564d6b8",
+    "run-manifest.json": "sha256:8684da7793739aad715c80c72f0ef051ec5b38910035fbd9395f7e79d3cf404d",
+    "submission.json": "sha256:40c98f66e3930b58bca87633785bfd226f05ea538d430df1f9498e99d8904347",
+    "score.json": "sha256:7230b3368000c945a46751ef4c37cb764651cd2525a809ac1ef03dd7fb2839e9",
+    "report.html": "sha256:e133a8d427107c1912e914612ab21cb0cee1464322bdcb72d84ff88f103bc7a1",
+    "artifacts/62774d0db1c4838c1bc2788e22e3799614e73046b1afad497479c75d2b403626.artifact": "sha256:20a96f3e0c827b6a294e0ff1d9fed478bc163c80548fbd79bd7aed28302e0000"
+  }
+}

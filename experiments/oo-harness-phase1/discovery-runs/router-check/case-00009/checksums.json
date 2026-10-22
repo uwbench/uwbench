@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0",
+  "runId": "router-check-case-00009",
+  "files": {
+    "events.ndjson": "sha256:31610bd24fa8b93169c1cff52a19cd0429afbc5951fd868c0702f2e60e995dda",
+    "run-manifest.json": "sha256:bd3e1c592efb7237d0925352507a2d66b723731640a88191d462fe414d8dab77",
+    "submission.json": "sha256:972016c5d5d096702740c9fa68b72960bab04231365486a4c11e53f59153b299",
+    "score.json": "sha256:6d4c163db07dd23036b438f63ce1cceabf2d37b590e8ec0609a22e9aa7ba67e4",
+    "report.html": "sha256:2a6c22adf8d2430511daa807fd7b1a88f8b9ae86516336860556e3e9e80fe961",
+    "artifacts/45e74a5f2926220bea793b6c498544bdf5d20d893c2263d6d2ab784bb03fd0cc.artifact": "sha256:8fed3854bdcce9f13c0eb17296210a1e4e4cfe9e73e5b1282bc918e0a8aa6e9f"
+  }
+}
