@@ -99,6 +99,28 @@ function evidenceFor(sourceId: string, documentId?: string): EvidenceReference[]
   return documentId ? [{ sourceId, documentId }] : [{ sourceId }];
 }
 
+function selectEvidence(
+  records: StructuredRecord[],
+  documents: DocumentSummary[],
+  policies: PolicyRule[],
+): EvidenceReference[] {
+  const recordIds = records
+    .map((record) => record.sourceId)
+    .filter((sourceId) => sourceId.startsWith("src_"));
+  const policyIds = policies
+    .map((rule) => rule.sourceId)
+    .filter((sourceId) => sourceId.startsWith("src_"));
+  const sourceId =
+    recordIds.find((id) => id.includes("financial")) ??
+    recordIds.find((id) => id.includes("borrower")) ??
+    recordIds[0] ??
+    policyIds[0];
+  if (sourceId) return [{ sourceId }];
+  const document = documents.find((item) => item.sourceId.startsWith("src_"));
+  if (document) return evidenceFor(document.sourceId, document.documentId);
+  return [];
+}
+
 function money(
   amount: unknown,
 ): { amount: number; currency: "USD" } | undefined {
@@ -242,12 +264,7 @@ export async function runToolAgent(
     }
   }
 
-  const primary = records[0];
-  const evidence = primary
-    ? evidenceFor(primary.sourceId)
-    : documents[0]
-      ? evidenceFor(documents[0].sourceId, documents[0].documentId)
-      : [];
+  const evidence = selectEvidence(records, documents, policies);
   const borrower = {
     legalName:
       records
