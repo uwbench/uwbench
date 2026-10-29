@@ -1337,7 +1337,8 @@ export class LocalRunner {
         caseInputFingerprint: caseInputFingerprint(casePath, lane),
         // Prompt and policy index are scoring inputs. Bump this when they change
         // so an older run directory is not replayed as the same configuration.
-        scoringInputRevision: "reasoning-task-md+declared-policy-record-index",
+        scoringInputRevision:
+          "reasoning-task-md+declared-policy-record-index+advertised-record-ids",
         limits,
         ...(participant ? { participant } : {}),
       }),

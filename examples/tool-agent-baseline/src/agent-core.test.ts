@@ -105,4 +105,43 @@ describe("tool agent core", () => {
       "case.not_real" as (typeof ADVERTISED_TOOLS)[number],
     );
   });
+
+  it("loads a record id advertised on the objective", async () => {
+    const instance = new ToolGateway({
+      port: 0,
+      runToken: TOKEN,
+      maxToolCalls: 80,
+      fixtures: {
+        documents: [],
+        revealableDocuments: [],
+        records: [
+          {
+            recordId: "record_case_only",
+            sourceId: "src_case_only",
+            record: { revenue: 42_000 },
+          },
+        ],
+        policies: [],
+        information: {},
+      },
+    });
+    running.push(instance);
+    await instance.start();
+    const client = createToolClient({
+      url: `http://127.0.0.1:${instance.port}/v1/tools/call`,
+      bearerToken: TOKEN,
+      advertisedTools: ADVERTISED_TOOLS,
+    });
+    const { submission } = await runToolAgent(
+      {
+        caseId: "advertised-record",
+        objective:
+          "Structured record IDs for case.get_structured_record: record_case_only.",
+        requiredOutputs: ["recommendation"],
+        lane: "normalized_data",
+      },
+      client,
+    );
+    expect(submission.financialSpread.revenue.amount).toBe(42_000);
+  });
 });

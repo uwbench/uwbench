@@ -3,9 +3,11 @@ import {
   validateCase,
   validateCaseSync,
   DiagnosticCode,
+  SemanticDiagnosticCode,
 } from "../validator.js";
 import {
   mkdtempSync,
+  readFileSync,
   rmSync,
   writeFileSync,
   mkdirSync,
@@ -423,6 +425,92 @@ budgets:
           (d) => d.code === DiagnosticCode.SYMLINK_DETECTED,
         ),
       ).toBe(true);
+    });
+  });
+
+  describe("revealable documents and citation-index document ids", () => {
+    const hidden = {
+      documentId: "doc_hidden",
+      sourceId: "src_hidden",
+      title: "Hidden schedule",
+      mimeType: "text/plain",
+      pageCount: 1,
+    };
+
+    function declareHiddenDocument() {
+      writeFileSync(
+        join(tempDir, "case.yaml"),
+        `${readFileSync(join(tempDir, "case.yaml"), "utf8")}sources:
+  - kind: document
+    sourceId: src_hidden
+    documentId: doc_hidden
+    title: Hidden schedule
+    mimeType: text/plain
+    pageCount: 1
+    pii: false
+`,
+      );
+    }
+
+    it("rejects a revealable document that case.yaml does not declare", () => {
+      createValidCase(tempDir);
+      writeFileSync(
+        join(tempDir, "environment/tool-fixtures.json"),
+        JSON.stringify({ revealableDocuments: [hidden] }),
+      );
+      const result = validateCaseSync(tempDir);
+      expect(result.success).toBe(false);
+      expect(
+        result.diagnostics.some(
+          (diagnostic) =>
+            String(diagnostic.code) ===
+              SemanticDiagnosticCode.UNDECLARED_DOCUMENT_SOURCE &&
+            String(diagnostic.message).includes("src_hidden"),
+        ),
+      ).toBe(true);
+    });
+
+    it("rejects a citation-index document id that is not declared with kind and documentId", () => {
+      createValidCase(tempDir);
+      declareHiddenDocument();
+      writeFileSync(
+        join(tempDir, "environment/tool-fixtures.json"),
+        JSON.stringify({ revealableDocuments: [hidden] }),
+      );
+      writeFileSync(
+        join(tempDir, "private/citation-index.json"),
+        JSON.stringify({ citations: [{ sourceId: "src_hidden" }] }),
+      );
+      const missingKind = validateCaseSync(tempDir);
+      expect(missingKind.success).toBe(false);
+      expect(
+        missingKind.diagnostics.some((diagnostic) =>
+          String(diagnostic.message).includes("kind document"),
+        ),
+      ).toBe(true);
+
+      writeFileSync(
+        join(tempDir, "private/citation-index.json"),
+        JSON.stringify({
+          citations: [
+            {
+              sourceId: "src_hidden",
+              kind: "document",
+              documentId: "doc_hidden",
+              pageCount: 1,
+            },
+          ],
+        }),
+      );
+      const declared = validateCaseSync(tempDir);
+      expect(
+        declared.diagnostics.filter(
+          (diagnostic) =>
+            String(diagnostic.code) ===
+            SemanticDiagnosticCode.UNDECLARED_DOCUMENT_SOURCE,
+        ),
+      ).toEqual([]);
+      expect(declared.success).toBe(true);
     });
   });
 

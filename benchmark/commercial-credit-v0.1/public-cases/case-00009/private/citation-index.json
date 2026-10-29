@@ -3,20 +3,39 @@
     {
       "citationId": "cite_identity",
       "sourceId": "src_borrower_profile_primary",
-      "fields": ["legal_name", "entity_type"],
+      "fields": [
+        "legal_name",
+        "entity_type"
+      ],
       "confidence": 1.0
     },
     {
       "citationId": "cite_secondary",
       "sourceId": "src_borrower_profile_secondary",
-      "fields": ["legal_name", "entity_type"],
+      "fields": [
+        "legal_name",
+        "entity_type"
+      ],
       "confidence": 1.0
     },
     {
       "citationId": "cite_ownership",
       "sourceId": "src_ownership_structure",
-      "fields": ["ownership_structure"],
+      "kind": "document",
+      "documentId": "doc_ownership_structure",
+      "pageCount": 1,
+      "fields": [
+        "ownership_structure"
+      ],
       "confidence": 0.95
+    },
+    {
+      "citationId": "cite_guarantor_agreement",
+      "sourceId": "src_guarantor_agreement",
+      "kind": "document",
+      "documentId": "doc_guarantor_agreement",
+      "pageCount": 1,
+      "confidence": 1.0
     }
   ]
 }

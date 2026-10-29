@@ -144,6 +144,22 @@ sources:
     columns: *a1
     pii: false
     legalUse: public_record
+  - kind: document
+    sourceId: src_ownership_structure
+    documentId: doc_ownership_structure
+    title: Ownership Structure Documentation
+    mimeType: text/plain
+    pageCount: 1
+    pii: false
+    legalUse: public_record
+  - kind: document
+    sourceId: src_guarantor_agreement
+    documentId: doc_guarantor_agreement
+    title: Guarantor Agreement
+    mimeType: text/plain
+    pageCount: 1
+    pii: false
+    legalUse: public_record
 policyTests:
   - ruleId: rule_dscr_minimum
     appliesWhen:

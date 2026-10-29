@@ -201,7 +201,7 @@ export async function runToolAgent(
   client: ToolClient,
 ): Promise<ToolAgentRun> {
   const documents = await discoverDocuments(client, context.objective);
-  const records = await discoverRecords(client);
+  const records = await discoverRecords(client, context.objective);
   const policies = await discoverPolicies(client);
   const spread =
     records
@@ -380,9 +380,19 @@ async function discoverDocuments(
   return documents;
 }
 
-async function discoverRecords(client: ToolClient): Promise<StructuredRecord[]> {
+function recordIdsFromObjective(objective: string): string[] {
+  return [...new Set(objective.match(/\brecord_[a-z0-9_]+\b/gi) ?? [])];
+}
+
+async function discoverRecords(
+  client: ToolClient,
+  objective: string,
+): Promise<StructuredRecord[]> {
   const records: StructuredRecord[] = [];
-  for (const recordId of CANDIDATE_RECORD_IDS) {
+  const recordIds = [
+    ...new Set([...recordIdsFromObjective(objective), ...CANDIDATE_RECORD_IDS]),
+  ];
+  for (const recordId of recordIds) {
     const result = await client.tryCall("case.get_structured_record", {
       recordId,
     });

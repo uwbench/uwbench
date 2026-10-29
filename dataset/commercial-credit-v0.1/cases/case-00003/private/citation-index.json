@@ -3,25 +3,37 @@
     {
       "citationId": "cite_revenue_gaap",
       "sourceId": "src_financials_2024_gaap",
-      "fields": ["revenue"],
+      "fields": [
+        "revenue"
+      ],
       "confidence": 0.95
     },
     {
       "citationId": "cite_revenue_tax",
       "sourceId": "src_tax_returns_2024",
-      "fields": ["revenue"],
+      "fields": [
+        "revenue"
+      ],
       "confidence": 0.95
     },
     {
       "citationId": "cite_revenue_reconciliation",
       "sourceId": "src_revenue_reconciliation",
-      "fields": ["revenue"],
+      "kind": "document",
+      "documentId": "doc_revenue_reconciliation",
+      "pageCount": 1,
+      "fields": [
+        "revenue"
+      ],
       "confidence": 0.9
     },
     {
       "citationId": "cite_leverage",
       "sourceId": "src_financials_2024_gaap",
-      "fields": ["total_debt", "ebitda"],
+      "fields": [
+        "total_debt",
+        "ebitda"
+      ],
       "confidence": 1.0
     }
   ]
