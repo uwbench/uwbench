@@ -33,6 +33,7 @@
     "@uwbench/scorer-evidence": "workspace:*",
     "@uwbench/scorer-risk": "workspace:*",
     "@uwbench/scorer-workflow": "workspace:*",
-    "@uwbench/report": "workspace:*"
+    "@uwbench/report": "workspace:*",
+    "yaml": "^2.5.1"
   }
 }

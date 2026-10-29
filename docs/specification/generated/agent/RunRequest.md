@@ -22,6 +22,7 @@ See [RunRequest.json](../../../../packages/protocol/generated/json-schema/agent/
 | `caseId` | string | ✓ |  |  |
 | `objective` | string | ✓ |  |  |
 | `requiredOutputs` | array<`string`> | ✓ |  |  |
+| `taskMarkdown` | string |  |  |  |
 | `toolGateway` | object | ✓ |  |  |
 | `limits` | object | ✓ |  |  |
 

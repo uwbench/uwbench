@@ -378,6 +378,9 @@ importers:
       '@uwbench/tool-runtime':
         specifier: workspace:*
         version: link:../tool-runtime
+      yaml:
+        specifier: ^2.5.1
+        version: 2.9.0
     devDependencies:
       typescript:
         specifier: ^5.5.4
