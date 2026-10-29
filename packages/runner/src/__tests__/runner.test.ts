@@ -838,8 +838,15 @@ describe("LocalRunner", () => {
     expect(mockLastRunRequest?.["taskMarkdown"]).toContain(
       "## Objective\nUnderwrite the test borrower.",
     );
-    expect(mockLastRunRequest?.["objective"]).toBe(
+    expect(mockLastRunRequest?.["taskMarkdown"]).toContain(
+      "risk_dscr_shortfall",
+    );
+    expect(mockLastRunRequest?.["objective"]).toContain(
       "Underwrite the test borrower.",
+    );
+    expect(mockLastRunRequest?.["objective"]).toContain("risk_dscr_shortfall");
+    expect(mockLastRunRequest?.["objective"]).toContain(
+      "risk_primary_operating",
     );
   });
 

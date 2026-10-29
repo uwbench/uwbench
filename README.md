@@ -62,6 +62,8 @@ the corresponding CLI plus credentials.
 
 ```bash
 # Live harness example (Gemini). Scores are not credit opinions.
+# Install bubblewrap first. The agent process cannot read this checkout.
+# sudo apt-get install -y bubblewrap
 HARNESS=gemini-cli HARNESS_LIVE=1 PORT=9101 \
   node examples/harness-adapters/dist/server.js
 

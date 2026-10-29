@@ -12,6 +12,7 @@ export {
   validateCaseSemanticsSync,
 } from "./validator.js";
 export type { SemanticValidationResult } from "./case.js";
+export { goldRiskIdsOutsideTaxonomy } from "./risk-taxonomy.js";
 export {
   packCase,
   unpackCase,
