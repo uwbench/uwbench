@@ -14,7 +14,7 @@
       "confidence": 0.8
     },
     {
-      "riskId": "risk_automotive_cyclicality",
+      "riskId": "risk_cyclical_demand",
       "category": "MACROECONOMIC",
       "severity": "LOW",
       "statement": "Automotive repair (NAICS 811111) relatively recession-resistant but sensitive to vehicle age trends, EV adoption reducing repair complexity, and disposable income. 11-year history provides some mitigation.",

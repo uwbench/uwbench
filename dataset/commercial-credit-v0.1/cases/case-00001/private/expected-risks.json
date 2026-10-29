@@ -1,7 +1,7 @@
 {
   "risks": [
     {
-      "riskId": "risk_concentration_revenue",
+      "riskId": "risk_customer_concentration",
       "category": "CONCENTRATION",
       "severity": "MEDIUM",
       "statement": "Revenue concentration risk: Top 3 customers represent approximately 45% of total revenue based on industry benchmarks for NAICS 332710.",
@@ -18,7 +18,7 @@
       "confidence": 0.75
     },
     {
-      "riskId": "risk_cyclical_industry",
+      "riskId": "risk_cyclical_demand",
       "category": "MACROECONOMIC",
       "severity": "MEDIUM",
       "statement": "Machine shop industry (NAICS 332710) is cyclical and sensitive to manufacturing capital expenditure cycles. Current economic indicators suggest potential slowdown in industrial capex over next 12-18 months.",

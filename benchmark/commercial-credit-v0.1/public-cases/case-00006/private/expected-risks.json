@@ -31,7 +31,7 @@
       "confidence": 0.85
     },
     {
-      "riskId": "risk_industry_cyclicality",
+      "riskId": "risk_cyclical_demand",
       "category": "MACROECONOMIC",
       "severity": "MEDIUM",
       "statement": "Trucking (NAICS 484121) highly cyclical — sensitive to freight rates, fuel costs, and economic activity. Current freight recession pressures rates. Equipment values correlate with freight cycle.",

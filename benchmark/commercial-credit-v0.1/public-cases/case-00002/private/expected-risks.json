@@ -1,7 +1,7 @@
 {
   "risks": [
     {
-      "riskId": "risk_dscr_borderline",
+      "riskId": "risk_dscr_shortfall",
       "category": "CREDIT",
       "severity": "HIGH",
       "statement": "DSCR of 1.21x is below the 1.25x policy minimum. Pro forma debt service including the proposed $2.5M loan results in insufficient coverage. This is a critical credit risk requiring either loan amount reduction, longer amortization, or policy exception.",
