@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0",
+  "runId": "seed-1-case-00005",
+  "files": {
+    "events.ndjson": "sha256:81b4228e710d4ca2073bf370c98c8a1a47432871912ae2f58466b114b56c9d34",
+    "run-manifest.json": "sha256:b73081cde56eb6b9291328413cff7a824ec848cdb03036d68728e42deb128d37",
+    "submission.json": "sha256:66cbcbaf7dd7953505aa6ee8de4b0a610c8e634f5e4f85cfe97ef255abe7c59f",
+    "score.json": "sha256:402a2a8244d73fe18a2f97b783870b1d6a1f227e5a0db9f474e71f5820906447",
+    "report.html": "sha256:d7e6c8062cca392944c470d7e594e1fbeebc2363b5b217241fea71fd844c6e25",
+    "artifacts/bc848b97fd6ac63847f2a3146ce1b9f9053c6cb225b5a6aac167d700ba78c075.artifact": "sha256:e0b9b051df8de494316f597adacc662d1d5b50981339d56f90212e3b970a8789"
+  }
+}

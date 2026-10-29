@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0",
+  "runId": "p2-discovery-fixed-base-s1-case-00004",
+  "files": {
+    "events.ndjson": "sha256:d7284c2bc40d596abcad49c4e1e953b19bdd691ababbb93df2c269fb406b1587",
+    "run-manifest.json": "sha256:1867f595ba90ba8c8b0732122349f23465e55026b321bf0f644eb6cf454a11ea",
+    "submission.json": "sha256:4948d0a62cca83b446b3ad372e2da97fa668ea450baf8b62f6a09a5355955f9e",
+    "score.json": "sha256:da735039018fe7a97ad5f1b4e1b5c198d0e50112c45337140be06a9fd12e1078",
+    "report.html": "sha256:e106d88bdb646b19f75cb79c76d35cd7fda50f519cb523a1a243927ba8ea75e5",
+    "artifacts/45eda2661c2e90cf77b682b3312b00edde566744e04239aa3328c102f2699395.artifact": "sha256:220fa688166fe55bd69305f6761b44bca38f95b8f61371fe78b8520d4c79b1d5"
+  }
+}

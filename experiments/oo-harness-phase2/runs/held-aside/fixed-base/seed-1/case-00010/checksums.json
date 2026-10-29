@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0",
+  "runId": "p2-held-aside-fixed-base-s1-case-00010",
+  "files": {
+    "events.ndjson": "sha256:73fe86e620c3cb324320a37900d2bdc26ade798df2a694a1e1568ae5de8d90d2",
+    "run-manifest.json": "sha256:ab69eb73c47b665ce63bbb11ba21c1186a8d0e2dca2d88004e3589377fabf7e5",
+    "submission.json": "sha256:101a3fef5e6c88e14d20c5beacedbfed4eed41a0d72c89f845e22c9df5850e78",
+    "score.json": "sha256:2d9484d39ca38ad7b4a96a8764c3ce8edf3600b79552bbba02d4a961ce80f76e",
+    "report.html": "sha256:bd04da2aa1d9a1c322cd2b996a6054d7bda38d9538d52834d6c978c5e7df10a4",
+    "artifacts/e060fc586f0f5d2aa033c4308c2dc5e79fb3d3106d6d203790720875e9b9a2c4.artifact": "sha256:4db00a0d0ab067177087b7c1b02a1c5589b907d1b74e60eb326bc1ac24f34709"
+  }
+}
