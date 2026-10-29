@@ -22,6 +22,7 @@ See [RunRequest.json](../../json-schema/agent/RunRequest.json) for the canonical
 | `caseId` | string | ✓ |  |  |
 | `objective` | string | ✓ |  |  |
 | `requiredOutputs` | array<`string`> | ✓ |  |  |
+| `taskMarkdown` | string |  |  |  |
 | `toolGateway` | object | ✓ |  |  |
 | `limits` | object | ✓ |  |  |
 

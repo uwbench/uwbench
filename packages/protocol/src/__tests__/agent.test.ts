@@ -100,6 +100,17 @@ describe("Agent Protocol Schemas", () => {
       expect(result.success).toBe(false);
     });
 
+    it("accepts optional reasoning-only task markdown", () => {
+      const result = RunRequestSchema.safeParse({
+        ...validRequest,
+        taskMarkdown: "## Objective\nUnderwrite.\n",
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.taskMarkdown).toContain("## Objective");
+      }
+    });
+
     it("rejects non-positive limits", () => {
       const result = RunRequestSchema.safeParse({
         ...validRequest,

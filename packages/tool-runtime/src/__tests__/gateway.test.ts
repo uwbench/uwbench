@@ -360,6 +360,61 @@ describe("ToolGateway", () => {
     expect(JSON.stringify(result)).toContain("iVBORw0KGgo=");
   });
 
+  it("searches declared policy rules and structured records", async () => {
+    gateway.registerRun("policy-index-token", 10, {
+      policies: [
+        ...DEFAULT_CASE_DATA.policies,
+        {
+          ruleId: "rule_ai_dependency_maximum",
+          sourceId: "src_policy_ai_dependency",
+          title: "Maximum Agent-Initiated Spend Share",
+          appliesWhen: "term loan requested",
+          input: { fact: "agent_initiated_spend_share" },
+          operator: "<=",
+          threshold: null,
+          onFailure: "REFER",
+        },
+      ],
+      records: [
+        ...DEFAULT_CASE_DATA.records,
+        {
+          recordId: "record_ai_dependency_2024_partial",
+          sourceId: "src_ai_dependency_2024",
+          record: {
+            uses_ai_in_credit_relevant_ops: true,
+            ai_use_description: "Order routing and inventory reorder decisions",
+          },
+        },
+      ],
+    });
+    const { json } = await rawCall(
+      {
+        schemaVersion: "1.0",
+        callId: "search-ai",
+        name: "policy.search",
+        arguments: { query: "ai_dependency" },
+      },
+      "policy-index-token",
+    );
+    const result = ToolResultSchema.parse(json);
+    const encoded = JSON.parse(JSON.stringify(result)) as {
+      ok: boolean;
+      result: { rules: { ruleId: string; title: string }[] };
+    };
+    expect(encoded.ok).toBe(true);
+    const rules = encoded.result.rules;
+    expect(rules.map((rule) => rule.ruleId)).toEqual(
+      expect.arrayContaining([
+        "rule_ai_dependency_maximum",
+        "record_ai_dependency_2024_partial",
+      ]),
+    );
+    expect(
+      rules.find((rule) => rule.ruleId === "record_ai_dependency_2024_partial")
+        ?.title,
+    ).toBe("Structured record record_ai_dependency_2024_partial");
+  });
+
   it("supports a fake agent calling all twelve tools successfully", async () => {
     const calls: [ToolName, unknown][] = [
       ["case.list_documents", {}],

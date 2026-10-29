@@ -43,6 +43,7 @@ import {
   type RunStatus,
   type RunStatusResponse,
 } from "@uwbench/protocol";
+import { parse as parseYaml } from "yaml";
 import {
   validateCaseSync,
   getLaneProjection,
@@ -449,6 +450,98 @@ function reasoningRecords(
   ];
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+/**
+ * policyTests are the scored rules. A declared policy file can still be
+ * discovered when its threshold is blank and it is held out of policyTests.
+ */
+function appendDeclaredPolicies(
+  casePath: string,
+  caseData: Case,
+  policies: {
+    ruleId: string;
+    sourceId: string;
+    title: string;
+    appliesWhen: string;
+    input: Record<string, unknown>;
+    operator: string;
+    threshold: unknown;
+    onFailure: string;
+  }[],
+): void {
+  const declared = new Map(
+    caseData.sources
+      .filter((source) => source.kind === "policy")
+      .map((source) => [source.sourceId, source]),
+  );
+  const seenRuleIds = new Set(policies.map((policy) => policy.ruleId));
+  const seenSourceIds = new Set(policies.map((policy) => policy.sourceId));
+  const policyDir = join(casePath, "inputs", "policy");
+  if (existsSync(policyDir)) {
+    for (const entry of readdirSync(policyDir, { withFileTypes: true }).sort(
+      (left, right) => left.name.localeCompare(right.name),
+    )) {
+      if (!entry.isFile()) continue;
+      const extension = extname(entry.name).toLocaleLowerCase();
+      if (extension !== ".yaml" && extension !== ".yml") continue;
+      const parsed = parseYaml(
+        readFileSync(join(policyDir, entry.name), "utf8"),
+      );
+      if (!isRecord(parsed)) continue;
+      const sourceIdValue = parsed["sourceId"];
+      const sourceId = typeof sourceIdValue === "string" ? sourceIdValue : "";
+      const source = declared.get(sourceId);
+      if (!source) continue;
+      const ruleIdValue = parsed["ruleId"];
+      const ruleId = typeof ruleIdValue === "string" ? ruleIdValue : "";
+      if (!ruleId || seenRuleIds.has(ruleId)) continue;
+      const titleValue = parsed["title"];
+      const appliesWhenValue = parsed["appliesWhen"];
+      const operatorValue = parsed["operator"];
+      const onFailureValue = parsed["onFailure"];
+      const inputValue = parsed["input"];
+      policies.push({
+        ruleId,
+        sourceId,
+        title:
+          typeof titleValue === "string" && titleValue
+            ? titleValue
+            : source.title,
+        appliesWhen:
+          typeof appliesWhenValue === "string" ? appliesWhenValue : "",
+        input: isRecord(inputValue) ? inputValue : {},
+        operator:
+          typeof operatorValue === "string" && operatorValue
+            ? operatorValue
+            : "==",
+        threshold: "threshold" in parsed ? parsed["threshold"] : null,
+        onFailure:
+          typeof onFailureValue === "string" && onFailureValue
+            ? onFailureValue
+            : "REFER",
+      });
+      seenRuleIds.add(ruleId);
+      seenSourceIds.add(sourceId);
+    }
+  }
+  for (const source of declared.values()) {
+    if (seenSourceIds.has(source.sourceId)) continue;
+    policies.push({
+      ruleId: source.sourceId,
+      sourceId: source.sourceId,
+      title: source.title,
+      appliesWhen: `${caseData.requested_product} requested`,
+      input: {},
+      operator: "==",
+      threshold: null,
+      onFailure: "REFER",
+    });
+  }
+}
+
 /**
  * Create the only filesystem view made available to runtime tools. Private
  * references and lanes not selected for this run are never copied into it.
@@ -519,6 +612,7 @@ function buildLaneToolFixtures(
       onFailure: test.onFailure,
     };
   });
+  appendDeclaredPolicies(casePath, caseData, policies);
   const documents: unknown[] = [];
   if (lane === "raw_documents") {
     const documentsRoot = join(casePath, "inputs", "documents");
@@ -1241,6 +1335,9 @@ export class LocalRunner {
         benchmark: caseData.track,
         benchmarkVersion: caseData.benchmark_version,
         caseInputFingerprint: caseInputFingerprint(casePath, lane),
+        // Prompt and policy index are scoring inputs. Bump this when they change
+        // so an older run directory is not replayed as the same configuration.
+        scoringInputRevision: "reasoning-task-md+declared-policy-record-index",
         limits,
         ...(participant ? { participant } : {}),
       }),
@@ -1365,6 +1462,7 @@ export class LocalRunner {
         caseId: this.participantCaseId,
         objective: this.currentObjective,
         requiredOutputs: this.currentRequiredOutputs,
+        ...(lane === "reasoning_only" ? { taskMarkdown } : {}),
         toolGateway: {
           url: `http://127.0.0.1:${this.gatewayPort}/v1/tools/call`,
           bearerToken: this.gatewayToken,

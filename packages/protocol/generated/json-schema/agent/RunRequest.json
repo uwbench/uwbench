@@ -37,6 +37,9 @@
         "type": "string"
       }
     },
+    "taskMarkdown": {
+      "type": "string"
+    },
     "toolGateway": {
       "type": "object",
       "properties": {
