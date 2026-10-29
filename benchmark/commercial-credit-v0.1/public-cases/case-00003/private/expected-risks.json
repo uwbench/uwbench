@@ -16,7 +16,7 @@
         },
         {
           "sourceId": "src_revenue_reconciliation",
-          "recordId": "record_revenue_reconciliation"
+          "documentId": "doc_revenue_reconciliation"
         }
       ],
       "confidence": 0.95
@@ -55,7 +55,7 @@
       "evidence": [
         {
           "sourceId": "src_revenue_reconciliation",
-          "recordId": "record_revenue_reconciliation"
+          "documentId": "doc_revenue_reconciliation"
         }
       ],
       "confidence": 0.7

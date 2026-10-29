@@ -96,6 +96,22 @@ sources:
     jurisdiction: "US"
     pii: false
     legalUse: "public_record"
+  - kind: document
+    sourceId: src_tax_returns_2022_2024
+    documentId: doc_tax_returns_2022_2024
+    title: "Tax returns 2022–2024"
+    mimeType: text/plain
+    pageCount: 1
+    pii: false
+    legalUse: public_record
+  - kind: document
+    sourceId: src_ar_aging_2024
+    documentId: doc_ar_aging_2024
+    title: Accounts receivable aging 2024
+    mimeType: text/plain
+    pageCount: 1
+    pii: false
+    legalUse: public_record
 policyTests:
   - ruleId: rule_dscr_minimum
     appliesWhen:

@@ -235,6 +235,8 @@ export const SemanticDiagnosticCode = {
   PII_DECLARATION_UNKNOWN_SOURCE: "SEMANTIC.PII_DECLARATION_UNKNOWN_SOURCE",
   /** Source declares PII but legalUse is not_applicable */
   PII_LEGAL_USE_CONFLICT: "SEMANTIC.PII_LEGAL_USE_CONFLICT",
+  /** A revealable document or document citation is not a declared document source */
+  UNDECLARED_DOCUMENT_SOURCE: "SEMANTIC.UNDECLARED_DOCUMENT_SOURCE",
 } as const;
 
 export type SemanticDiagnosticCode =

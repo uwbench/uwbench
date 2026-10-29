@@ -97,6 +97,14 @@ sources:
     jurisdiction: US
     pii: false
     legalUse: public_record
+  - kind: document
+    sourceId: src_tax_returns_2023_2024
+    documentId: doc_tax_returns_2023_2024
+    title: "Tax Returns 2023–2024"
+    mimeType: text/plain
+    pageCount: 1
+    pii: false
+    legalUse: public_record
 policyTests:
   - ruleId: rule_dscr_minimum
     appliesWhen:

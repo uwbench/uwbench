@@ -119,6 +119,14 @@ sources:
     jurisdiction: US
     pii: false
     legalUse: public_record
+  - kind: document
+    sourceId: src_insurance_verification
+    documentId: doc_insurance_verification
+    title: Equipment Insurance Verification
+    mimeType: text/plain
+    pageCount: 1
+    pii: false
+    legalUse: public_record
 policyTests:
   - ruleId: rule_dscr_minimum
     appliesWhen:
