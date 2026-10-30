@@ -6,6 +6,7 @@ import {
   readAdapterConfig,
   readMcpToken,
   readParticipantIdentity,
+  readSubmissionMappingMode,
 } from "./identity.js";
 
 const required = {
@@ -63,6 +64,26 @@ describe("adapter identity and mode selection", () => {
     expect(config.mode).toBe("platform");
     expect(config.platform?.baseUrl).toBe("http://127.0.0.1:8787");
     expect(config.platform?.actor).toBe("gate");
+    expect(config.platform?.mappingMode).toBe("passthrough");
+  });
+
+  it("keeps shaped mapping behind SECURELEND_ADAPTER_MODE", () => {
+    expect(readSubmissionMappingMode({})).toBe("passthrough");
+    expect(
+      readSubmissionMappingMode({ SECURELEND_ADAPTER_MODE: "shaped" }),
+    ).toBe("shaped");
+    expect(
+      readSubmissionMappingMode({ SECURELEND_ADAPTER_MODE: "PASSTHROUGH" }),
+    ).toBe("passthrough");
+    expect(() =>
+      readSubmissionMappingMode({ SECURELEND_ADAPTER_MODE: "gold" }),
+    ).toThrow(/SECURELEND_ADAPTER_MODE/);
+    const config = readAdapterConfig({
+      ...required,
+      SECURELEND_PLATFORM_URL: "http://127.0.0.1:8787",
+      SECURELEND_ADAPTER_MODE: "shaped",
+    });
+    expect(config.platform?.mappingMode).toBe("shaped");
   });
 
   it("explains the modes when neither URL is set", () => {

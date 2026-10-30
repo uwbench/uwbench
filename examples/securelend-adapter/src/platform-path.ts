@@ -1,19 +1,31 @@
 import type { RunRequest, UnderwritingSubmission } from "@uwbench/protocol";
 import { loadCasePackage, type CasePackage, type CasePolicyRule } from "./case-package.js";
+import type { SubmissionMappingMode } from "./identity.js";
 import { asRecord } from "./mcp-client.js";
+import {
+  mapPlatformPassthrough,
+  type PlatformPassthroughMetadata,
+} from "./platform-passthrough.js";
 import { mapChatPathToSubmission } from "./submission-map.js";
 
 export interface PlatformPathConfig {
   baseUrl: string;
   actor: string;
+  /** Defaults to passthrough. `shaped` restores case-package overrides. */
+  mappingMode?: SubmissionMappingMode;
   fetchImpl?: typeof fetch;
 }
+
+export type AdapterMappingMetadata =
+  | PlatformPassthroughMetadata
+  | { adapterMode: "shaped" };
 
 export interface PlatformPathRunResult {
   submission: UnderwritingSubmission;
   workspaceId: string;
   workspaceName: string;
   decision: string;
+  metadata: AdapterMappingMetadata;
 }
 
 const DECISIONS = new Set([
@@ -177,29 +189,86 @@ export async function runPlatformPath(
     await waitForJob(api, jobId);
   }
   const drafted = await draftMemo(config, tenantId, caseId, fetchImpl, signal);
-  const decision = stringField(asRecord(asRecord(drafted)?.["recommendation"]), "decision");
-  const markdown = stringField(asRecord(drafted), "body") ?? "";
-  if (!decision || !DECISIONS.has(decision)) {
-    throw new Error(`draft_memo_from_file returned no bench decision for ${caseId}`);
-  }
-  const submission = mapChatPathToSubmission(pkg, {
+  const mapped = mapPlatformDraft(pkg, drafted, config.mappingMode ?? "passthrough", {
     workspaceId: caseId,
     workspaceName: tenantId,
-    memo: {
-      markdown,
-      recommendation: { decision },
-    },
   });
-  await pkg.client.tryCall("submission.save_artifact", {
-    artifactId: `${caseId}-securelend-memo`,
-    content: submission.memo.markdown,
-    contentType: "text/markdown",
-  });
+  await pkg.client.tryCall(
+    "submission.save_artifact",
+    platformRunArtifact(caseId, mapped.submission, mapped.metadata),
+  );
   return {
-    submission,
+    submission: mapped.submission,
     workspaceId: caseId,
     workspaceName: tenantId,
+    decision: mapped.decision,
+    metadata: mapped.metadata,
+  };
+}
+
+/**
+ * Passthrough submits the platform draft as returned. `shaped` is the previous
+ * case-package mapping (liquidity override, pack risks, pack spread).
+ */
+export function mapPlatformDraft(
+  pkg: CasePackage,
+  draft: unknown,
+  mode: SubmissionMappingMode,
+  ids: { workspaceId: string; workspaceName: string },
+): {
+  submission: UnderwritingSubmission;
+  metadata: AdapterMappingMetadata;
+  decision: string;
+} {
+  if (mode === "passthrough") {
+    const mapped = mapPlatformPassthrough(draft, ids.workspaceId);
+    return {
+      submission: mapped.submission,
+      metadata: mapped.metadata,
+      decision: mapped.submission.recommendation.decision,
+    };
+  }
+  const record = asRecord(draft);
+  const decision = stringField(asRecord(record?.["recommendation"]), "decision");
+  const markdown = stringField(record, "body") ?? "";
+  if (!decision || !DECISIONS.has(decision)) {
+    throw new Error(`draft_memo_from_file returned no bench decision for ${ids.workspaceId}`);
+  }
+  return {
+    submission: mapChatPathToSubmission(pkg, {
+      workspaceId: ids.workspaceId,
+      workspaceName: ids.workspaceName,
+      memo: {
+        markdown,
+        recommendation: { decision },
+      },
+    }),
+    metadata: { adapterMode: "shaped" },
     decision,
+  };
+}
+
+/** Saved into the run folder via submission.save_artifact so the mode is visible. */
+export function platformRunArtifact(
+  caseId: string,
+  submission: UnderwritingSubmission,
+  metadata: AdapterMappingMetadata,
+): { artifactId: string; content: string; contentType: string } {
+  if (metadata.adapterMode === "shaped") {
+    return {
+      artifactId: `${caseId}-securelend-memo`,
+      content: submission.memo.markdown,
+      contentType: "text/markdown",
+    };
+  }
+  return {
+    artifactId: `${caseId}-adapter-manifest`,
+    content: JSON.stringify(
+      { ...metadata, memoMarkdown: submission.memo.markdown },
+      null,
+      2,
+    ),
+    contentType: "application/json",
   };
 }
 

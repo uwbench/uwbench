@@ -22,8 +22,12 @@ async function main(): Promise<void> {
       : config.mode === "platform"
         ? config.platform?.baseUrl
         : config.mcp?.url;
+  const mapping =
+    config.mode === "platform"
+      ? ` mapping=${config.platform?.mappingMode ?? "passthrough"}`
+      : "";
   console.log(
-    `[securelend-adapter] ${config.participant.harness} model=${config.participant.model} mode=${config.mode} → ${target} on http://127.0.0.1:${bound}`,
+    `[securelend-adapter] ${config.participant.harness} model=${config.participant.model} mode=${config.mode}${mapping} → ${target} on http://127.0.0.1:${bound}`,
   );
 }
 

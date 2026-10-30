@@ -6,9 +6,11 @@ export {
   readAdapterConfig,
   readMcpToken,
   readParticipantIdentity,
+  readSubmissionMappingMode,
   type AdapterConfig,
   type AdapterMode,
   type McpModeConfig,
+  type SubmissionMappingMode,
 } from "./identity.js";
 export {
   MockSecureLendMcp,
