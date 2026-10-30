@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { createServer } from "node:http";
 import {
   chmodSync,
@@ -6,12 +6,13 @@ import {
   mkdtempSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { dirname, join, relative, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 async function loadIsolation() {
@@ -42,6 +43,22 @@ async function launchIsolated(options: {
 }): Promise<ChildProcess> {
   const imported = await loadIsolation();
   return imported.spawnIsolatedAgent(options);
+}
+
+/** Same resolution as agentBindPaths: which, realpath, then the node prefix. */
+function nodeRuntimeRoots(): string[] {
+  const interpreterPath = resolve(
+    execFileSync("which", ["node"], { encoding: "utf8" }).trim(),
+  );
+  const real = realpathSync(interpreterPath);
+  const binDir = dirname(real);
+  const prefix = basename(binDir) === "bin" ? dirname(binDir) : binDir;
+  return [interpreterPath, real, prefix];
+}
+
+function coveredBy(path: string, root: string): boolean {
+  const resolved = resolve(root);
+  return path === resolved || path.startsWith(`${resolved}/`);
 }
 
 const WORKER = join(
@@ -298,10 +315,13 @@ process.stdout.write(JSON.stringify({
     expect(bound).toContain(modules);
     expect(bound).not.toContain(secret);
     expect(bound).not.toContain(install);
+    const nodeRoots = nodeRuntimeRoots();
     for (const path of bound) {
-      if (path.startsWith(`${homedir()}/`)) {
-        expect(path.startsWith(`${install}/`)).toBe(true);
-      }
+      if (!path.startsWith(`${homedir()}/`)) continue;
+      const allowed =
+        coveredBy(path, install) ||
+        nodeRoots.some((root) => coveredBy(path, root));
+      expect(allowed, path).toBe(true);
     }
 
     const secretKey = "super-secret-key";
