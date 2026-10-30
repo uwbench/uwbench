@@ -2,8 +2,21 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { platformFacts, platformPackBody, tenantForCase } from "./platform-path.js";
-import type { CasePolicyRule, CaseRecord } from "./case-package.js";
+import {
+  platformDocumentFields,
+  platformFacts,
+  platformFactsRequestBody,
+  platformPackBody,
+  platformUploadFileName,
+  tenantForCase,
+} from "./platform-path.js";
+import { mapPlatformPassthrough } from "./platform-passthrough.js";
+import { ToolGateway } from "@uwbench/tool-runtime";
+import type {
+  CaseDocument,
+  CasePolicyRule,
+  CaseRecord,
+} from "./case-package.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -99,10 +112,23 @@ describe("desk score-gate profile", () => {
       },
     ];
     const pack = platformPackBody(policies);
-    expect(pack.eligibility[0]).toMatchObject({ field: "dscr", op: "gte", onFail: "decline", value: 1.25 });
-    expect(pack.eligibility[1]).toMatchObject({ field: "current_ratio", op: "gte", onFail: "refer", value: 1.2 });
+    expect(pack.eligibility[0]).toMatchObject({
+      field: "dscr",
+      op: "gte",
+      onFail: "decline",
+      value: 1.25,
+    });
+    expect(pack.eligibility[1]).toMatchObject({
+      field: "current_ratio",
+      op: "gte",
+      onFail: "refer",
+      value: 1.2,
+    });
     expect(pack.testCases[0]?.expect).toBe("allow_human");
-    expect(pack.testCases[0]?.facts).toEqual({ dscr: 1.25, current_ratio: 1.2 });
+    expect(pack.testCases[0]?.facts).toEqual({
+      dscr: 1.25,
+      current_ratio: 1.2,
+    });
     expect(tenantForCase("case-00001")).toBe("ten_case_00001");
   });
 
@@ -127,12 +153,20 @@ describe("desk score-gate profile", () => {
       {
         recordId: "record_financials_2024",
         sourceId: "src_financials_2024",
-        record: { revenue: 2_200_000_000, ebitda: 88_000_000, debt_service: 85_000_000 },
+        record: {
+          revenue: 2_200_000_000,
+          ebitda: 88_000_000,
+          debt_service: 85_000_000,
+        },
       },
       {
         recordId: "record_financials_2023",
         sourceId: "src_financials_2023",
-        record: { revenue: 2_450_000_000, ebitda: 245_000_000, debt_service: 78_000_000 },
+        record: {
+          revenue: 2_450_000_000,
+          ebitda: 245_000_000,
+          debt_service: 78_000_000,
+        },
       },
     ];
     expect(platformFacts({ records })).toMatchObject({
@@ -164,9 +198,160 @@ describe("desk score-gate profile", () => {
       onFailure: "DECLINE",
     };
     const mixed = platformPackBody([flag, ratio]);
-    expect(mixed.eligibility.map((rule) => rule.id)).toEqual(["rule_dscr_minimum"]);
+    expect(mixed.eligibility.map((rule) => rule.id)).toEqual([
+      "rule_dscr_minimum",
+    ]);
     const onlyFlag = platformPackBody([flag]);
     expect(onlyFlag.eligibility).toEqual([]);
     expect(onlyFlag.testCases[0]?.expect).toBe("insufficient");
+  });
+
+  it("posts public src and doc ids, currency, and statement period", () => {
+    const records: CaseRecord[] = [
+      {
+        recordId: "record_canonical_input",
+        sourceId: "normalized:canonical-input",
+        record: {
+          financialSpread: {
+            revenue: { amount: 80 },
+            currency: "USD",
+            period: { start: "2024-01-01", end: "2024-12-31" },
+          },
+          normalizedFacts: [
+            {
+              canonicalKey: "revenue",
+              value: 80,
+              evidence: [
+                {
+                  sourceId: "src_tax_returns_2022_2024",
+                  documentId: "doc_tax_returns_2022_2024",
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ];
+    const documents: CaseDocument[] = [
+      {
+        documentId: "doc_tax_returns_2022_2024",
+        sourceId: "src_tax_returns_2022_2024",
+        title: "Tax returns",
+        mimeType: "text/plain",
+        fileName: "Tax returns 2022–2024.pdf",
+        text: "revenue",
+        bytes: Buffer.from("revenue"),
+        uploadable: true,
+      },
+    ];
+    const body = platformFactsRequestBody({ records, documents });
+    expect(body["revenue"]).toBe(80);
+    expect(body["currency"]).toBe("USD");
+    expect(body["period"]).toEqual({
+      start: "2024-01-01",
+      end: "2024-12-31",
+    });
+    expect(body["citations"]).toEqual({
+      revenue: {
+        sourceId: "src_tax_returns_2022_2024",
+        documentId: "doc_tax_returns_2022_2024",
+        currency: "USD",
+        period: { start: "2024-01-01", end: "2024-12-31" },
+      },
+    });
+    expect(JSON.stringify(body)).not.toContain("normalized:canonical-input");
+    expect(platformDocumentFields(documents[0]!)).toEqual({
+      sourceId: "src_tax_returns_2022_2024",
+      documentId: "doc_tax_returns_2022_2024",
+    });
+    expect(platformUploadFileName(documents[0]!)).toBe(
+      "doc_tax_returns_2022_2024.pdf",
+    );
+    expect(
+      platformUploadFileName({
+        documentId: "doc_tax_returns_2022_2024",
+        mimeType: "text/plain",
+        fileName: "cases/opaque_old/tax-returns.txt",
+      }),
+    ).toBe("doc_tax_returns_2022_2024.txt");
+  });
+
+  it("keeps a platform citation of those public ids reachable", async () => {
+    const sourceId = "src_tax_returns_2022_2024";
+    const documentId = "doc_tax_returns_2022_2024";
+    const mapped = mapPlatformPassthrough({
+      body: "Platform echoed the posted ids.",
+      recommendation: {
+        decision: "REFER",
+        confidence: 0.4,
+        rationale: [
+          {
+            claim: "Tax returns are on file.",
+            confidence: 0.4,
+            evidence: [{ sourceId, documentId }],
+          },
+        ],
+      },
+      financialSpread: {
+        revenue: { amount: 80, currency: "USD" },
+        period: { start: "2024-01-01", end: "2024-12-31" },
+        currency: "USD",
+        scale: "units",
+        signConvention: "all_positive",
+      },
+      confidence: { overall: 0.4, byComponent: {} },
+    });
+    expect(mapped.submission.recommendation.rationale[0]?.evidence).toEqual([
+      { sourceId, documentId },
+    ]);
+    const uploadPath = `cases/opaque_abc/${documentId}.txt`;
+    const untouched = mapPlatformPassthrough({
+      body: "Path citation stays a path.",
+      recommendation: {
+        decision: "REFER",
+        confidence: 0.4,
+        rationale: [
+          {
+            claim: "Cited by upload path.",
+            confidence: 0.4,
+            evidence: [{ sourceId: uploadPath }],
+          },
+        ],
+      },
+      confidence: { overall: 0.4, byComponent: {} },
+    });
+    expect(untouched.submission.recommendation.rationale[0]?.evidence).toEqual([
+      { sourceId: uploadPath },
+    ]);
+
+    const gateway = new ToolGateway({
+      port: 0,
+      runToken: "synthetic-reachability",
+      fixtures: {
+        documents: [
+          {
+            documentId,
+            sourceId,
+            title: "Tax returns",
+            mimeType: "text/plain",
+            pageCount: 1,
+            sizeBytes: 7,
+            sha256: "ab".repeat(32),
+            content: "revenue",
+            pages: [{ pageNumber: 1, text: "revenue" }],
+          },
+        ],
+        revealableDocuments: [],
+        records: [],
+        policies: [],
+        information: {},
+      },
+    });
+    expect(
+      gateway.validateSubmissionEvidence(
+        "synthetic-reachability",
+        mapped.submission,
+      ),
+    ).toEqual([]);
   });
 });
