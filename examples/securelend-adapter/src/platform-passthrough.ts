@@ -34,7 +34,7 @@ import { asRecord, firstString } from "./mcp-client.js";
  * treated the same way, and the parse error is listed in `dropped`.
  */
 export const MISSING_PLATFORM_SPREAD_NOTE =
-  "The platform draft did not include a financialSpread or spread that satisfies FinancialSpreadSchema. The submission uses the schema placeholder (currency XXX, period 1970-01-01, revenue 0). The case-package spread is not copied in. A spread that is present but fails the schema is treated the same way and listed in dropped.";
+  "The platform draft did not include a financialSpread or spread that satisfies FinancialSpreadSchema. The submission uses the schema placeholder (currency XXX, period 1970-01-01, revenue 0). The case-package spread is not copied in. A spread that is present but fails the schema is treated the same way and listed in dropped. Null keys are removed before that check. currency, period, and signConvention are not filled in when the platform omits them or sends a value the schema rejects.";
 
 export const PLATFORM_SPREAD_NOTE =
   "Platform financialSpread was submitted as returned. Case-package amounts were not merged in.";
@@ -44,6 +44,20 @@ export interface DroppedPlatformItem {
   reason: string;
 }
 
+/** Content-free schema normalization. No value is invented. */
+export interface NormalizedPlatformField {
+  path: string;
+  action:
+    | "drop-null"
+    | "map-factId-to-sourceId"
+    | "map-string-to-sourceId"
+    | "map-platform-evidence";
+}
+
+export interface AbsentPlatformField {
+  path: string;
+}
+
 export interface PlatformPassthroughMetadata {
   adapterMode: "passthrough";
   financialSpread: "platform" | "missing";
@@ -51,10 +65,26 @@ export interface PlatformPassthroughMetadata {
   /** Schema rejects. Citation ids are not replaced with catalog ids. */
   dropped: DroppedPlatformItem[];
   /**
-   * Schema-required numbers the platform omitted. Recorded here instead of
-   * being filled in silently. Decision is never defaulted.
+   * Schema-required numbers the platform omitted on the recommendation or
+   * top-level confidence object. Recorded here instead of being filled in
+   * silently. Decision is never defaulted. Present risks and claims are not
+   * given a confidence.
    */
   schemaDefaults: DroppedPlatformItem[];
+  /** Null drops and factId/evidence mappings. */
+  normalized: NormalizedPlatformField[];
+  /**
+   * Listed platform sections that were missing or null. The submission keeps
+   * the previous empty or zero fallback for those sections.
+   */
+  absent: AbsentPlatformField[];
+}
+
+interface PassContext {
+  dropped: DroppedPlatformItem[];
+  schemaDefaults: DroppedPlatformItem[];
+  normalized: NormalizedPlatformField[];
+  absent: AbsentPlatformField[];
 }
 
 export interface PlatformPassthroughResult {
@@ -77,52 +107,59 @@ export function mapPlatformPassthrough(
 ): PlatformPassthroughResult {
   const record = asRecord(draft) ?? {};
   const memo = asRecord(record["memo"]);
-  const dropped: DroppedPlatformItem[] = [];
-  const schemaDefaults: DroppedPlatformItem[] = [];
+  const ctx: PassContext = {
+    dropped: [],
+    schemaDefaults: [],
+    normalized: [],
+    absent: [],
+  };
   const decision = readDecision(record, memo);
   if (!decision) {
     const suffix = caseId ? ` for ${caseId}` : "";
     throw new Error(`draft_memo_from_file returned no bench decision${suffix}`);
   }
 
-  const spread = readSpread(record, memo, dropped);
+  const spread = readSpread(record, memo, ctx);
   const recommendation =
     asRecord(record["recommendation"]) ??
     asRecord(memo?.["recommendation"]) ??
     {};
   const risks = parseRisks(
-    readList(record, memo, RISK_KEYS, "risks", dropped),
-    dropped,
-    schemaDefaults,
+    sectionItems(record, memo, RISK_KEYS, "risks", ctx),
+    ctx,
   );
+  // Only the memo's normalizedFacts. The underwrite job returns a different
+  // citation graph; that payload is not an input to this mapper.
   const facts = parseFacts(
-    readList(
-      record,
-      memo,
-      ["normalizedFacts", "facts"],
-      "normalizedFacts",
-      dropped,
-    ),
-    dropped,
-    schemaDefaults,
+    readList(record, memo, ["normalizedFacts"], "normalizedFacts", ctx),
+    ctx,
   );
-  const claims = parseClaims(
-    readList(record, memo, CLAIM_KEYS, "memo.claims", dropped),
-    "memo.claims",
-    dropped,
-    schemaDefaults,
+  const platformEvidence = readPlatformEvidence(record, memo, ctx);
+  const claims = [
+    ...parseClaims(
+      readList(record, memo, CLAIM_KEYS, "memo.claims", ctx),
+      "memo.claims",
+      ctx,
+    ),
+    ...platformEvidence.claims,
+  ];
+  const rationaleSection = sectionItems(
+    recommendation,
+    undefined,
+    ["rationale"],
+    "recommendation.rationale",
+    ctx,
   );
   const rationale = parseClaims(
-    readList(
-      recommendation,
-      undefined,
-      ["rationale"],
-      "recommendation.rationale",
-      dropped,
-    ),
+    rationaleSection,
     "recommendation.rationale",
-    dropped,
-    schemaDefaults,
+    ctx,
+  );
+  const placed = placePlatformEvidence(
+    claims,
+    rationale,
+    platformEvidence.refs,
+    ctx,
   );
 
   const submission = UnderwritingSubmissionSchema.parse({
@@ -131,66 +168,60 @@ export function mapPlatformPassthrough(
     normalizedFacts: facts,
     risks,
     discrepancies: parseItems(
-      readList(record, memo, ["discrepancies"], "discrepancies", dropped),
+      sectionItems(record, memo, ["discrepancies"], "discrepancies", ctx),
       DiscrepancySchema,
       "discrepancies",
-      dropped,
+      ctx,
     ),
     complianceFindings: parseItems(
-      readList(
-        record,
-        memo,
-        ["complianceFindings"],
-        "complianceFindings",
-        dropped,
-      ),
+      readList(record, memo, ["complianceFindings"], "complianceFindings", ctx),
       ComplianceFindingSchema,
       "complianceFindings",
-      dropped,
+      ctx,
     ),
     followUpRequests: parseItems(
-      readList(record, memo, ["followUpRequests"], "followUpRequests", dropped),
+      sectionItems(record, memo, ["followUpRequests"], "followUpRequests", ctx),
       FollowUpRequestSchema,
       "followUpRequests",
-      dropped,
+      ctx,
     ),
-    policyAssessment: readPolicyAssessment(record, memo, dropped),
+    policyAssessment: readPolicyAssessment(record, memo, ctx),
     recommendation: {
       decision,
       confidence: readUnitInterval(
         recommendation["confidence"],
         "recommendation.confidence",
-        schemaDefaults,
+        ctx,
       ),
-      ...optionalRecommendationFields(recommendation, dropped),
+      ...optionalRecommendationFields(recommendation, ctx),
       conditions: parseItems(
         arrayOrEmpty(
           recommendation["conditions"],
           "recommendation.conditions",
-          dropped,
+          ctx,
         ),
         ConditionSchema,
         "recommendation.conditions",
-        dropped,
+        ctx,
       ),
       policyExceptions: parseItems(
         arrayOrEmpty(
           recommendation["policyExceptions"],
           "recommendation.policyExceptions",
-          dropped,
+          ctx,
         ),
         PolicyExceptionSchema,
         "recommendation.policyExceptions",
-        dropped,
+        ctx,
       ),
-      rationale,
+      rationale: placed.rationale,
     },
     memo: {
       markdown: memoMarkdown(record, memo),
-      claims,
+      claims: placed.claims,
     },
-    confidence: readConfidence(record, schemaDefaults),
-    ...readUsage(record, dropped),
+    confidence: readConfidence(record, memo, ctx),
+    ...readUsage(record, ctx),
   });
 
   return {
@@ -202,8 +233,10 @@ export function mapPlatformPassthrough(
         spread.source === "platform"
           ? PLATFORM_SPREAD_NOTE
           : MISSING_PLATFORM_SPREAD_NOTE,
-      dropped,
-      schemaDefaults,
+      dropped: ctx.dropped,
+      schemaDefaults: ctx.schemaDefaults,
+      normalized: ctx.normalized,
+      absent: ctx.absent,
     },
   };
 }
@@ -233,13 +266,16 @@ function readDecision(
 function readSpread(
   record: Record<string, unknown>,
   memo: Record<string, unknown> | undefined,
-  dropped: DroppedPlatformItem[],
+  ctx: PassContext,
 ): { spread: FinancialSpread; source: "platform" | "missing" } {
   const located = locateSpread(record, memo);
   if (!located) return { spread: placeholderSpread(), source: "missing" };
-  const parsed = FinancialSpreadSchema.safeParse(located.value);
+  // Null line items, currency, and period are absent. signConvention is left
+  // as sent, including values the enum rejects.
+  const stripped = stripNulls(located.value, located.path, ctx.normalized);
+  const parsed = FinancialSpreadSchema.safeParse(stripped);
   if (parsed.success) return { spread: parsed.data, source: "platform" };
-  dropped.push({
+  ctx.dropped.push({
     path: located.path,
     reason: issueText(parsed.error),
   });
@@ -276,30 +312,56 @@ function readList(
   nested: Record<string, unknown> | undefined,
   keys: readonly string[],
   path: string,
-  dropped: DroppedPlatformItem[],
+  ctx: PassContext,
 ): unknown[] {
-  const top = listAt(record, keys, path, dropped);
+  const top = listAt(record, keys, path, ctx);
   if (top.found) return top.items;
   if (!nested) return [];
-  const inner = listAt(nested, keys, `memo.${path}`, dropped);
+  const inner = listAt(nested, keys, `memo.${path}`, ctx);
   return inner.found ? inner.items : [];
+}
+
+/**
+ * A listed platform section. Null is absent. A missing section is recorded
+ * on `absent` and the caller keeps the previous empty fallback.
+ */
+function sectionItems(
+  record: Record<string, unknown>,
+  nested: Record<string, unknown> | undefined,
+  keys: readonly string[],
+  path: string,
+  ctx: PassContext,
+): unknown[] {
+  const found = listAt(record, keys, path, ctx);
+  if (found.found) return found.items;
+  if (nested) {
+    const inner = listAt(nested, keys, path, ctx);
+    if (inner.found) return inner.items;
+  }
+  ctx.absent.push({ path });
+  return [];
 }
 
 function listAt(
   record: Record<string, unknown>,
   keys: readonly string[],
   path: string,
-  dropped: DroppedPlatformItem[],
+  ctx: PassContext,
 ): { found: boolean; items: unknown[] } {
   for (const key of keys) {
     if (!(key in record)) continue;
     const value = record[key];
+    if (value === null) {
+      const nullPath = path === key || path.endsWith(`.${key}`) ? path : key;
+      ctx.normalized.push({ path: nullPath, action: "drop-null" });
+      continue;
+    }
     if (Array.isArray(value)) return { found: true, items: value };
     if (typeof value === "string") {
       const parsed = parseJsonArray(value);
       if (parsed) return { found: true, items: parsed };
     }
-    dropped.push({
+    ctx.dropped.push({
       path: `${path}.${key}`,
       reason: "platform field is not an array",
     });
@@ -311,55 +373,50 @@ function listAt(
 function arrayOrEmpty(
   value: unknown,
   path: string,
-  dropped: DroppedPlatformItem[],
+  ctx: PassContext,
 ): unknown[] {
-  if (value === undefined || value === null) return [];
+  if (value === undefined || value === null) {
+    if (value === null) ctx.normalized.push({ path, action: "drop-null" });
+    return [];
+  }
   if (Array.isArray(value)) return value;
-  dropped.push({ path, reason: "platform field is not an array" });
+  ctx.dropped.push({ path, reason: "platform field is not an array" });
   return [];
 }
 
 function parseRisks(
   items: unknown[],
-  dropped: DroppedPlatformItem[],
-  schemaDefaults: DroppedPlatformItem[],
+  ctx: PassContext,
 ): UnderwritingSubmission["risks"] {
   const kept: UnderwritingSubmission["risks"] = [];
   items.forEach((item, index) => {
     const path = `risks[${index}]`;
     const record = asRecord(item);
     if (!record) {
-      dropped.push({ path, reason: "not an object" });
+      ctx.dropped.push({ path, reason: "not an object" });
       return;
     }
-    const evidence = parseEvidence(
-      record["evidence"] ?? record["citations"],
+    const stripped = stripNulls(record, path, ctx.normalized, true);
+    const source = asRecord(stripped);
+    if (!source) {
+      ctx.dropped.push({ path, reason: "not an object" });
+      return;
+    }
+    const candidate = schemaFields(source, [
+      "riskId",
+      "category",
+      "severity",
+      "statement",
+      "confidence",
+    ]);
+    candidate["evidence"] = parseEvidence(
+      Array.isArray(record["evidence"]) ? record["evidence"] : undefined,
       `${path}.evidence`,
-      dropped,
+      ctx,
     );
-    const confidence = readUnitInterval(
-      record["confidence"],
-      `${path}.confidence`,
-      schemaDefaults,
-    );
-    const parsed = RiskFindingSchema.safeParse({
-      riskId: firstString(record, "riskId", "id"),
-      category: firstString(record, "category"),
-      severity: firstString(record, "severity"),
-      statement: firstString(
-        record,
-        "statement",
-        "description",
-        "text",
-        "title",
-        "finding",
-        "summary",
-      ),
-      evidence,
-      confidence,
-    });
+    const parsed = RiskFindingSchema.safeParse(candidate);
     if (!parsed.success) {
-      dropped.push({ path, reason: issueText(parsed.error) });
+      ctx.dropped.push({ path, reason: issueText(parsed.error) });
       return;
     }
     kept.push(parsed.data);
@@ -369,62 +426,50 @@ function parseRisks(
 
 function parseFacts(
   items: unknown[],
-  dropped: DroppedPlatformItem[],
-  schemaDefaults: DroppedPlatformItem[],
+  ctx: PassContext,
 ): UnderwritingSubmission["normalizedFacts"] {
   const kept: UnderwritingSubmission["normalizedFacts"] = [];
   items.forEach((item, index) => {
     const path = `normalizedFacts[${index}]`;
     const record = asRecord(item);
     if (!record) {
-      dropped.push({ path, reason: "not an object" });
+      ctx.dropped.push({ path, reason: "not an object" });
+      return;
+    }
+    const stripped = asRecord(stripNulls(record, path, ctx.normalized, true));
+    if (!stripped) {
+      ctx.dropped.push({ path, reason: "not an object" });
       return;
     }
     const evidence = parseEvidence(
-      record["evidence"],
+      Array.isArray(record["evidence"]) ? record["evidence"] : undefined,
       `${path}.evidence`,
-      dropped,
+      ctx,
     );
     if (evidence.length === 0) {
-      dropped.push({
+      ctx.dropped.push({
         path,
         reason:
           "dropped because NormalizedFactSchema requires at least one evidence reference",
       });
       return;
     }
-    const candidate: Record<string, unknown> = {
-      canonicalKey: record["canonicalKey"],
-      value: record["value"],
-      type: record["type"],
-      evidence,
-    };
-    for (const key of [
+    const candidate = schemaFields(stripped, [
+      "canonicalKey",
+      "value",
       "normalizedValue",
+      "type",
       "unit",
       "currency",
       "scale",
       "period",
+      "confidence",
       "conflictGroup",
-    ]) {
-      if (record[key] !== undefined) candidate[key] = record[key];
-    }
-    if (typeof record["confidence"] === "number") {
-      candidate["confidence"] = readUnitInterval(
-        record["confidence"],
-        `${path}.confidence`,
-        schemaDefaults,
-      );
-    } else if (record["confidence"] !== undefined) {
-      dropped.push({
-        path: `${path}.confidence`,
-        reason: "dropped with the fact because confidence is not a number",
-      });
-      return;
-    }
+    ]);
+    candidate["evidence"] = evidence;
     const parsed = NormalizedFactSchema.safeParse(candidate);
     if (!parsed.success) {
-      dropped.push({ path, reason: issueText(parsed.error) });
+      ctx.dropped.push({ path, reason: issueText(parsed.error) });
       return;
     }
     kept.push(parsed.data);
@@ -435,38 +480,172 @@ function parseFacts(
 function parseClaims(
   items: unknown[],
   pathPrefix: string,
-  dropped: DroppedPlatformItem[],
-  schemaDefaults: DroppedPlatformItem[],
+  ctx: PassContext,
 ): CitedClaim[] {
   const kept: CitedClaim[] = [];
   items.forEach((item, index) => {
-    const path = `${pathPrefix}[${index}]`;
-    const record = asRecord(item);
-    if (!record) {
-      dropped.push({ path, reason: "not an object" });
+    const claim = parseClaimAt(item, `${pathPrefix}[${index}]`, ctx);
+    if (claim) kept.push(claim);
+  });
+  return kept;
+}
+
+function parseClaimAt(
+  item: unknown,
+  path: string,
+  ctx: PassContext,
+): CitedClaim | undefined {
+  const record = asRecord(item);
+  if (!record) {
+    ctx.dropped.push({ path, reason: "not an object" });
+    return undefined;
+  }
+  const stripped = asRecord(stripNulls(record, path, ctx.normalized, true));
+  if (!stripped) {
+    ctx.dropped.push({ path, reason: "not an object" });
+    return undefined;
+  }
+  const candidate = schemaFields(stripped, ["claim", "confidence"]);
+  candidate["evidence"] = parseEvidence(
+    Array.isArray(record["evidence"]) ? record["evidence"] : undefined,
+    `${path}.evidence`,
+    ctx,
+  );
+  const parsed = CitedClaimSchema.safeParse(candidate);
+  if (!parsed.success) {
+    ctx.dropped.push({ path, reason: issueText(parsed.error) });
+    return undefined;
+  }
+  return parsed.data;
+}
+
+function readPlatformEvidence(
+  record: Record<string, unknown>,
+  memo: Record<string, unknown> | undefined,
+  ctx: PassContext,
+): { refs: { ref: EvidenceReference; path: string }[]; claims: CitedClaim[] } {
+  const owned = ownedValue(record, memo, ["evidence"]);
+  if (owned.state === "missing") return { refs: [], claims: [] };
+  if (owned.state === "null") {
+    ctx.normalized.push({ path: "evidence", action: "drop-null" });
+    return { refs: [], claims: [] };
+  }
+  if (!Array.isArray(owned.value)) {
+    ctx.dropped.push({
+      path: "evidence",
+      reason: "platform field is not an array",
+    });
+    return { refs: [], claims: [] };
+  }
+  const refs: { ref: EvidenceReference; path: string }[] = [];
+  const claims: CitedClaim[] = [];
+  owned.value.forEach((item, index) => {
+    const path = `evidence[${index}]`;
+    const recordItem = asRecord(item);
+    if (recordItem && typeof recordItem["claim"] === "string") {
+      const claim = parseClaimAt(item, path, ctx);
+      if (claim) claims.push(claim);
       return;
     }
-    const claim = firstString(
-      record,
-      "claim",
-      "text",
-      "statement",
-      "title",
-      "content",
-    );
-    const evidence = parseEvidence(
-      record["evidence"] ?? record["citations"],
-      `${path}.evidence`,
-      dropped,
-    );
-    const confidence = readUnitInterval(
-      record["confidence"],
-      `${path}.confidence`,
-      schemaDefaults,
-    );
-    const parsed = CitedClaimSchema.safeParse({ claim, evidence, confidence });
+    const prepared = normalizeEvidenceRef(item, path, ctx);
+    const parsed = EvidenceReferenceSchema.safeParse(prepared);
     if (!parsed.success) {
-      dropped.push({ path, reason: issueText(parsed.error) });
+      ctx.dropped.push({ path, reason: issueText(parsed.error) });
+      return;
+    }
+    refs.push({ ref: parsed.data, path });
+  });
+  return { refs, claims };
+}
+
+function placePlatformEvidence(
+  claims: CitedClaim[],
+  rationale: CitedClaim[],
+  refs: { ref: EvidenceReference; path: string }[],
+  ctx: PassContext,
+): { claims: CitedClaim[]; rationale: CitedClaim[] } {
+  if (refs.length === 0) return { claims, rationale };
+  const evidence = refs.map((item) => item.ref);
+  const memoEmpty = claims.findIndex((claim) => claim.evidence.length === 0);
+  if (memoEmpty >= 0) {
+    ctx.normalized.push({
+      path: `memo.claims[${memoEmpty}].evidence`,
+      action: "map-platform-evidence",
+    });
+    const next = claims.slice();
+    next[memoEmpty] = { ...claims[memoEmpty]!, evidence };
+    return { claims: next, rationale };
+  }
+  const rationaleEmpty = rationale.findIndex(
+    (claim) => claim.evidence.length === 0,
+  );
+  if (rationaleEmpty >= 0) {
+    ctx.normalized.push({
+      path: `recommendation.rationale[${rationaleEmpty}].evidence`,
+      action: "map-platform-evidence",
+    });
+    const next = rationale.slice();
+    next[rationaleEmpty] = { ...rationale[rationaleEmpty]!, evidence };
+    return { claims, rationale: next };
+  }
+  if (claims.length > 0) {
+    ctx.normalized.push({
+      path: "memo.claims[0].evidence",
+      action: "map-platform-evidence",
+    });
+    const first = claims[0]!;
+    return {
+      claims: [
+        { ...first, evidence: [...first.evidence, ...evidence] },
+        ...claims.slice(1),
+      ],
+      rationale,
+    };
+  }
+  if (rationale.length > 0) {
+    ctx.normalized.push({
+      path: "recommendation.rationale[0].evidence",
+      action: "map-platform-evidence",
+    });
+    const first = rationale[0]!;
+    return {
+      claims,
+      rationale: [
+        { ...first, evidence: [...first.evidence, ...evidence] },
+        ...rationale.slice(1),
+      ],
+    };
+  }
+  for (const item of refs) {
+    ctx.dropped.push({
+      path: item.path,
+      reason:
+        "schema-valid platform evidence has no submission evidence field to attach to",
+    });
+  }
+  return { claims, rationale };
+}
+
+function parseEvidence(
+  value: unknown,
+  path: string,
+  ctx: PassContext,
+): EvidenceReference[] {
+  if (value === undefined || value === null) {
+    if (value === null) ctx.normalized.push({ path, action: "drop-null" });
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    ctx.dropped.push({ path, reason: "evidence is not an array" });
+    return [];
+  }
+  const kept: EvidenceReference[] = [];
+  value.forEach((item, index) => {
+    const itemPath = `${path}[${index}]`;
+    const prepared = normalizeEvidenceRef(item, itemPath, ctx);
+    const parsed = EvidenceReferenceSchema.safeParse(prepared);
+    if (!parsed.success) {
+      ctx.dropped.push({ path: itemPath, reason: issueText(parsed.error) });
       return;
     }
     kept.push(parsed.data);
@@ -474,31 +653,27 @@ function parseClaims(
   return kept;
 }
 
-function parseEvidence(
-  value: unknown,
+function normalizeEvidenceRef(
+  item: unknown,
   path: string,
-  dropped: DroppedPlatformItem[],
-): EvidenceReference[] {
-  if (value === undefined || value === null) return [];
-  if (!Array.isArray(value)) {
-    dropped.push({ path, reason: "evidence is not an array" });
-    return [];
+  ctx: PassContext,
+): unknown {
+  if (typeof item === "string" && item.length > 0) {
+    ctx.normalized.push({ path, action: "map-string-to-sourceId" });
+    return { sourceId: item };
   }
-  const kept: EvidenceReference[] = [];
-  value.forEach((item, index) => {
-    const normalized =
-      typeof item === "string" && item.length > 0 ? { sourceId: item } : item;
-    const parsed = EvidenceReferenceSchema.safeParse(normalized);
-    if (!parsed.success) {
-      dropped.push({
-        path: `${path}[${index}]`,
-        reason: issueText(parsed.error),
-      });
-      return;
-    }
-    kept.push(parsed.data);
-  });
-  return kept;
+  const stripped = asRecord(stripNulls(item, path, ctx.normalized));
+  if (!stripped) return item;
+  const sourceId = stripped["sourceId"];
+  const factId = stripped["factId"];
+  const sourceMissing = typeof sourceId !== "string" || sourceId.length === 0;
+  if (sourceMissing && typeof factId === "string" && factId.length > 0) {
+    const next: Record<string, unknown> = { ...stripped, sourceId: factId };
+    delete next["factId"];
+    ctx.normalized.push({ path, action: "map-factId-to-sourceId" });
+    return next;
+  }
+  return stripped;
 }
 
 function parseItems<T>(
@@ -510,14 +685,16 @@ function parseItems<T>(
       { success: true; data: T } | { success: false; error: SchemaIssueError };
   },
   pathPrefix: string,
-  dropped: DroppedPlatformItem[],
+  ctx: PassContext,
 ): T[] {
   const kept: T[] = [];
   items.forEach((item, index) => {
-    const parsed = schema.safeParse(item);
+    const path = `${pathPrefix}[${index}]`;
+    const prepared = prepareSchemaValue(item, path, ctx);
+    const parsed = schema.safeParse(prepared);
     if (!parsed.success) {
-      dropped.push({
-        path: `${pathPrefix}[${index}]`,
+      ctx.dropped.push({
+        path,
         reason: issueText(parsed.error),
       });
       return;
@@ -530,15 +707,20 @@ function parseItems<T>(
 function readPolicyAssessment(
   record: Record<string, unknown>,
   memo: Record<string, unknown> | undefined,
-  dropped: DroppedPlatformItem[],
+  ctx: PassContext,
 ): UnderwritingSubmission["policyAssessment"] {
-  const value = record["policyAssessment"] ?? memo?.["policyAssessment"];
-  if (value === undefined) {
+  const owned = ownedValue(record, memo, ["policyAssessment"]);
+  if (owned.state === "null") {
+    ctx.normalized.push({ path: "policyAssessment", action: "drop-null" });
+  }
+  if (owned.state !== "present") {
+    ctx.absent.push({ path: "policyAssessment" });
     return { applicableRules: [], evaluations: [] };
   }
-  const parsed = PolicyAssessmentSchema.safeParse(value);
+  const prepared = prepareSchemaValue(owned.value, "policyAssessment", ctx);
+  const parsed = PolicyAssessmentSchema.safeParse(prepared);
   if (!parsed.success) {
-    dropped.push({
+    ctx.dropped.push({
       path: "policyAssessment",
       reason: issueText(parsed.error),
     });
@@ -549,7 +731,7 @@ function readPolicyAssessment(
 
 function optionalRecommendationFields(
   recommendation: Record<string, unknown>,
-  dropped: DroppedPlatformItem[],
+  ctx: PassContext,
 ): { proposedAmount?: unknown; proposedTermMonths?: unknown } {
   const extra: { proposedAmount?: unknown; proposedTermMonths?: unknown } = {};
   if (recommendation["proposedAmount"] !== undefined) {
@@ -568,7 +750,7 @@ function optionalRecommendationFields(
     ...extra,
   });
   if (!parsed.success) {
-    dropped.push({
+    ctx.dropped.push({
       path: "recommendation",
       reason: issueText(parsed.error),
     });
@@ -586,19 +768,26 @@ function optionalRecommendationFields(
 
 function readConfidence(
   record: Record<string, unknown>,
-  schemaDefaults: DroppedPlatformItem[],
+  memo: Record<string, unknown> | undefined,
+  ctx: PassContext,
 ): UnderwritingSubmission["confidence"] {
-  if (record["confidence"] === undefined) {
-    schemaDefaults.push({
+  const owned = ownedValue(record, memo, ["confidence"]);
+  if (owned.state === "null") {
+    ctx.normalized.push({ path: "confidence", action: "drop-null" });
+  }
+  if (owned.state !== "present") {
+    ctx.absent.push({ path: "confidence" });
+    ctx.schemaDefaults.push({
       path: "confidence",
       reason:
         "platform omitted confidence; set overall to 0 because the schema requires a number",
     });
     return { overall: 0, byComponent: {} };
   }
-  const parsed = ConfidenceSchema.safeParse(record["confidence"]);
+  const prepared = prepareSchemaValue(owned.value, "confidence", ctx);
+  const parsed = ConfidenceSchema.safeParse(prepared);
   if (!parsed.success) {
-    schemaDefaults.push({
+    ctx.schemaDefaults.push({
       path: "confidence",
       reason: `${issueText(parsed.error)}; set overall to 0`,
     });
@@ -609,12 +798,17 @@ function readConfidence(
 
 function readUsage(
   record: Record<string, unknown>,
-  dropped: DroppedPlatformItem[],
+  ctx: PassContext,
 ): { usage?: UnderwritingSubmission["usage"] } {
   if (record["usage"] === undefined) return {};
-  const parsed = UsageSchema.safeParse(record["usage"]);
+  if (record["usage"] === null) {
+    ctx.normalized.push({ path: "usage", action: "drop-null" });
+    return {};
+  }
+  const prepared = prepareSchemaValue(record["usage"], "usage", ctx);
+  const parsed = UsageSchema.safeParse(prepared);
   if (!parsed.success) {
-    dropped.push({ path: "usage", reason: issueText(parsed.error) });
+    ctx.dropped.push({ path: "usage", reason: issueText(parsed.error) });
     return {};
   }
   return { usage: parsed.data };
@@ -623,17 +817,97 @@ function readUsage(
 function readUnitInterval(
   value: unknown,
   path: string,
-  schemaDefaults: DroppedPlatformItem[],
+  ctx: PassContext,
 ): number {
   if (typeof value === "number" && value >= 0 && value <= 1) return value;
-  schemaDefaults.push({
+  if (value === null) ctx.normalized.push({ path, action: "drop-null" });
+  ctx.schemaDefaults.push({
     path,
     reason:
-      value === undefined
+      value === undefined || value === null
         ? "platform omitted confidence; set to 0 because the schema requires a number"
         : "platform confidence is not in 0..1; set to 0",
   });
   return 0;
+}
+
+function ownedValue(
+  record: Record<string, unknown>,
+  memo: Record<string, unknown> | undefined,
+  keys: readonly string[],
+): { state: "missing" | "null" | "present"; value: unknown } {
+  let sawNull = false;
+  for (const source of [record, memo]) {
+    if (!source) continue;
+    for (const key of keys) {
+      if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+      if (source[key] === null) {
+        sawNull = true;
+        continue;
+      }
+      if (source[key] === undefined) continue;
+      return { state: "present", value: source[key] };
+    }
+  }
+  return { state: sawNull ? "null" : "missing", value: undefined };
+}
+
+function schemaFields(
+  record: Record<string, unknown>,
+  keys: readonly string[],
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of keys) {
+    if (record[key] !== undefined) out[key] = record[key];
+  }
+  return out;
+}
+
+function prepareSchemaValue(
+  value: unknown,
+  path: string,
+  ctx: PassContext,
+): unknown {
+  const record = asRecord(value);
+  if (!record) return stripNulls(value, path, ctx.normalized);
+  const stripped = asRecord(stripNulls(record, path, ctx.normalized, true));
+  if (!stripped) return value;
+  if (Array.isArray(record["evidence"])) {
+    stripped["evidence"] = parseEvidence(
+      record["evidence"],
+      `${path}.evidence`,
+      ctx,
+    );
+  }
+  return stripped;
+}
+
+function stripNulls(
+  value: unknown,
+  path: string,
+  normalized: NormalizedPlatformField[],
+  preserveEvidenceArray = false,
+): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item, index) =>
+      stripNulls(item, `${path}[${index}]`, normalized),
+    );
+  }
+  if (!value || typeof value !== "object") return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    const child = `${path}.${key}`;
+    if (item === null) {
+      normalized.push({ path: child, action: "drop-null" });
+      continue;
+    }
+    if (preserveEvidenceArray && key === "evidence" && Array.isArray(item)) {
+      out[key] = item;
+      continue;
+    }
+    out[key] = stripNulls(item, child, normalized);
+  }
+  return out;
 }
 
 function memoMarkdown(

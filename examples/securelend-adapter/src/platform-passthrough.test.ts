@@ -257,6 +257,11 @@ describe("platform passthrough mapping", () => {
       "normalizedFacts[1]",
     ]);
     expect(mapped.metadata.schemaDefaults).toEqual([]);
+    expect(mapped.metadata.normalized).toEqual([]);
+    expect(mapped.metadata.absent.map((item) => item.path)).toEqual([
+      "followUpRequests",
+      "policyAssessment",
+    ]);
 
     const artifact = platformRunArtifact(
       "case-synth",
@@ -333,7 +338,7 @@ describe("platform passthrough mapping", () => {
     ).toThrow(/no bench decision/);
   });
 
-  it("records a schema default when the platform omits risk confidence", () => {
+  it("drops a present risk that omits confidence instead of inventing one", () => {
     const draft = platformDraft();
     draft.risks = [
       {
@@ -345,12 +350,255 @@ describe("platform passthrough mapping", () => {
       },
     ];
     const mapped = mapPlatformPassthrough(draft);
-    expect(mapped.submission.risks[0]?.confidence).toBe(0);
-    expect(mapped.metadata.schemaDefaults).toEqual([
+    expect(mapped.submission.risks).toEqual([]);
+    expect(mapped.submission.recommendation.decision).toBe("APPROVE");
+    expect(mapped.metadata.dropped.map((item) => item.path)).toContain(
+      "risks[0]",
+    );
+    expect(mapped.metadata.schemaDefaults).toEqual([]);
+  });
+
+  it("drops null spread lines and maps factId only when sourceId is missing", () => {
+    const mapped = mapPlatformPassthrough({
+      body: "Null and factId fallback.",
+      recommendation: { decision: "APPROVE", confidence: 0.5, rationale: [] },
+      financialSpread: {
+        revenue: { amount: 50, currency: "USD" },
+        cogs: null,
+        ebitda: null,
+        period: { start: "2024-01-01", end: "2024-12-31" },
+        currency: "USD",
+        scale: "units",
+        signConvention: "all_positive",
+      },
+      normalizedFacts: [
+        {
+          canonicalKey: "revenue",
+          value: 50,
+          type: "currency",
+          evidence: [{ factId: "fact_revenue", documentId: "doc_1" }],
+          confidence: 0.4,
+        },
+        {
+          canonicalKey: "keep_source",
+          value: 1,
+          type: "string",
+          evidence: [{ sourceId: "src_keep", factId: "fact_other" }],
+          confidence: 1,
+        },
+      ],
+      confidence: { overall: 0.5, byComponent: {} },
+    });
+    expect(mapped.submission.recommendation.decision).toBe("APPROVE");
+    expect(mapped.submission.financialSpread.revenue.amount).toBe(50);
+    expect(mapped.submission.financialSpread.cogs).toBeUndefined();
+    expect(mapped.submission.financialSpread.ebitda).toBeUndefined();
+    expect(mapped.submission.financialSpread.signConvention).toBe(
+      "all_positive",
+    );
+    expect(
+      mapped.submission.normalizedFacts.map((fact) => fact.canonicalKey),
+    ).toEqual(["revenue"]);
+    expect(mapped.submission.normalizedFacts[0]?.evidence).toEqual([
+      { sourceId: "fact_revenue", documentId: "doc_1" },
+    ]);
+    expect(JSON.stringify(mapped.submission)).not.toContain("fact_other");
+    expect(JSON.stringify(mapped.submission)).not.toContain("src_keep");
+    expect(mapped.metadata.normalized).toEqual([
+      { path: "financialSpread.cogs", action: "drop-null" },
+      { path: "financialSpread.ebitda", action: "drop-null" },
       {
-        path: "risks[0].confidence",
-        reason:
-          "platform omitted confidence; set to 0 because the schema requires a number",
+        path: "normalizedFacts[0].evidence[0]",
+        action: "map-factId-to-sourceId",
+      },
+    ]);
+  });
+
+  it("does not fill currency, period, or signConvention when the spread is invalid", () => {
+    const mapped = mapPlatformPassthrough({
+      body: "Invalid spread.",
+      recommendation: { decision: "DECLINE", confidence: 0.2 },
+      financialSpread: {
+        revenue: { amount: 50, currency: "USD" },
+        cogs: null,
+        currency: null,
+        period: null,
+        scale: "units",
+        signConvention: "standard",
+      },
+    });
+    expect(mapped.submission.recommendation.decision).toBe("DECLINE");
+    expect(isPlaceholderSpread(mapped.submission.financialSpread)).toBe(true);
+    expect(mapped.submission.financialSpread.revenue.amount).toBe(0);
+    expect(mapped.metadata.financialSpread).toBe("missing");
+    expect(mapped.metadata.normalized.map((item) => item.action)).toEqual([
+      "drop-null",
+      "drop-null",
+      "drop-null",
+    ]);
+    expect(mapped.metadata.dropped.map((item) => item.path)).toContain(
+      "financialSpread",
+    );
+    expect(JSON.stringify(mapped.metadata.normalized)).not.toContain(
+      "all_positive",
+    );
+    expect(JSON.stringify(mapped.metadata.normalized)).not.toContain(
+      "standard",
+    );
+  });
+
+  it("maps draft_memo_from_file structuredContent field for field", () => {
+    const draft = {
+      body: "Platform memo from draft_memo_from_file.",
+      facts: [
+        {
+          canonicalKey: "job.citation",
+          value: "do-not-use",
+          type: "string",
+          evidence: [{ sourceId: "job_citation_graph" }],
+          confidence: 1,
+        },
+      ],
+      recommendation: {
+        decision: "REFER",
+        confidence: 0.64,
+        wording: "Refer on the platform memo.",
+        rationale: [
+          {
+            claim: "Debt service is inside the stated limit.",
+            confidence: 0.64,
+            evidence: [{ sourceId: "src_rationale" }],
+          },
+        ],
+        conditions: [
+          {
+            description: "Provide the trailing covenant certificate.",
+            evidence: [{ sourceId: "src_condition" }],
+          },
+        ],
+        openItems: [{ label: "Do not import this open item" }],
+        source: "draft_memo_from_file",
+      },
+      financialSpread: {
+        revenue: { amount: 250_000, currency: "USD" },
+        ebitda: { amount: 40_000, currency: "USD" },
+        period: { start: "2024-01-01", end: "2024-12-31" },
+        currency: "USD",
+        scale: "units",
+        signConvention: "all_positive",
+      },
+      normalizedFacts: [
+        {
+          canonicalKey: "revenue",
+          value: 250_000,
+          type: "currency",
+          currency: "USD",
+          period: { start: "2024-01-01", end: "2024-12-31" },
+          evidence: [{ sourceId: "src_fact" }],
+        },
+      ],
+      risks: [
+        {
+          riskId: "risk_platform_leverage",
+          category: "CREDIT",
+          severity: "HIGH",
+          statement: "Leverage is the platform finding.",
+          confidence: 0.4,
+          evidence: [{ sourceId: "src_risk" }],
+        },
+      ],
+      confidence: { overall: 0.71, byComponent: { memo: 0.66 } },
+      policyAssessment: {
+        applicableRules: ["rule_dscr"],
+        evaluations: [
+          {
+            ruleId: "rule_dscr",
+            passed: false,
+            input: 1.1,
+            threshold: 1.25,
+            operator: ">=",
+          },
+        ],
+      },
+      discrepancies: [],
+      followUpRequests: [
+        { requestId: "fu_tax", concept: "tax_returns", status: "PENDING" },
+      ],
+      evidence: [{ sourceId: "src_platform_evidence" }],
+    };
+    const mapped = mapPlatformPassthrough(draft, "case-memo");
+    const submission = mapped.submission;
+    expect(submission.recommendation.decision).toBe("REFER");
+    expect(submission.recommendation.confidence).toBe(0.64);
+    expect(submission.recommendation.rationale).toEqual([
+      {
+        claim: "Debt service is inside the stated limit.",
+        confidence: 0.64,
+        evidence: [
+          { sourceId: "src_rationale" },
+          { sourceId: "src_platform_evidence" },
+        ],
+      },
+    ]);
+    expect(submission.recommendation.conditions).toEqual([
+      {
+        description: "Provide the trailing covenant certificate.",
+        evidence: [{ sourceId: "src_condition" }],
+      },
+    ]);
+    expect(submission.financialSpread.revenue).toEqual({
+      amount: 250_000,
+      currency: "USD",
+    });
+    expect(submission.financialSpread.ebitda).toEqual({
+      amount: 40_000,
+      currency: "USD",
+    });
+    expect(submission.financialSpread.cogs).toBeUndefined();
+    expect(submission.financialSpread.period).toEqual({
+      start: "2024-01-01",
+      end: "2024-12-31",
+    });
+    expect(submission.financialSpread.signConvention).toBe("all_positive");
+    expect(submission.normalizedFacts).toEqual([
+      {
+        canonicalKey: "revenue",
+        value: 250_000,
+        type: "currency",
+        currency: "USD",
+        period: { start: "2024-01-01", end: "2024-12-31" },
+        evidence: [{ sourceId: "src_fact" }],
+      },
+    ]);
+    expect(submission.risks).toEqual([
+      {
+        riskId: "risk_platform_leverage",
+        category: "CREDIT",
+        severity: "HIGH",
+        statement: "Leverage is the platform finding.",
+        confidence: 0.4,
+        evidence: [{ sourceId: "src_risk" }],
+      },
+    ]);
+    expect(submission.confidence).toEqual({
+      overall: 0.71,
+      byComponent: { memo: 0.66 },
+    });
+    expect(submission.policyAssessment).toEqual(draft.policyAssessment);
+    expect(submission.discrepancies).toEqual([]);
+    expect(submission.followUpRequests).toEqual(draft.followUpRequests);
+    expect(submission.memo.markdown).toBe(draft.body);
+    expect(JSON.stringify(submission)).not.toContain("job_citation_graph");
+    expect(JSON.stringify(submission)).not.toContain(
+      "Do not import this open item",
+    );
+    expect(mapped.metadata.absent).toEqual([]);
+    expect(mapped.metadata.schemaDefaults).toEqual([]);
+    expect(mapped.metadata.dropped).toEqual([]);
+    expect(mapped.metadata.normalized).toEqual([
+      {
+        path: "recommendation.rationale[0].evidence",
+        action: "map-platform-evidence",
       },
     ]);
   });

@@ -189,6 +189,8 @@ export async function runPlatformPath(
     await waitForJob(api, jobId);
   }
   const drafted = await draftMemo(config, tenantId, caseId, fetchImpl, signal);
+  // Submission cells come from draft_memo_from_file structuredContent, not
+  // from the underwrite job body.
   const mapped = mapPlatformDraft(pkg, drafted, config.mappingMode ?? "passthrough", {
     workspaceId: caseId,
     workspaceName: tenantId,
