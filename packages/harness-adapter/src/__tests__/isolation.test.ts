@@ -6,6 +6,7 @@ import {
   mkdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -218,5 +219,63 @@ ${targets.map((target) => `if [ -e ${JSON.stringify(target)} ]; then echo "READ_
       expect(stdout, target).toContain(`READ_FAIL ${target}`);
       expect(stdout, target).not.toContain(`READ_OK ${target}`);
     }
+  });
+
+  it("re-binds a pi install under /home, including the symlink target", async () => {
+    const imported = (await import(
+      new URL("../../workers/isolation.mjs", import.meta.url).href
+    )) as {
+      CLI_AUTH_RELATIVE: { pi: readonly string[] };
+      agentBindPaths: (binary: string, workspace: string) => string[];
+    };
+    expect(imported.CLI_AUTH_RELATIVE.pi).toEqual([".pi"]);
+
+    const install = join(homedir(), `.uwbench-pi-probe-${process.pid}`);
+    const packageDir = join(install, "lib", "node_modules", "pi-cli");
+    const binDir = join(install, "bin");
+    const script = join(packageDir, "pi.sh");
+    const link = join(binDir, "pi");
+    const secret = join(install, "secret-not-config");
+    const workspace = mkdtempSync(join("/tmp", "uwbench-harness-"));
+    mkdirSync(packageDir, { recursive: true });
+    mkdirSync(binDir, { recursive: true });
+    writeFileSync(join(packageDir, "package.json"), '{"name":"pi-cli"}\n');
+    writeFileSync(
+      script,
+      `#!/bin/sh
+echo RAN
+if [ -f ${JSON.stringify(secret)} ]; then echo SECRET_OK; else echo SECRET_FAIL; fi
+`,
+    );
+    chmodSync(script, 0o755);
+    symlinkSync(relative(binDir, script), link);
+    writeFileSync(secret, "nope\n");
+
+    const bound = imported.agentBindPaths(link, workspace);
+    expect(bound).toContain(link);
+    expect(bound).toContain(script);
+    expect(bound).not.toContain(secret);
+
+    let stdout = "";
+    let stderr = "";
+    const child = await launchIsolated({
+      binary: link,
+      args: [],
+      workspace,
+    });
+    const exitCode = await new Promise<number>((resolveExit, reject) => {
+      child.stdout?.on("data", (chunk: Buffer) => {
+        stdout += String(chunk);
+      });
+      child.stderr?.on("data", (chunk: Buffer) => {
+        stderr += String(chunk);
+      });
+      child.on("error", reject);
+      child.on("exit", (code) => resolveExit(code ?? 1));
+    });
+    rmSync(install, { recursive: true, force: true });
+    expect(exitCode, `${stderr}\n${stdout}`).toBe(0);
+    expect(stdout).toContain("RAN");
+    expect(stdout).toContain("SECRET_FAIL");
   });
 });

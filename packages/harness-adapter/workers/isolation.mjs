@@ -55,6 +55,8 @@ export const CLI_AUTH_RELATIVE = {
     ".local/state/opencode",
   ],
   claude: [".claude", ".claude.json"],
+  // ~/.pi/agent lives under ~/.pi, so one mount covers both.
+  pi: [".pi"],
 };
 
 /** Repo root from this file: workers -> harness-adapter -> packages -> repo. */
