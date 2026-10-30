@@ -247,10 +247,7 @@ const child = spawnIsolatedAgent({
   binary,
   args,
   workspace,
-  env: {
-    ...process.env,
-    ...(binary === "claude" ? { CLAUDE_CONFIG_DIR: workspace } : {}),
-  },
+  env: process.env,
 });
 
 let stdout = "";
