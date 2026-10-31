@@ -603,6 +603,71 @@ describe("platform passthrough mapping", () => {
     ]);
   });
 
+  it("keeps income-statement lines when the platform uses snake_case names", () => {
+    const mapped = mapPlatformPassthrough({
+      body: "Spread lines.",
+      recommendation: { decision: "APPROVE", confidence: 0.5, rationale: [] },
+      confidence: { overall: 0.5, byComponent: {} },
+      financialSpread: {
+        revenue: { amount: 100, currency: "USD" },
+        cogs: { amount: 40, currency: "USD" },
+        gross_profit: { amount: 60, currency: "USD" },
+        operating_expenses: { amount: 25, currency: "USD" },
+        ebitda: { amount: 35, currency: "USD" },
+        taxes: { amount: 5, currency: "USD" },
+        net_income: { amount: 20, currency: "USD" },
+        period: { start: "2024-01-01", end: "2024-12-31" },
+        currency: "USD",
+        scale: "units",
+        signConvention: "all_positive",
+        not_a_spread_line: { amount: 1, currency: "USD" },
+      },
+    });
+    expect(mapped.submission.financialSpread.cogs?.amount).toBe(40);
+    expect(mapped.submission.financialSpread.grossProfit?.amount).toBe(60);
+    expect(mapped.submission.financialSpread.operatingExpenses?.amount).toBe(
+      25,
+    );
+    expect(mapped.submission.financialSpread.ebitda?.amount).toBe(35);
+    expect(mapped.submission.financialSpread.taxes?.amount).toBe(5);
+    expect(mapped.submission.financialSpread.netIncome?.amount).toBe(20);
+    expect(mapped.metadata.financialSpread).toBe("platform");
+    expect(mapped.metadata.normalized.map((item) => item.path).sort()).toEqual([
+      "financialSpread.gross_profit",
+      "financialSpread.net_income",
+      "financialSpread.operating_expenses",
+    ]);
+    expect(mapped.metadata.dropped.map((item) => item.path)).toEqual([
+      "financialSpread.not_a_spread_line",
+    ]);
+    expect(JSON.stringify(mapped.submission.financialSpread)).not.toContain(
+      "gross_profit",
+    );
+  });
+
+  it("omits one invalid spread line without dropping the others", () => {
+    const mapped = mapPlatformPassthrough({
+      body: "One bad line.",
+      recommendation: { decision: "APPROVE", confidence: 0.5, rationale: [] },
+      confidence: { overall: 0.5, byComponent: {} },
+      financialSpread: {
+        revenue: { amount: 100, currency: "USD" },
+        cogs: { amount: 1.5, currency: "USD" },
+        net_income: { amount: 20, currency: "USD" },
+        period: { start: "2024-01-01", end: "2024-12-31" },
+        currency: "USD",
+        scale: "units",
+        signConvention: "all_positive",
+      },
+    });
+    expect(mapped.submission.financialSpread.cogs).toBeUndefined();
+    expect(mapped.submission.financialSpread.netIncome?.amount).toBe(20);
+    expect(mapped.submission.financialSpread.revenue.amount).toBe(100);
+    expect(mapped.metadata.dropped.map((item) => item.path)).toContain(
+      "financialSpread.cogs",
+    );
+  });
+
   it("shaped mode still applies the liquidity override and the case-package spread", () => {
     const pkg = syntheticPackage();
     const draft = platformDraft();

@@ -51,7 +51,8 @@ export interface NormalizedPlatformField {
     | "drop-null"
     | "map-factId-to-sourceId"
     | "map-string-to-sourceId"
-    | "map-platform-evidence";
+    | "map-platform-evidence"
+    | "rename-spread-key";
 }
 
 export interface AbsentPlatformField {
@@ -270,16 +271,150 @@ function readSpread(
 ): { spread: FinancialSpread; source: "platform" | "missing" } {
   const located = locateSpread(record, memo);
   if (!located) return { spread: placeholderSpread(), source: "missing" };
-  // Null line items, currency, and period are absent. signConvention is left
-  // as sent, including values the enum rejects.
+  // Null line items are absent. Known snake_case names are renamed onto the
+  // UWBench spread fields. signConvention, currency, and period are not filled.
   const stripped = stripNulls(located.value, located.path, ctx.normalized);
-  const parsed = FinancialSpreadSchema.safeParse(stripped);
-  if (parsed.success) return { spread: parsed.data, source: "platform" };
-  ctx.dropped.push({
-    path: located.path,
-    reason: issueText(parsed.error),
-  });
+  const prepared = preparePlatformSpread(stripped, located.path, ctx);
+  const parsed = parseSpreadKeepingValidLines(prepared, located.path, ctx);
+  if (parsed) return { spread: parsed, source: "platform" };
   return { spread: placeholderSpread(), source: "missing" };
+}
+
+const SPREAD_SCHEMA_KEYS = new Set([
+  "revenue",
+  "cogs",
+  "grossProfit",
+  "operatingExpenses",
+  "ebitda",
+  "interestExpense",
+  "debtService",
+  "totalDebt",
+  "cash",
+  "currentAssets",
+  "currentLiabilities",
+  "totalAssets",
+  "totalLiabilities",
+  "equity",
+  "taxes",
+  "netIncome",
+  "period",
+  "currency",
+  "scale",
+  "signConvention",
+]);
+
+const SPREAD_OPTIONAL_LINES = [
+  "cogs",
+  "grossProfit",
+  "operatingExpenses",
+  "ebitda",
+  "interestExpense",
+  "debtService",
+  "totalDebt",
+  "cash",
+  "currentAssets",
+  "currentLiabilities",
+  "totalAssets",
+  "totalLiabilities",
+  "equity",
+  "taxes",
+  "netIncome",
+] as const;
+
+/** Platform fact names that are the same line as a UWBench spread field. */
+const SPREAD_KEY_ALIASES: Record<string, string> = {
+  cost_of_goods_sold: "cogs",
+  costOfGoodsSold: "cogs",
+  gross_profit: "grossProfit",
+  operating_expenses: "operatingExpenses",
+  interest_expense: "interestExpense",
+  debt_service: "debtService",
+  total_debt: "totalDebt",
+  current_assets: "currentAssets",
+  current_liabilities: "currentLiabilities",
+  total_assets: "totalAssets",
+  total_liabilities: "totalLiabilities",
+  tax_expense: "taxes",
+  taxExpense: "taxes",
+  net_income: "netIncome",
+};
+
+function preparePlatformSpread(
+  value: unknown,
+  path: string,
+  ctx: PassContext,
+): unknown {
+  const record = asRecord(value);
+  if (!record) return value;
+  const next: Record<string, unknown> = {};
+  for (const [key, raw] of Object.entries(record)) {
+    const target = SPREAD_KEY_ALIASES[key] ?? key;
+    if (target !== key) {
+      ctx.normalized.push({
+        path: `${path}.${key}`,
+        action: "rename-spread-key",
+      });
+    }
+    if (next[target] === undefined) {
+      next[target] = raw;
+      continue;
+    }
+    if (target !== key) {
+      ctx.dropped.push({
+        path: `${path}.${key}`,
+        reason: `duplicate of ${target}; kept the schema-named line`,
+      });
+    }
+  }
+  for (const key of Object.keys(next)) {
+    if (SPREAD_SCHEMA_KEYS.has(key)) continue;
+    ctx.dropped.push({
+      path: `${path}.${key}`,
+      reason: "not a UWBench financialSpread field",
+    });
+    delete next[key];
+  }
+  return next;
+}
+
+function parseSpreadKeepingValidLines(
+  value: unknown,
+  path: string,
+  ctx: PassContext,
+): FinancialSpread | undefined {
+  const first = FinancialSpreadSchema.safeParse(value);
+  if (first.success) return first.data;
+  const record = asRecord(value);
+  if (!record) {
+    ctx.dropped.push({ path, reason: issueText(first.error) });
+    return undefined;
+  }
+  const failed = new Set<string>();
+  for (const issue of first.error.issues) {
+    const key = issue.path[0];
+    if (
+      typeof key === "string" &&
+      (SPREAD_OPTIONAL_LINES as readonly string[]).includes(key)
+    ) {
+      failed.add(key);
+    }
+  }
+  if (failed.size === 0) {
+    ctx.dropped.push({ path, reason: issueText(first.error) });
+    return undefined;
+  }
+  const next = { ...record };
+  for (const key of failed) {
+    ctx.dropped.push({
+      path: `${path}.${key}`,
+      reason: "spread line does not satisfy the schema and was omitted",
+    });
+    delete next[key];
+  }
+  const second = FinancialSpreadSchema.safeParse(next);
+  if (second.success) return second.data;
+  ctx.dropped.push({ path, reason: issueText(second.error) });
+  return undefined;
 }
 
 function locateSpread(
