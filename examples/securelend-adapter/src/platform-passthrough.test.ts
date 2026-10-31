@@ -338,7 +338,7 @@ describe("platform passthrough mapping", () => {
     ).toThrow(/no bench decision/);
   });
 
-  it("drops a present risk that omits confidence instead of inventing one", () => {
+  it("keeps a risk that omits confidence by using the schema default", () => {
     const draft = platformDraft();
     draft.risks = [
       {
@@ -350,12 +350,51 @@ describe("platform passthrough mapping", () => {
       },
     ];
     const mapped = mapPlatformPassthrough(draft);
-    expect(mapped.submission.risks).toEqual([]);
+    expect(mapped.submission.risks).toEqual([
+      {
+        riskId: "risk_platform_only",
+        category: "CREDIT",
+        severity: "LOW",
+        statement: "Platform risk stays.",
+        evidence: [{ sourceId: "platform_src_not_in_catalog" }],
+        confidence: 0,
+      },
+    ]);
     expect(mapped.submission.recommendation.decision).toBe("APPROVE");
-    expect(mapped.metadata.dropped.map((item) => item.path)).toContain(
+    expect(mapped.metadata.dropped.map((item) => item.path)).not.toContain(
       "risks[0]",
     );
-    expect(mapped.metadata.schemaDefaults).toEqual([]);
+    expect(mapped.metadata.schemaDefaults).toEqual([
+      {
+        path: "risks[0].confidence",
+        reason:
+          "platform omitted confidence; set to 0 because RiskFindingSchema requires a number",
+      },
+    ]);
+  });
+
+  it("keeps every reviewRisk and does not rewrite its id", () => {
+    const reviewRisks = Array.from({ length: 7 }, (_, index) => ({
+      riskId: `risk_review_${index + 1}`,
+      category: "CREDIT",
+      severity: "MEDIUM",
+      statement: `Review risk ${index + 1}.`,
+      evidence: [{ sourceId: "src_review" }],
+    }));
+    const mapped = mapPlatformPassthrough({
+      body: "Review risks.",
+      recommendation: { decision: "REFER", confidence: 0.4, rationale: [] },
+      confidence: { overall: 0.4, byComponent: {} },
+      reviewRisks,
+    });
+    expect(mapped.submission.risks).toHaveLength(7);
+    expect(mapped.submission.risks.map((risk) => risk.riskId)).toEqual(
+      reviewRisks.map((risk) => risk.riskId),
+    );
+    expect(mapped.submission.risks.every((risk) => risk.confidence === 0)).toBe(
+      true,
+    );
+    expect(mapped.metadata.schemaDefaults).toHaveLength(7);
   });
 
   it("drops null spread lines and maps factId only when sourceId is missing", () => {

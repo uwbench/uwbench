@@ -68,8 +68,9 @@ export interface PlatformPassthroughMetadata {
   /**
    * Schema-required numbers the platform omitted on the recommendation or
    * top-level confidence object. Recorded here instead of being filled in
-   * silently. Decision is never defaulted. Present risks and claims are not
-   * given a confidence.
+   * silently. Decision is never defaulted. A present risk with no confidence
+   * is kept at 0 because RiskFindingSchema requires the number. Claims are
+   * not given a confidence.
    */
   schemaDefaults: DroppedPlatformItem[];
   /** Null drops and factId/evidence mappings. */
@@ -95,6 +96,8 @@ export interface PlatformPassthroughResult {
 
 const RISK_KEYS = [
   "risks",
+  "reviewRisks",
+  "review_risks",
   "riskFindings",
   "risk_findings",
   "identifiedRisks",
@@ -125,10 +128,7 @@ export function mapPlatformPassthrough(
     asRecord(record["recommendation"]) ??
     asRecord(memo?.["recommendation"]) ??
     {};
-  const risks = parseRisks(
-    sectionItems(record, memo, RISK_KEYS, "risks", ctx),
-    ctx,
-  );
+  const risks = parseRisks(riskItems(record, memo, ctx), ctx);
   // Only the memo's normalizedFacts. The underwrite job returns a different
   // citation graph; that payload is not an input to this mapper.
   const facts = parseFacts(
@@ -519,6 +519,46 @@ function arrayOrEmpty(
   return [];
 }
 
+/** Every present risk list, including reviewRisks. No count cap. */
+function riskItems(
+  record: Record<string, unknown>,
+  memo: Record<string, unknown> | undefined,
+  ctx: PassContext,
+): unknown[] {
+  const fromRecord = concatRiskLists(record, ctx);
+  if (fromRecord.found) return fromRecord.items;
+  if (memo) {
+    const fromMemo = concatRiskLists(memo, ctx);
+    if (fromMemo.found) return fromMemo.items;
+  }
+  ctx.absent.push({ path: "risks" });
+  return [];
+}
+
+function concatRiskLists(
+  source: Record<string, unknown>,
+  ctx: PassContext,
+): { found: boolean; items: unknown[] } {
+  const items: unknown[] = [];
+  let found = false;
+  for (const key of RISK_KEYS) {
+    if (!(key in source)) continue;
+    const value = source[key];
+    if (value === null) {
+      ctx.normalized.push({ path: key, action: "drop-null" });
+      continue;
+    }
+    if (!Array.isArray(value)) {
+      ctx.dropped.push({ path: key, reason: "platform field is not an array" });
+      found = true;
+      continue;
+    }
+    found = true;
+    items.push(...value);
+  }
+  return { found, items };
+}
+
 function parseRisks(
   items: unknown[],
   ctx: PassContext,
@@ -542,8 +582,17 @@ function parseRisks(
       "category",
       "severity",
       "statement",
-      "confidence",
     ]);
+    if (typeof source["confidence"] === "number") {
+      candidate["confidence"] = source["confidence"];
+    } else {
+      candidate["confidence"] = 0;
+      ctx.schemaDefaults.push({
+        path: `${path}.confidence`,
+        reason:
+          "platform omitted confidence; set to 0 because RiskFindingSchema requires a number",
+      });
+    }
     candidate["evidence"] = parseEvidence(
       Array.isArray(record["evidence"]) ? record["evidence"] : undefined,
       `${path}.evidence`,
