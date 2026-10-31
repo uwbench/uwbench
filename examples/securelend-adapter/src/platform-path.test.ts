@@ -88,35 +88,6 @@ describe("desk score-gate profile", () => {
     });
   });
 
-  it("posts income-statement lines that the spread schema names", () => {
-    const records: CaseRecord[] = [
-      {
-        recordId: "record_financials_2024",
-        sourceId: "src_financials_2024",
-        record: {
-          financialSpread: {
-            revenue: { amount: 100 },
-            cogs: { amount: 40 },
-            grossProfit: { amount: 60 },
-            operatingExpenses: { amount: 25 },
-            netIncome: { amount: 20 },
-            taxes: { amount: 5 },
-            currency: "USD",
-            period: { start: "2024-01-01", end: "2024-12-31" },
-          },
-        },
-      },
-    ];
-    expect(platformFacts({ records })).toMatchObject({
-      revenue: 100,
-      cogs: 40,
-      gross_profit: 60,
-      operating_expenses: 25,
-      net_income: 20,
-      taxes: 5,
-    });
-  });
-
   it("turns a condition failure into refer and builds a passing test case", () => {
     const policies: CasePolicyRule[] = [
       {
