@@ -69,6 +69,16 @@ const SPREAD_FIELDS: Record<string, string> = {
   total_liabilities: "total_liabilities",
   equity: "equity",
   cash: "cash",
+  cogs: "cogs",
+  grossProfit: "gross_profit",
+  gross_profit: "gross_profit",
+  operatingExpenses: "operating_expenses",
+  operating_expenses: "operating_expenses",
+  netIncome: "net_income",
+  net_income: "net_income",
+  taxes: "taxes",
+  taxExpense: "taxes",
+  tax_expense: "taxes",
   forcedLiquidationValue: "forced_liquidation_value",
   forced_liquidation_value: "forced_liquidation_value",
   requestedAmount: "requested_amount",
@@ -85,6 +95,14 @@ const RECORD_ORDER = [
   "record_financials_primary",
   "record_001",
 ];
+
+/** ADR-003: canonical-input is input only on these lanes. */
+const CANONICAL_INPUT_LANES = new Set(["normalized_data", "reasoning_only"]);
+const KNOWN_PLATFORM_LANES = new Set([
+  "normalized_data",
+  "reasoning_only",
+  "raw_documents",
+]);
 
 export function tenantForCase(caseId: string): string {
   const safe = caseId.replace(/[^A-Za-z0-9_]/g, "_").replace(/_+/g, "_");
@@ -107,24 +125,28 @@ export interface PlatformFactsPost {
 
 export function platformFacts(
   pkg: Pick<CasePackage, "records">,
+  lane?: string,
 ): Record<string, number> {
-  return collectPlatformFacts({ ...pkg, documents: [] }).values;
+  return collectPlatformFacts({ ...pkg, documents: [] }, lane).values;
 }
 
 /**
- * Numeric facts plus the public src_* / doc_* ids, currency, and statement
- * period from the case package. Does not read private or expected files.
+ * Numeric facts plus public src_* / doc_* ids, currency, and statement
+ * period. Canonical-input amounts are included only for normalized_data and
+ * reasoning_only. An unknown lane posts nothing.
  */
 export function platformFactsPost(
   pkg: Pick<CasePackage, "records" | "documents">,
+  lane?: string,
 ): PlatformFactsPost {
-  return collectPlatformFacts(pkg);
+  return collectPlatformFacts(pkg, lane);
 }
 
 export function platformFactsRequestBody(
   pkg: Pick<CasePackage, "records" | "documents">,
+  lane?: string,
 ): Record<string, unknown> {
-  const posted = platformFactsPost(pkg);
+  const posted = platformFactsPost(pkg, lane);
   return {
     ...posted.values,
     ...(posted.currency ? { currency: posted.currency } : {}),
@@ -255,12 +277,12 @@ export async function runPlatformPath(
     );
 
   await api("POST", "/v1/cases", { id: caseId, tenantId });
-  const facts = platformFactsPost(pkg);
+  const facts = platformFactsPost(pkg, request.lane);
   if (Object.keys(facts.values).length > 0) {
     await api(
       "POST",
       `/v1/cases/${encodeURIComponent(caseId)}/facts`,
-      platformFactsRequestBody(pkg),
+      platformFactsRequestBody(pkg, request.lane),
     );
   }
   for (const document of pkg.documents) {
@@ -394,8 +416,15 @@ interface FactOrigin {
 
 function collectPlatformFacts(
   pkg: Pick<CasePackage, "records" | "documents">,
+  lane: string | undefined,
 ): PlatformFactsPost {
-  const ordered = orderedRecords(pkg.records);
+  if (!KNOWN_PLATFORM_LANES.has(lane ?? "")) {
+    return { values: {}, citations: {} };
+  }
+  const ordered = orderedRecords(pkg.records).filter(
+    (item) =>
+      CANONICAL_INPUT_LANES.has(lane ?? "") || !isCanonicalInputRecord(item),
+  );
   const origins: Record<string, FactOrigin> = {};
   for (const item of ordered) absorbRecord(origins, item, pkg.documents);
   const revenue = origins["revenue"]?.value;
@@ -443,6 +472,14 @@ function collectPlatformFacts(
     ...(statement.period ? { period: statement.period } : {}),
     citations,
   };
+}
+
+function isCanonicalInputRecord(item: CaseRecord): boolean {
+  return (
+    item.recordId === "record_canonical_input" ||
+    item.sourceId === "normalized:canonical-input" ||
+    item.sourceId.startsWith("normalized:")
+  );
 }
 
 function orderedRecords(records: CaseRecord[]): CaseRecord[] {

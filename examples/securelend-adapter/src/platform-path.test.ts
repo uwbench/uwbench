@@ -71,7 +71,7 @@ describe("desk score-gate profile", () => {
         record: { forced_liquidation_value: 520, requested_amount: 390 },
       },
     ];
-    expect(platformFacts({ records })).toMatchObject({
+    expect(platformFacts({ records }, "reasoning_only")).toMatchObject({
       revenue: 100,
       ebitda: 40,
       interest_expense: 5,
@@ -169,7 +169,7 @@ describe("desk score-gate profile", () => {
         },
       },
     ];
-    expect(platformFacts({ records })).toMatchObject({
+    expect(platformFacts({ records }, "reasoning_only")).toMatchObject({
       revenue: 2_200_000_000,
       ebitda: 88_000_000,
       debt_service: 85_000_000,
@@ -204,6 +204,104 @@ describe("desk score-gate profile", () => {
     const onlyFlag = platformPackBody([flag]);
     expect(onlyFlag.eligibility).toEqual([]);
     expect(onlyFlag.testCases[0]?.expect).toBe("insufficient");
+  });
+
+  it("posts canonical income lines only on normalized_data and reasoning_only", () => {
+    const records: CaseRecord[] = [
+      {
+        recordId: "record_canonical_input",
+        sourceId: "normalized:canonical-input",
+        record: {
+          financialSpread: {
+            revenue: { amount: 1_000 },
+            cogs: { amount: 400 },
+            grossProfit: { amount: 600 },
+            operatingExpenses: { amount: 250 },
+            taxes: { amount: 50 },
+            netIncome: { amount: 200 },
+            ebitda: { amount: 350 },
+          },
+        },
+      },
+    ];
+    for (const lane of ["reasoning_only", "normalized_data"] as const) {
+      expect(
+        platformFactsRequestBody({ records, documents: [] }, lane),
+      ).toMatchObject({
+        revenue: 1_000,
+        cogs: 400,
+        gross_profit: 600,
+        operating_expenses: 250,
+        taxes: 50,
+        net_income: 200,
+        ebitda: 350,
+      });
+    }
+  });
+
+  it("raw_documents posts no canonical-input values even if that record is present", () => {
+    const records: CaseRecord[] = [
+      {
+        recordId: "record_canonical_input",
+        sourceId: "normalized:canonical-input",
+        record: {
+          financialSpread: {
+            revenue: { amount: 1_000 },
+            cogs: { amount: 400 },
+            grossProfit: { amount: 600 },
+            operatingExpenses: { amount: 250 },
+            taxes: { amount: 50 },
+            netIncome: { amount: 200 },
+          },
+        },
+      },
+      {
+        recordId: "record_financials_2024",
+        sourceId: "src_financials_2024",
+        record: { revenue: 7, cogs: 3 },
+      },
+    ];
+    const body = platformFactsRequestBody(
+      { records, documents: [] },
+      "raw_documents",
+    );
+    expect(body["revenue"]).toBe(7);
+    expect(body["cogs"]).toBe(3);
+    expect(body["gross_profit"]).toBeUndefined();
+    expect(body["operating_expenses"]).toBeUndefined();
+    expect(body["taxes"]).toBeUndefined();
+    expect(body["net_income"]).toBeUndefined();
+    expect(body["ebitda"]).toBeUndefined();
+    expect(JSON.stringify(body)).not.toContain("1000");
+    expect(JSON.stringify(body)).not.toContain("normalized:canonical-input");
+  });
+
+  it("an unknown lane posts no facts", () => {
+    const records: CaseRecord[] = [
+      {
+        recordId: "record_canonical_input",
+        sourceId: "normalized:canonical-input",
+        record: {
+          financialSpread: {
+            revenue: { amount: 1_000 },
+            cogs: { amount: 400 },
+            netIncome: { amount: 200 },
+          },
+        },
+      },
+      {
+        recordId: "record_financials_2024",
+        sourceId: "src_financials_2024",
+        record: { revenue: 7 },
+      },
+    ];
+    for (const lane of [undefined, "", "mystery"] as const) {
+      const body = platformFactsRequestBody({ records, documents: [] }, lane);
+      expect(body["revenue"]).toBeUndefined();
+      expect(body["cogs"]).toBeUndefined();
+      expect(body["net_income"]).toBeUndefined();
+      expect(body["citations"]).toEqual({});
+    }
   });
 
   it("posts public src and doc ids, currency, and statement period", () => {
@@ -244,7 +342,10 @@ describe("desk score-gate profile", () => {
         uploadable: true,
       },
     ];
-    const body = platformFactsRequestBody({ records, documents });
+    const body = platformFactsRequestBody(
+      { records, documents },
+      "reasoning_only",
+    );
     expect(body["revenue"]).toBe(80);
     expect(body["currency"]).toBe("USD");
     expect(body["period"]).toEqual({
