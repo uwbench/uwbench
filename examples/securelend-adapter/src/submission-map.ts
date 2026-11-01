@@ -24,6 +24,12 @@ import {
   type CasePolicyRule,
   type CaseRecord,
 } from "./case-package.js";
+export {
+  mapPlatformPassthrough,
+  MISSING_PLATFORM_SPREAD_NOTE,
+  PLATFORM_SPREAD_NOTE,
+  type PlatformPassthroughMetadata,
+} from "./platform-passthrough.js";
 
 const DECISIONS = [
   "APPROVE_WITH_CONDITIONS",

@@ -332,7 +332,11 @@ function platformConfig(
   platform: PlatformModeConfig | undefined,
 ): PlatformPathConfig | undefined {
   if (!platform) return undefined;
-  return { baseUrl: platform.baseUrl, actor: platform.actor };
+  return {
+    baseUrl: platform.baseUrl,
+    actor: platform.actor,
+    mappingMode: platform.mappingMode,
+  };
 }
 
 function mcpConfigToChatPath(

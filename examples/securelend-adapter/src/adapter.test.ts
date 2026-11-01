@@ -245,7 +245,13 @@ describe("MCP product chat-path mode", () => {
               mimeType: "image/png",
               content: "",
             }),
-            pages: [{ pageNumber: 1, text: "", imagePngBase64: png.toString("base64") }],
+            pages: [
+              {
+                pageNumber: 1,
+                text: "",
+                imagePngBase64: png.toString("base64"),
+              },
+            ],
           },
           documentFixture({
             documentId: "doc_ar_aging_2024",
@@ -299,7 +305,9 @@ describe("MCP product chat-path mode", () => {
       `http://127.0.0.1:${adapter.portNumber}`,
       accepted.agentRunId,
     );
-    const submits = mcp.calls.filter((call) => call.name === "submit_documents");
+    const submits = mcp.calls.filter(
+      (call) => call.name === "submit_documents",
+    );
     expect(submits.map((call) => call.arguments["filename"])).toEqual([
       "doc_financials_2024.png",
       "doc_ar_aging_2024.txt",
@@ -569,6 +577,8 @@ describe("MCP product chat-path mode", () => {
           ...runRequest(`http://127.0.0.1:${gateway.port}/v1/tools/call`),
           lane: "reasoning_only",
           caseId: "case-00001",
+          objective:
+            "Underwrite the credit file. Structured record IDs for case.get_structured_record: record_financials_2024.",
           idempotencyKey: "reasoning-only-extract-throws",
         }),
       },
@@ -714,6 +724,8 @@ describe("MCP product chat-path mode", () => {
           ...runRequest(`http://127.0.0.1:${gateway.port}/v1/tools/call`),
           lane: "reasoning_only",
           caseId: "case-00001",
+          objective:
+            "Underwrite the credit file. Structured record IDs for case.get_structured_record: record_borrower_profile, record_financials_2024.",
           idempotencyKey: "reasoning-only-pack-spread",
         }),
       },
