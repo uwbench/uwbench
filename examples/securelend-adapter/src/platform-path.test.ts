@@ -1,8 +1,22 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("node:fs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs")>();
+  const readFileSync = ((path: unknown, options?: unknown) => {
+    const text = String(path);
+    if (/[/\\]private[/\\]/.test(text) || /expected-/.test(text)) {
+      throw new Error(`forbidden read ${text}`);
+    }
+    return actual.readFileSync(path as never, options as never);
+  }) as typeof actual.readFileSync;
+  return { ...actual, readFileSync };
+});
 import {
+  buildUwbenchPublic,
+  platformCaseBody,
   platformDocumentFields,
   platformFacts,
   platformFactsRequestBody,
@@ -10,8 +24,9 @@ import {
   platformUploadFileName,
   tenantForCase,
 } from "./platform-path.js";
+import { casePackagePayload, type CasePackage } from "./case-package.js";
 import { mapPlatformPassthrough } from "./platform-passthrough.js";
-import { ToolGateway } from "@uwbench/tool-runtime";
+import { ToolClient, ToolGateway } from "@uwbench/tool-runtime";
 import type {
   CaseDocument,
   CasePolicyRule,
@@ -454,5 +469,139 @@ describe("desk score-gate profile", () => {
         mapped.submission,
       ),
     ).toEqual([]);
+  });
+});
+
+describe("uwbenchPublic baseline passthrough", () => {
+  const request = {
+    caseId: "case-synth",
+    objective: "Underwrite the synthetic file.",
+    taskMarkdown: "# Task\nPublic task only.",
+    lane: "reasoning_only" as const,
+    requiredOutputs: ["recommendation", "risks"],
+  };
+  const records: CaseRecord[] = [
+    {
+      recordId: "record_canonical_input",
+      sourceId: "normalized:canonical-input",
+      record: { financialSpread: { revenue: { amount: 10 } } },
+    },
+    {
+      recordId: "record_financials_2024",
+      sourceId: "src_financials_2024",
+      record: { revenue: 10 },
+    },
+  ];
+  const documents: CaseDocument[] = [
+    {
+      documentId: "doc_stmt",
+      sourceId: "src_stmt",
+      title: "Statement",
+      mimeType: "text/plain",
+      text: "Revenue 10",
+      bytes: Buffer.from("Revenue 10"),
+      uploadable: true,
+    },
+  ];
+  const policies: CasePolicyRule[] = [
+    {
+      ruleId: "rule_dscr_minimum",
+      sourceId: "src_policy_dscr",
+      title: "DSCR",
+      appliesWhen: "term loan requested",
+      input: { ratio: "dscr" },
+      operator: ">=",
+      threshold: 1.25,
+      onFailure: "REFER",
+    },
+  ];
+  const pkg: CasePackage = {
+    records,
+    documents,
+    policies,
+    client: new ToolClient({
+      url: "http://127.0.0.1:9/v1/tools/call",
+      bearerToken: "unused",
+    }),
+  };
+
+  it("matches the baseline public package and does not read private files", () => {
+    const payload = casePackagePayload(request, pkg);
+    const payloadRecords = payload["records"] as { recordId?: string }[];
+    const payloadDocuments = payload["documents"] as {
+      documentId?: string;
+      sourceId?: string;
+    }[];
+    const validDocMap: Record<string, string> = {};
+    for (const document of payloadDocuments) {
+      if (document.documentId && document.sourceId) {
+        validDocMap[document.documentId] = document.sourceId;
+      }
+    }
+    const validSourceIds = new Set<string>([
+      ...((payload["sourceIds"] as string[]) ?? []),
+      ...Object.values(validDocMap),
+      ...policies.map((policy) => policy.sourceId).filter(Boolean),
+    ]);
+    validSourceIds.delete("normalized:canonical-input");
+    const baseline = {
+      request: {
+        objective: request.objective,
+        taskMarkdown: request.taskMarkdown,
+        lane: request.lane,
+        requiredOutputs: request.requiredOutputs,
+        sourceIds: [...validSourceIds],
+      },
+      casePackage: {
+        records: payloadRecords.filter(
+          (row) => row.recordId !== "record_canonical_input",
+        ),
+        canonicalRecord: payloadRecords.find(
+          (row) => row.recordId === "record_canonical_input",
+        ),
+        documents: payloadDocuments,
+        policies,
+      },
+    };
+    const built = buildUwbenchPublic(request, pkg);
+    expect(JSON.stringify(built)).toBe(JSON.stringify(baseline));
+    expect(built.casePackage.documents[0]).toMatchObject({
+      title: "Statement",
+      mimeType: "text/plain",
+    });
+    expect(Object.keys(built)).toEqual(["request", "casePackage"]);
+    expect(Object.keys(built.request).sort()).toEqual([
+      "lane",
+      "objective",
+      "requiredOutputs",
+      "sourceIds",
+      "taskMarkdown",
+    ]);
+    expect(Object.keys(built.casePackage).sort()).toEqual([
+      "canonicalRecord",
+      "documents",
+      "policies",
+      "records",
+    ]);
+    expect(JSON.stringify(built)).not.toMatch(/[/\\]private[/\\]|expected-/);
+  });
+
+  it("adds uwbenchPublic without changing the existing case, fact, or pack fields", () => {
+    const bare = platformCaseBody("case-synth", "ten_case_synth");
+    const withPublic = platformCaseBody(
+      "case-synth",
+      "ten_case_synth",
+      buildUwbenchPublic(request, pkg),
+    );
+    const { uwbenchPublic: _added, ...rest } = withPublic;
+    expect(rest).toEqual(bare);
+    expect(bare).toEqual({ id: "case-synth", tenantId: "ten_case_synth" });
+    const facts = platformFactsRequestBody(
+      { records, documents },
+      "reasoning_only",
+    );
+    expect(facts).not.toHaveProperty("uwbenchPublic");
+    expect(platformPackBody(policies)).not.toHaveProperty("uwbenchPublic");
+    expect(JSON.stringify(facts)).not.toContain("taskMarkdown");
   });
 });

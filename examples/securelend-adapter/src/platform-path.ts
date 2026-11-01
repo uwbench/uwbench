@@ -4,6 +4,7 @@ import {
   type UnderwritingSubmission,
 } from "@uwbench/protocol";
 import {
+  casePackagePayload,
   isCitableSourceId,
   loadCasePackage,
   type CaseDocument,
@@ -156,6 +157,97 @@ export function platformFactsRequestBody(
 }
 
 /** Public document ids for the upload form. Internal aliases are omitted. */
+/**
+ * Public inputs the single-prompt baseline passes to buildSinglePrompt.
+ * Built only from the run request and casePackagePayload(loadCasePackage).
+ */
+export function buildUwbenchPublic(
+  request: Pick<
+    RunRequest,
+    "caseId" | "objective" | "taskMarkdown" | "lane" | "requiredOutputs"
+  >,
+  pkg: CasePackage,
+): {
+  request: {
+    objective: string;
+    taskMarkdown?: string;
+    lane: RunRequest["lane"];
+    requiredOutputs: string[];
+    sourceIds: string[];
+  };
+  casePackage: {
+    records: Record<string, unknown>[];
+    canonicalRecord?: Record<string, unknown>;
+    documents: Record<string, unknown>[];
+    policies: CasePolicyRule[];
+  };
+} {
+  const payload = casePackagePayload(request, pkg);
+  const documents = arrayOfRecords(payload["documents"]);
+  const records = arrayOfRecords(payload["records"]);
+  const listedSourceIds = Array.isArray(payload["sourceIds"])
+    ? payload["sourceIds"].filter((id): id is string => typeof id === "string")
+    : [];
+  const policiesFull = pkg.policies ?? [];
+  const validDocMap: Record<string, string> = {};
+  for (const document of documents) {
+    const documentId = document["documentId"];
+    const sourceId = document["sourceId"];
+    if (typeof documentId === "string" && typeof sourceId === "string") {
+      validDocMap[documentId] = sourceId;
+    }
+  }
+  const validSourceIds = new Set<string>([
+    ...listedSourceIds,
+    ...Object.values(validDocMap),
+    ...policiesFull.map((policy) => policy.sourceId).filter(Boolean),
+  ]);
+  validSourceIds.delete("normalized:canonical-input");
+  const canonicalRecord = records.find(
+    (row) => row["recordId"] === "record_canonical_input",
+  );
+  return {
+    request: {
+      objective: request.objective,
+      ...(typeof request.taskMarkdown === "string"
+        ? { taskMarkdown: request.taskMarkdown }
+        : {}),
+      lane: request.lane,
+      requiredOutputs: request.requiredOutputs ?? [],
+      sourceIds: [...validSourceIds],
+    },
+    casePackage: {
+      records: records.filter(
+        (row) => row["recordId"] !== "record_canonical_input",
+      ),
+      ...(canonicalRecord ? { canonicalRecord } : {}),
+      documents,
+      policies: policiesFull,
+    },
+  };
+}
+
+/** Existing case fields stay put. uwbenchPublic is the only addition. */
+export function platformCaseBody(
+  caseId: string,
+  tenantId: string,
+  uwbenchPublic?: ReturnType<typeof buildUwbenchPublic>,
+): Record<string, unknown> {
+  return {
+    id: caseId,
+    tenantId,
+    ...(uwbenchPublic ? { uwbenchPublic } : {}),
+  };
+}
+
+function arrayOfRecords(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (item): item is Record<string, unknown> =>
+      item !== null && typeof item === "object" && !Array.isArray(item),
+  );
+}
+
 export function platformDocumentFields(
   document: Pick<CaseDocument, "sourceId" | "documentId">,
 ): { sourceId?: string; documentId?: string } {
@@ -276,7 +368,11 @@ export async function runPlatformPath(
       signal,
     );
 
-  await api("POST", "/v1/cases", { id: caseId, tenantId });
+  await api(
+    "POST",
+    "/v1/cases",
+    platformCaseBody(caseId, tenantId, buildUwbenchPublic(request, pkg)),
+  );
   const facts = platformFactsPost(pkg, request.lane);
   if (Object.keys(facts.values).length > 0) {
     await api(
