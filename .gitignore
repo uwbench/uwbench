@@ -48,6 +48,9 @@ tmp
 temp
 *.tmp
 *.temp
+
+# Harbor local trial output. Not benchmark results.
+jobs/
 # Local live-compare artifacts. Not official scores.
 benchmark/results/compare/
 
